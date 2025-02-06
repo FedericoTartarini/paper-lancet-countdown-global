@@ -1,8 +1,8 @@
-from icecream import ic
 import cdsapi
+from icecream import ic
 
 from my_config import DATA_SRC
-from secrets import copernicus_api_key
+from python_code.secrets import copernicus_api_key
 
 SUBDAILY_TEMPERATURES_FOLDER = (
     DATA_SRC / "era5" / "era5_0.25deg" / "hourly_temperature_2m"
@@ -27,7 +27,7 @@ def download_year_era5(year: int = 2022):
 
     out_file = SUBDAILY_TEMPERATURES_FOLDER / f"{year}_temperature.grib"
 
-    if out_file.exists() is False:
+    if not out_file.exists():
         c = cdsapi.Client(
             key=copernicus_api_key,
             url="https://cds.climate.copernicus.eu/api",
@@ -38,7 +38,6 @@ def download_year_era5(year: int = 2022):
                 "product_type": "reanalysis",
                 "variable": "2m_temperature",
                 "year": str(year),
-                #             'grid':'0.5/0.5', now get the default rez which is 0.25deg
                 "month": [
                     "01",
                     "02",
