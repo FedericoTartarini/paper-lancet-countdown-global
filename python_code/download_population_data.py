@@ -17,8 +17,15 @@ data_population_path.mkdir(parents=True, exist_ok=True)
 tmp_path = data_population_path / "tmp"
 tmp_path.mkdir(parents=True, exist_ok=True)
 base_worldpop_url = "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020/"
-years_range = np.arange(2020, 2021)
+years_range = np.arange(2012, 2013)
 
+# headers = {
+#     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+#     'X-Forwarded-For': '203.0.113.195',  # Spoofed IP address
+#     'Referer': 'https://google.com',     # Spoofed referer
+#     'Accept-Language': 'en-US,en;q=0.9', # Language preferences
+#     'Accept-Encoding': 'gzip, deflate, br'
+# }
 
 def download_file(url, filepath):
     filepath = Path(filepath)
@@ -26,6 +33,7 @@ def download_file(url, filepath):
     ic(f"Downloading {filepath}")
     if not filepath.is_file():
         response = requests.get(url, stream=True)
+        # response = requests.get(url, stream=True, headers=headers)
         response.raise_for_status()
         with open(tmp_filepath, "wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
@@ -63,12 +71,15 @@ def create_urls_aggregated_years() -> list[tuple[str, str]]:
 
 if __name__ == "__main__":
     urls = create_urls_sex_age_years()
+
     for url, filepath in urls:
         print(url, filepath)
         download_file(url, filepath)
+
     # with ThreadPoolExecutor() as executor:
     #     executor.map(lambda p: download_file(*p), urls)
-    #
+
+
     # urls = create_urls_aggregated_years()
     # with ThreadPoolExecutor() as executor:
     #     executor.map(lambda p: download_file(*p), urls)
