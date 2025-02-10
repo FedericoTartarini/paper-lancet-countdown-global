@@ -15,7 +15,9 @@ TEMPERATURE_SUMMARY_FOLDER.mkdir(parents=True, exist_ok=True)
 def generate_daily_summary(source_file) -> None:
 
     summary_file = source_file.replace("_temperature.grib", "_temperature_summary.nc")
-    summary_file = summary_file.replace("hourly_temperature_2m", "daily_temperature_summary")
+    summary_file = summary_file.replace(
+        "hourly_temperature_2m", "daily_temperature_summary"
+    )
 
     daily = xr.open_dataset(source_file, engine="cfgrib").load()
     daily = daily.resample(time="1D")
