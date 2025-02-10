@@ -17,7 +17,7 @@ data_population_path.mkdir(parents=True, exist_ok=True)
 tmp_path = data_population_path / "tmp"
 tmp_path.mkdir(parents=True, exist_ok=True)
 base_worldpop_url = "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020/"
-years_range = np.arange(2012, 2013)
+years_range = np.arange(2010, 2018)
 
 # headers = {
 #     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -26,6 +26,7 @@ years_range = np.arange(2012, 2013)
 #     'Accept-Language': 'en-US,en;q=0.9', # Language preferences
 #     'Accept-Encoding': 'gzip, deflate, br'
 # }
+
 
 def download_file(url, filepath):
     filepath = Path(filepath)
@@ -48,7 +49,7 @@ def create_urls_sex_age_years() -> list[tuple[str, str]]:
     urls = []
 
     for year in years_range:
-        for sex in ["f", "m"]:
+        for sex in ["m", "f"]:
             for age in [0, 65, 70, 75, 80]:
                 download_url = f"{base_worldpop_url}{year}/0_Mosaicked/global_mosaic_1km/global_{sex}_{age}_{year}_1km.tif"
                 filepath = DATA_SRC / f"population/global_{sex}_{age}_{year}_1km.tif"
@@ -72,13 +73,12 @@ def create_urls_aggregated_years() -> list[tuple[str, str]]:
 if __name__ == "__main__":
     urls = create_urls_sex_age_years()
 
-    for url, filepath in urls:
-        print(url, filepath)
-        download_file(url, filepath)
+    # for url, filepath in urls:
+    #     print(url, filepath)
+    #     download_file(url, filepath)
 
-    # with ThreadPoolExecutor() as executor:
-    #     executor.map(lambda p: download_file(*p), urls)
-
+    with ThreadPoolExecutor() as executor:
+        executor.map(lambda p: download_file(*p), urls)
 
     # urls = create_urls_aggregated_years()
     # with ThreadPoolExecutor() as executor:
