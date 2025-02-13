@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import geopandas as gpd
@@ -7,8 +8,14 @@ import rioxarray
 import xarray as xr
 from icecream import ic
 from shapely.geometry import Point
+from tqdm import tqdm
 
-from my_config import DATA_SRC, WEATHER_SRC, dir_pop_data_era_grid
+from my_config import (
+    DATA_SRC,
+    WEATHER_SRC,
+    dir_pop_data_era_grid,
+    TEMPERATURE_SUMMARY_FOLDER,
+)
 
 
 def process_and_combine_ages(ages, sex, start_year, directory, era5_grid):
@@ -96,115 +103,90 @@ def sum_files(files, directory=""):
     return total_sum
 
 
-if __name__ == "__main__":
+def get_era5_grid(year=1980):
     # open on year of era5 to put population data on the same grid
     era5_data = xr.open_dataset(
-        WEATHER_SRC
-        / "era5/era5_0.25deg/daily_temperature_summary/1980_temperature_summary.nc"
+        TEMPERATURE_SUMMARY_FOLDER / f"{year}_temperature_summary.nc"
     )
     era5_data = era5_data.assign_coords(
         longitude=(((era5_data.longitude + 180) % 360) - 180)
     )
-    era5_grid = era5_data.isel(time=0).to_dataframe().reset_index()
-    era5_grid["geometry"] = era5_grid.apply(
+    era_grid = era5_data.isel(time=0).to_dataframe().reset_index()
+    era_grid["geometry"] = era_grid.apply(
         lambda row: Point(row.longitude, row.latitude), axis=1
     )
-    era5_grid = gpd.GeoDataFrame(era5_grid, geometry="geometry")
-    era5_grid.set_crs("EPSG:4326", inplace=True)
-    era5_grid = era5_grid[["longitude", "latitude", "geometry"]]
+    era_grid = gpd.GeoDataFrame(era_grid, geometry="geometry")
+    era_grid.set_crs("EPSG:4326", inplace=True)
+    era_grid = era_grid[["longitude", "latitude", "geometry"]]
 
     # todo get the file form the Dropbox folder
     gdf_countries = gpd.read_file(
         DATA_SRC / "admin_boundaries" / "world-administrative-boundaries.shp"
     )
-    era5_grid = gpd.sjoin(
-        era5_grid, gdf_countries[["iso3", "geometry"]], how="left", predicate="within"
+    era_grid = gpd.sjoin(
+        era_grid, gdf_countries[["iso3", "geometry"]], how="left", predicate="within"
     )
-    era5_grid_on_land = era5_grid[era5_grid["iso3"].notna()]
-    era5_grid_3395 = era5_grid_on_land.to_crs("EPSG:3395")
-    era5_grid_3395 = era5_grid_3395.drop(columns="index_right")
+    era5_grid_on_land = era_grid[era_grid["iso3"].notna()]
+    era_grid_3395 = era5_grid_on_land.to_crs("EPSG:3395")
+    era_grid_3395 = era_grid_3395.drop(columns="index_right")
+    return era_grid_3395, era_grid
 
+
+def process_and_save_population_data(ages, start_year, sex):
+
+    ic(sex, ages, start_year)
+
+    out_path = (
+        dir_pop_data_era_grid
+        / f'{sex}_{"_".join(map(str, ages))}_{start_year}_era5_compatible.nc'
+    )
+
+    if out_path.exists():
+        return
+
+    era5_grid_3395, era5_grid = get_era5_grid()
     worldpop_dir = DATA_SRC / "population"
-    ages = ["0"]
-    for start_year in np.arange(2000, 2021):
-        for sex in ["f"]:
-            print(start_year, sex)
-            pop_regrided = process_and_combine_ages(
-                ages=[0],
-                sex=sex,
-                start_year=start_year,
-                directory=worldpop_dir,
-                era5_grid=era5_grid_3395,
-            )
-            pop_regrided = pop_regrided.rename(
-                columns={"latitude_right": "latitude", "longitude_right": "longitude"}
-            )
-            pop_regrided = era5_grid.merge(
-                pop_regrided[["longitude", "latitude", "pop"]], how="left"
-            )
-            pivoted_df = pop_regrided.pivot(
-                index="latitude", columns="longitude", values="pop"
-            )
+    pop_regrided = process_and_combine_ages(
+        ages=ages,
+        sex=sex,
+        start_year=start_year,
+        directory=worldpop_dir,
+        era5_grid=era5_grid_3395,
+    )
+    pop_regrided = pop_regrided.rename(
+        columns={"latitude_right": "latitude", "longitude_right": "longitude"}
+    )
+    pop_regrided = era5_grid_3395.merge(
+        pop_regrided[["longitude", "latitude", "pop"]], how="left"
+    )
+    pivoted_df = pop_regrided.pivot(index="latitude", columns="longitude", values="pop")
 
-            # Convert the pivoted DataFrame to an xarray DataArray
-            da = xr.DataArray(pivoted_df, dims=["latitude", "longitude"])
+    # Convert the pivoted DataFrame to an xarray DataArray
+    da = xr.DataArray(pivoted_df, dims=["latitude", "longitude"])
 
-            # Optionally, add the time coordinate (if you have multiple time points, this step will differ)
-            da = da.expand_dims(time=[start_year])
+    # Optionally, add the time coordinate (if you have multiple time points, this step will differ)
+    da = da.expand_dims(time=[start_year])
 
-            # Convert to Dataset if you want to add more variables or simply prefer a Dataset structure
-            pop_resampled = da.to_dataset(name="pop")
-            pop_resampled["longitude"] = xr.where(
-                pop_resampled["longitude"] < 0,
-                pop_resampled["longitude"] + 360,
-                pop_resampled["longitude"],
-            )
-            pop_resampled = pop_resampled.sortby("longitude")
-            out_path = (
-                dir_pop_data_era_grid
-                / f'{sex}_{"_".join(map(str, ages))}_{start_year}_era5_compatible.nc'
-            )
+    # Convert to Dataset if you want to add more variables or simply prefer a Dataset structure
+    pop_resampled = da.to_dataset(name="pop")
+    pop_resampled["longitude"] = xr.where(
+        pop_resampled["longitude"] < 0,
+        pop_resampled["longitude"] + 360,
+        pop_resampled["longitude"],
+    )
+    pop_resampled = pop_resampled.sortby("longitude")
 
-            pop_resampled.to_netcdf(out_path)
+    pop_resampled.to_netcdf(out_path)
 
-    ages = [65, 70, 75, 80]
-    for start_year in np.arange(2014, 2020):
-        for sex in ["f", "m"]:
-            # remapped_data, era5_grid_mapping = process_and_combine_ages([65, 70, 75, 80], sex, start_year, worldpop_dir, era5_data, era5_grid_mapping)
-            pop_regrided = process_and_combine_ages(
-                ages, sex, start_year, worldpop_dir, era5_grid_3395
-            )
-            pop_regrided = pop_regrided.rename(
-                columns={"latitude_right": "latitude", "longitude_right": "longitude"}
-            )
-            pop_regrided = era5_grid.merge(
-                pop_regrided[["longitude", "latitude", "pop"]], how="left"
-            )
-            pivoted_df = pop_regrided.pivot(
-                index="latitude", columns="longitude", values="pop"
-            )
 
-            # Convert the pivoted DataFrame to an xarray DataArray
-            da = xr.DataArray(pivoted_df, dims=["latitude", "longitude"])
+if __name__ == "__main__":
 
-            # Optionally, add the time coordinate (if you have multiple time points, this step will differ)
-            da = da.expand_dims(time=[start_year])
-
-            # Convert to Dataset if you want to add more variables or simply prefer a Dataset structure
-            pop_resampled = da.to_dataset(name="pop")
-            pop_resampled["longitude"] = xr.where(
-                pop_resampled["longitude"] < 0,
-                pop_resampled["longitude"] + 360,
-                pop_resampled["longitude"],
-            )
-            pop_resampled = pop_resampled.sortby("longitude")
-            out_path = (
-                Path("/nfs/n2o/wcr/szelie/worldpop/")
-                / "era5_compatible2"
-                / f'{sex}_{"_".join(map(str, ages))}_{start_year}_era5_compatible.nc'
-            )
-
-            pop_resampled.to_netcdf(out_path)
+    for ages in tqdm([[0], [65, 70, 75, 80]], desc="Ages"):
+        for start_year in tqdm(np.arange(2000, 2021), desc="Years", leave=False):
+            for sex in tqdm(["f", "m"], desc="Sex", leave=False):
+                process_and_save_population_data(
+                    ages=ages, start_year=start_year, sex=sex
+                )
 
     # # todo check the code below since it does not look like it is doing anything
     #
