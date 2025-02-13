@@ -1,22 +1,23 @@
 import glob
-import xarray as xr
+import os
 
-from my_config import DATA_SRC
+import xarray as xr
+import shutil
+
+from my_config import DATA_SRC, TEMPERATURE_SUMMARY_FOLDER
 
 SUBDAILY_TEMPERATURES_FOLDER = (
     DATA_SRC / "era5" / "era5_0.25deg" / "hourly_temperature_2m"
 )
-TEMPERATURE_SUMMARY_FOLDER = (
-    DATA_SRC / "era5" / "era5_0.25deg" / "daily_temperature_summary"
-)
-TEMPERATURE_SUMMARY_FOLDER.mkdir(parents=True, exist_ok=True)
+
+one_drive_folder = "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/Temporary/lancet"
 
 
 def generate_daily_summary(source_file) -> None:
 
     summary_file = source_file.replace("_temperature.grib", "_temperature_summary.nc")
     summary_file = summary_file.replace(
-        "hourly_temperature_2m", "daily_temperature_summary"
+        str(SUBDAILY_TEMPERATURES_FOLDER), str(TEMPERATURE_SUMMARY_FOLDER)
     )
 
     daily = xr.open_dataset(source_file, engine="cfgrib").load()
@@ -39,14 +40,16 @@ def generate_daily_summary(source_file) -> None:
         },
     )
 
-
-def process_weather():
-    # loop through all the files in the folder
-    for file in glob.glob(str(SUBDAILY_TEMPERATURES_FOLDER) + "/*.grib"):
-        # do something with the file
-        print(file)
-        generate_daily_summary(source_file=file)
+    shutil.move(
+        source_file,
+        source_file.replace(str(SUBDAILY_TEMPERATURES_FOLDER), one_drive_folder),
+    )
 
 
 if __name__ == "__main__":
-    process_weather()
+    for file in glob.glob(str(SUBDAILY_TEMPERATURES_FOLDER) + "/*.grib"):
+        # do something with the file
+        size_gb = os.path.getsize(file) / 10**9  # Convert bytes to GB
+        if size_gb > 18:
+            print(f"File: {file}, Size: {size_gb:.2f} GB")
+            generate_daily_summary(source_file=file)
