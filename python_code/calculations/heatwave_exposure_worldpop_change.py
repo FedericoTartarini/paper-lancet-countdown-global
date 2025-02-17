@@ -15,17 +15,10 @@
 > Using VERY ROUGH ESTIMATE of yearly newborn pop, this is EVEN MORE ROUGH for the pre-2000 data
 """
 
-from pathlib import Path
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 import xarray as xr
-import matplotlib.pyplot as plt
-
-from cartopy import crs as ccrs
-from scipy import stats
-import os
-import sys
 
 from my_config import (
     max_year,
@@ -173,7 +166,7 @@ population_elderly_worldpop.max(dim="year")
 
 f, ax = plt.subplots(1, 1)
 
-heatwave_metrics_delta_mean.plot(ax=ax, label="Global mean (land)")
+# heatwave_metrics_delta_mean.plot(ax=ax, label="Global mean (land)")
 
 weighted_mean_infants.infants.plot(ax=ax, label="Weighted mean (infants)")
 weighted_mean_over65.elderly.plot(ax=ax, label="Weighted mean (over-65)")
@@ -188,7 +181,7 @@ plt.show()
 
 f, ax = plt.subplots(1, 1)
 n = 10
-heatwave_metrics_delta_mean.rolling(n).mean().plot(ax=ax, label="Global mean (land)")
+# heatwave_metrics_delta_mean.rolling(n).mean().plot(ax=ax, label="Global mean (land)")
 
 weighted_mean_infants.rolling(n).mean().plot(ax=ax, label="Weighted mean (infants)")
 weighted_mean_over65.rolling(n).mean().plot(ax=ax, label="Weighted mean (over-65)")
@@ -197,6 +190,7 @@ ax.set(
     ylabel="Heatwave days",
     title=f"Change in heatwave days relative to 1986-2005 baseline,\n {n}-year rolling mean",
 )
+plt.show()
 # f.savefig(RESULTS_FOLDER / 'weighted rolling heatwave change comparison worldpop.png', dpi=300)
 # f.savefig(RESULTS_FOLDER / 'weighted rolling heatwave change comparison worldpop.pdf')
 
@@ -222,5 +216,7 @@ rolling_stats.to_csv(
 (weighted_mean_infants - heatwave_metrics_delta_mean).rolling(n).mean()[
     "infants"
 ].plot()
+plt.show()
 
 (weighted_mean_over65 - heatwave_metrics_delta_mean).rolling(n).mean()["elderly"].plot()
+plt.show()

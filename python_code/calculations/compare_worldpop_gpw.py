@@ -200,7 +200,7 @@ ax.legend()
 ax.set_title("Elderly Global Population")
 ax.set_ylabel("Population (millions)")
 
-plt.savefig("python_code/figures/elderlies_worldpop_vs_gpw_global.pdf")
+plt.savefig("python_code/figures/elderly_worldpop_vs_gpw_global.pdf")
 plt.show()
 
 elderly_gpw_2019 = elderly_gpw.sel(
@@ -298,5 +298,5 @@ fig.colorbar(cbar, ax=ax, orientation="horizontal").set_label(
 )  # Customize your label here
 
 # Save the figure
-plt.savefig("python_code/figures/elderlies_worldpop_vs_gpw_by_country.pdf")
+plt.savefig("python_code/figures/elderly_worldpop_vs_gpw_by_country.pdf")
 plt.show()

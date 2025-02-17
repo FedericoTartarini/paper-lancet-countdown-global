@@ -29,7 +29,6 @@ from cartopy import crs as ccrs
 from my_config import (
     path_local,
     max_year,
-    pop_data_src,
     dir_results,
     report_year,
     dir_results_pop_exposure,

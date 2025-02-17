@@ -161,10 +161,10 @@ heatwave_metrics_delta_mean = (
 
 f, ax = plt.subplots(1, 1)
 
-heatwave_metrics_delta_mean.heatwaves_days.plot(ax=ax, label="Global mean (land)")
+# heatwave_metrics_delta_mean.heatwaves_days.plot(ax=ax, label="Global mean (land)")
 
-weighted_mean_infants.heatwaves_days.plot(ax=ax, label="Weighted mean (infants)")
-weighted_mean_over65.heatwaves_days.plot(ax=ax, label="Weighted mean (over-65)")
+weighted_mean_infants.plot(ax=ax, label="Weighted mean (infants)")
+weighted_mean_over65.plot(ax=ax, label="Weighted mean (over-65)")
 ax.legend()
 ax.set(
     ylabel="Heatwave days",
