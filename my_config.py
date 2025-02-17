@@ -20,6 +20,7 @@ dir_results_pop_exposure = (
     dir_results / f"results_{report_year}" / "pop_exposure" / "worldpop_hw_exposure"
 )
 dir_results_pop_exposure.mkdir(parents=True, exist_ok=True)
+dir_pop_hybrid = dir_results / "hybrid_pop"
 
 subdaily_temperatures_folder = (
     path_local / "era5" / "era5_0.25deg" / "hourly_temperature_2m"
