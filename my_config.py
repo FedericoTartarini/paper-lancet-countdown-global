@@ -3,7 +3,8 @@ from pathlib import Path
 DATA_SRC = Path.home() / "Documents" / "lancet_countdown"
 WEATHER_SRC = DATA_SRC / "weather"
 POP_DATA_SRC = DATA_SRC / "population"
-dir_pop_data_era_grid = POP_DATA_SRC / "worldpop_era5_grid"
+dir_results = DATA_SRC / "results"
+dir_pop_data_era_grid = dir_results / "worldpop_era5_grid"
 dir_pop_data_era_grid.mkdir(parents=True, exist_ok=True)
 
 SUBDAILY_TEMPERATURES_FOLDER = (
@@ -29,7 +30,7 @@ max_year = 2024
 reference_year_start = 1986
 reference_year_end = 2005
 
-dir_results_heatwaves = DATA_SRC / "results" / "heatwaves"
+dir_results_heatwaves = dir_results / "heatwaves"
 dir_results_heatwaves.mkdir(parents=True, exist_ok=True)
 dir_results_heatwaves_tmp = dir_results_heatwaves / f"results_{max_year + 1}"
 dir_results_heatwaves_tmp.mkdir(parents=True, exist_ok=True)

@@ -43,15 +43,9 @@ def get_era5_data():
 
 
 def get_elderly_data():
-    # # todo I do not have the data to run this code, hence I am trying to use the Zenodo data
-    # ELDERLY_TOTALS_FILE = (
-    #         POP_DATA_SRC / "hybrid_2024" / f"worldpop_infants_1950_2023_era5_compatible.nc"
-    # )
-    # population_elderly = xr.open_dataarray(ELDERLY_TOTALS_FILE)
-
     # opening the hybrid population data downloaded from Zenodo
     population_elderly = xr.open_dataarray(
-        POP_DATA_SRC / "hybrid_2024" / "Hybrid Demographics 1950-2020.nc"
+        POP_DATA_SRC / "hybrid_pop" / "Hybrid Demographics 1950-2020.nc"
     )
     population_elderly = population_elderly.isel(age_band_lower_bound=-1)
     population_elderly = population_elderly.isel(year=0)

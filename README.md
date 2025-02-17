@@ -22,6 +22,7 @@ The weather data used in this analysis is the ERA5 reanalysis data from the Cope
 
 1. Download the WorldPop data using the code in `population/pop_data_download.py`
 2. Regrid the data to the ERA5 grid using the code in `population/pop_data_process.py`
+3. Combine the age groups using the code in `population/pop_data_combine.py`
 3. Calculate the absolute exposure to heatwaves using the code in `population/heatwave_exposure_pop_abs.py`
 4. Calculate the change in exposure to heatwaves using the code in `population/heatwave_exposure_pop_change.py`
 
@@ -36,5 +37,11 @@ The weather data used in this analysis is the ERA5 reanalysis data from the Cope
 
 ## Population data
 - [x] Download WorldPop data
-- [ ] Process the data (regrid and combine ages)
+- [x] Process the data (regrid and combine ages)
+- [x] Combine the population data
 - [ ] Calculate the absolute exposure to heatwaves
+
+## Other
+- [x] Rasterize the data
+
+## Issues
