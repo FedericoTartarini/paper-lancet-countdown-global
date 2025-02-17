@@ -1,11 +1,21 @@
 from pathlib import Path
 
+max_year = 2024
+min_year = 1980
+reference_year_start = 1986
+reference_year_end = 2005
+report_year = 2025
+
 DATA_SRC = Path.home() / "Documents" / "lancet_countdown"
 WEATHER_SRC = DATA_SRC / "weather"
 POP_DATA_SRC = DATA_SRC / "population"
 dir_results = DATA_SRC / "results"
 dir_pop_data_era_grid = dir_results / "worldpop_era5_grid"
 dir_pop_data_era_grid.mkdir(parents=True, exist_ok=True)
+dir_results_pop_exposure = (
+    dir_results / f"results_{report_year}" / "pop_exposure" / "worldpop_hw_exposure"
+)
+dir_results_pop_exposure.mkdir(parents=True, exist_ok=True)
 
 SUBDAILY_TEMPERATURES_FOLDER = (
     DATA_SRC / "era5" / "era5_0.25deg" / "hourly_temperature_2m"
@@ -25,10 +35,6 @@ ssd_path = Path("")
 
 climatology_quantiles_folder = WEATHER_SRC / "era5" / "era5_0.25deg" / "quantiles"
 climatology_quantiles_folder.mkdir(parents=True, exist_ok=True)
-
-max_year = 2024
-reference_year_start = 1986
-reference_year_end = 2005
 
 dir_results_heatwaves = dir_results / "heatwaves"
 dir_results_heatwaves.mkdir(parents=True, exist_ok=True)
