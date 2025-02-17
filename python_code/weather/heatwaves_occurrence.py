@@ -28,6 +28,7 @@ from my_config import (
     max_year,
     dir_results_heatwaves_tmp,
     climatology_quantiles_folder,
+    min_year,
 )
 from python_code.weather import heatwave_indices
 
@@ -119,11 +120,12 @@ def apply_func_and_save_yearly(
 if __name__ == "__main__":
     temperature_files = [
         (year, temperature_summary_folder / f"{year}_temperature_summary.nc")
-        for year in range(2022, max_year + 1)
+        for year in range(min_year, max_year + 1)
     ]
 
     quantiles = [0.95]
     quantile = quantiles[0]
+
     t_var = "tmin"
 
     CLIMATOLOGY_QUANTILES = (
@@ -174,7 +176,6 @@ if __name__ == "__main__":
     )
 
     out_folder = dir_results_heatwaves_tmp / "heatwaves_days_era5"
-
     out_folder.mkdir(exist_ok=True)
 
     res = Parallel(n_jobs=6, verbose=3)(
@@ -189,12 +190,9 @@ if __name__ == "__main__":
     )
 
     out_folder = dir_results_heatwaves_tmp / "heatwaves_counts_era5"
-
     out_folder.mkdir(exist_ok=True)
 
-    # apply_func_and_save(heatwave_indices.heatwaves_counts_multi_threshold, 2000, out_folder, t_thresholds, t_var_names=['tmin', 'tmax'])
-
-    res = Parallel(n_jobs=6, verbose=2)(
+    res = Parallel(n_jobs=5, verbose=2)(
         delayed(apply_func_and_save)(
             heatwave_indices.heatwaves_counts_multi_threshold,
             year,
