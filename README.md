@@ -45,3 +45,5 @@ The weather data used in this analysis is the ERA5 reanalysis data from the Cope
 - [x] Rasterize the data
 
 ## Issues
+- [ ] Infant population projection chart different from the report `compare_worldpop_gpw.py`
+- [ ] Elderly population projection chart different from the report `compare_worldpop_gpw.py`
