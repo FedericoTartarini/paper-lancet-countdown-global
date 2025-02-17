@@ -9,9 +9,9 @@ from shapely.geometry import Point
 from tqdm import tqdm
 
 from my_config import (
-    DATA_SRC,
+    path_local,
     dir_pop_data_era_grid,
-    TEMPERATURE_SUMMARY_FOLDER,
+    temperature_summary_folder,
 )
 
 
@@ -103,7 +103,7 @@ def sum_files(files, directory=""):
 def get_era5_grid(year=1980):
     # open on year of era5 to put population data on the same grid
     era5_data = xr.open_dataset(
-        TEMPERATURE_SUMMARY_FOLDER / f"{year}_temperature_summary.nc"
+        temperature_summary_folder / f"{year}_temperature_summary.nc"
     )
     era5_data = era5_data.assign_coords(
         longitude=(((era5_data.longitude + 180) % 360) - 180)
@@ -117,7 +117,7 @@ def get_era5_grid(year=1980):
     era_grid = era_grid[["longitude", "latitude", "geometry"]]
 
     gdf_countries = gpd.read_file(
-        DATA_SRC / "admin_boundaries" / "Detailed_Boundary_ADM0"
+        path_local / "admin_boundaries" / "Detailed_Boundary_ADM0"
     )
     era_grid = gpd.sjoin(
         era_grid,
@@ -144,7 +144,7 @@ def process_and_save_population_data(ages, start_year, sex):
     ic(sex, ages, start_year)
 
     era5_grid_3395, era5_grid = get_era5_grid()
-    worldpop_dir = DATA_SRC / "population"
+    worldpop_dir = path_local / "population"
     pop_regrided = process_and_combine_ages(
         ages=ages,
         sex=sex,

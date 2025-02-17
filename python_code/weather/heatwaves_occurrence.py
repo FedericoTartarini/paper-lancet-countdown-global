@@ -24,7 +24,7 @@ import xarray as xr
 from joblib import Parallel, delayed
 
 from my_config import (
-    TEMPERATURE_SUMMARY_FOLDER,
+    temperature_summary_folder,
     max_year,
     dir_results_heatwaves_tmp,
     climatology_quantiles_folder,
@@ -33,19 +33,9 @@ from python_code.weather import heatwave_indices
 
 xr.set_options(keep_attrs=True)
 
-# # Figure settings
-# plt.rcParams["figure.dpi"] = 100
-# plt.rcParams["savefig.dpi"] = 300
-# plt.rcParams["figure.figsize"] = (5, 2.5)
-# plt.rcParams["figure.titlesize"] = "medium"
-# plt.rcParams["axes.titlesize"] = "medium"
-# plt.rcParams["savefig.bbox"] = "tight"
-#
-# MAP_PROJECTION = ccrs.EckertIII()
-
 
 def ds_for_year(year):
-    ds = xr.open_dataset(TEMPERATURE_SUMMARY_FOLDER / f"{year}_temperature_summary.nc")
+    ds = xr.open_dataset(temperature_summary_folder / f"{year}_temperature_summary.nc")
     ds = ds.transpose("time", "latitude", "longitude")
     return ds
 
@@ -126,92 +116,91 @@ def apply_func_and_save_yearly(
         return f"Skipped {output_file}, already exists"
 
 
-# TODO adopt ERA5 Land one day, very large data could be a challenge, might need to cut globe into smaller parts to skip the oceans
+if __name__ == "__main__":
+    temperature_files = [
+        (year, temperature_summary_folder / f"{year}_temperature_summary.nc")
+        for year in range(2022, max_year + 1)
+    ]
 
-temperature_files = [
-    (year, TEMPERATURE_SUMMARY_FOLDER / f"{year}_temperature_summary.nc")
-    for year in range(2022, max_year + 1)
-]
+    quantiles = [0.95]
+    quantile = quantiles[0]
+    t_var = "tmin"
 
-quantiles = [0.95]
-quantile = quantiles[0]
-t_var = "tmin"
-
-CLIMATOLOGY_QUANTILES = (
-    climatology_quantiles_folder
-    / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
-)
-t_min_quantiles = xr.open_dataset(CLIMATOLOGY_QUANTILES)  #
-t_min_threshold = t_min_quantiles.sel(
-    quantile=quantile, drop=True, tolerance=0.001, method="nearest"
-)
-
-t_var = "tmax"
-CLIMATOLOGY_QUANTILES = (
-    climatology_quantiles_folder
-    / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
-)
-t_max_quantiles = xr.open_dataset(CLIMATOLOGY_QUANTILES)  #
-t_max_threshold = t_max_quantiles.sel(
-    quantile=quantile, drop=True, tolerance=0.001, method="nearest"
-)
-
-t_var = "tmean"
-CLIMATOLOGY_QUANTILES = (
-    climatology_quantiles_folder
-    / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
-)
-
-t_thresholds = [
-    t_min_threshold.to_array().squeeze(),
-    t_max_threshold.to_array().squeeze(),
-]
-
-cos_lat = np.cos(np.radians(t_min_threshold.latitude))
-
-out_folder = dir_results_heatwaves_tmp / "heatwaves_monthly_era5"
-out_folder.mkdir(exist_ok=True)
-
-# Loop over years only
-res = Parallel(n_jobs=6, verbose=3)(
-    delayed(apply_func_and_save_yearly)(
-        heatwave_indices.heatwaves_days_multi_threshold,
-        year,
-        out_folder,
-        t_thresholds,
-        ["t_min", "t_max"],
+    CLIMATOLOGY_QUANTILES = (
+        climatology_quantiles_folder
+        / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
     )
-    for year, _ in temperature_files
-)
-
-out_folder = dir_results_heatwaves_tmp / "heatwaves_days_era5"
-
-out_folder.mkdir(exist_ok=True)
-
-res = Parallel(n_jobs=6, verbose=3)(
-    delayed(apply_func_and_save)(
-        heatwave_indices.heatwaves_days_multi_threshold,
-        year,
-        out_folder,
-        t_thresholds,
-        ["t_min", "t_max"],
+    t_min_quantiles = xr.open_dataset(CLIMATOLOGY_QUANTILES)
+    t_min_threshold = t_min_quantiles.sel(
+        quantile=quantile, drop=True, tolerance=0.001, method="nearest"
     )
-    for year, file in temperature_files
-)
 
-out_folder = dir_results_heatwaves_tmp / "heatwaves_counts_era5"
-
-out_folder.mkdir(exist_ok=True)
-
-# apply_func_and_save(heatwave_indices.heatwaves_counts_multi_threshold, 2000, out_folder, t_thresholds, t_var_names=['tmin', 'tmax'])
-
-res = Parallel(n_jobs=6, verbose=2)(
-    delayed(apply_func_and_save)(
-        heatwave_indices.heatwaves_counts_multi_threshold,
-        year,
-        out_folder,
-        t_thresholds,
-        ["t_min", "t_max"],
+    t_var = "tmax"
+    CLIMATOLOGY_QUANTILES = (
+        climatology_quantiles_folder
+        / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
     )
-    for year, file in temperature_files
-)
+    t_max_quantiles = xr.open_dataset(CLIMATOLOGY_QUANTILES)
+    t_max_threshold = t_max_quantiles.sel(
+        quantile=quantile, drop=True, tolerance=0.001, method="nearest"
+    )
+
+    t_var = "tmean"
+    CLIMATOLOGY_QUANTILES = (
+        climatology_quantiles_folder
+        / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
+    )
+
+    t_thresholds = [
+        t_min_threshold.to_array().squeeze(),
+        t_max_threshold.to_array().squeeze(),
+    ]
+
+    cos_lat = np.cos(np.radians(t_min_threshold.latitude))
+
+    out_folder = dir_results_heatwaves_tmp / "heatwaves_monthly_era5"
+    out_folder.mkdir(exist_ok=True)
+
+    # Loop over years only
+    res = Parallel(n_jobs=6, verbose=3)(
+        delayed(apply_func_and_save_yearly)(
+            heatwave_indices.heatwaves_days_multi_threshold,
+            year,
+            out_folder,
+            t_thresholds,
+            ["t_min", "t_max"],
+        )
+        for year, _ in temperature_files
+    )
+
+    out_folder = dir_results_heatwaves_tmp / "heatwaves_days_era5"
+
+    out_folder.mkdir(exist_ok=True)
+
+    res = Parallel(n_jobs=6, verbose=3)(
+        delayed(apply_func_and_save)(
+            heatwave_indices.heatwaves_days_multi_threshold,
+            year,
+            out_folder,
+            t_thresholds,
+            ["t_min", "t_max"],
+        )
+        for year, file in temperature_files
+    )
+
+    out_folder = dir_results_heatwaves_tmp / "heatwaves_counts_era5"
+
+    out_folder.mkdir(exist_ok=True)
+
+    # apply_func_and_save(heatwave_indices.heatwaves_counts_multi_threshold, 2000, out_folder, t_thresholds, t_var_names=['tmin', 'tmax'])
+
+    res = Parallel(n_jobs=6, verbose=2)(
+        delayed(apply_func_and_save)(
+            heatwave_indices.heatwaves_counts_multi_threshold,
+            year,
+            out_folder,
+            t_thresholds,
+            ["t_min", "t_max"],
+        )
+        for year, file in temperature_files
+    )

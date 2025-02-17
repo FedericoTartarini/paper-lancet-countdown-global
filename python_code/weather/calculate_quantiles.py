@@ -3,7 +3,7 @@ import xarray as xr
 from dask.diagnostics import ProgressBar
 
 from my_config import (
-    TEMPERATURE_SUMMARY_FOLDER,
+    temperature_summary_folder,
     reference_year_start,
     reference_year_end,
     climatology_quantiles_folder,
@@ -19,7 +19,7 @@ quantiles = [0.95]
 for t_var in ["tmax", "tmin", "tmean"]:
 
     file_list = []
-    for file in TEMPERATURE_SUMMARY_FOLDER.rglob("*.nc"):
+    for file in temperature_summary_folder.rglob("*.nc"):
         if reference_year_start <= year_from_filename(file.name) <= reference_year_end:
             file_list.append(file)
 

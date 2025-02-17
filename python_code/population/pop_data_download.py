@@ -8,12 +8,12 @@ import shutil
 from icecream import ic
 from tqdm import tqdm
 
-from my_config import DATA_SRC, hd_path_population
+from my_config import path_local, hd_path_population
 
 # this is needed to avoid the error in the download in MaxOS
 os.environ["no_proxy"] = "*"
 
-data_population_path = DATA_SRC / "population"
+data_population_path = path_local / "population"
 data_population_path.mkdir(parents=True, exist_ok=True)
 tmp_path = data_population_path / "tmp"
 tmp_path.mkdir(parents=True, exist_ok=True)
@@ -65,7 +65,7 @@ def create_urls_sex_age_years() -> list[tuple[str, str]]:
         for sex in ["m", "f"]:
             for age in [0, 65, 70, 75, 80]:
                 download_url = f"{base_worldpop_url}{year}/0_Mosaicked/global_mosaic_1km/global_{sex}_{age}_{year}_1km.tif"
-                filepath = DATA_SRC / f"population/global_{sex}_{age}_{year}_1km.tif"
+                filepath = path_local / f"population/global_{sex}_{age}_{year}_1km.tif"
                 tmp_filepath = tmp_path / filepath.name
                 hd_filepath = hd_path_population / filepath.name
                 if (
@@ -83,7 +83,7 @@ def create_urls_aggregated_years() -> list[tuple[str, str]]:
         download_url = (
             f"{base_worldpop_url}{year}/0_Mosaicked/ppp_{year}_1km_Aggregated.tif"
         )
-        filepath = DATA_SRC / f"population/ppp_{year}_1km_Aggregated.tif"
+        filepath = path_local / f"population/ppp_{year}_1km_Aggregated.tif"
         tmp_filepath = tmp_path / filepath.name
         if not filepath.is_file() and not tmp_filepath.is_file():
             urls.append((download_url, filepath))

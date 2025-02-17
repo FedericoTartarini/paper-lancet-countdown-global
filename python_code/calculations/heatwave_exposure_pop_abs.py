@@ -27,9 +27,9 @@ import xarray as xr
 from cartopy import crs as ccrs
 
 from my_config import (
-    DATA_SRC,
+    path_local,
     max_year,
-    POP_DATA_SRC,
+    pop_data_src,
     dir_results,
     report_year,
     dir_results_pop_exposure,
@@ -45,7 +45,7 @@ plt.rcParams["axes.titlesize"] = "medium"
 plt.rcParams["savefig.bbox"] = "tight"
 MAP_PROJECTION = ccrs.EckertIII()
 
-POP_FOLDER = DATA_SRC / "results" / "hybrid_pop"
+POP_FOLDER = path_local / "results" / "hybrid_pop"
 population_infants_worldpop = xr.open_dataset(
     POP_FOLDER / f"worldpop_infants_1950_{max_year}_era5_compatible.nc"
 ).sel(year=slice(1980, max_year))

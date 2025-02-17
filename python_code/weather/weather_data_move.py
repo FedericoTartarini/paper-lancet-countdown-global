@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 from my_config import (
-    TEMPERATURE_SUMMARY_FOLDER,
+    temperature_summary_folder,
     hd_path_daily_temperature_summary,
 )
 
@@ -18,9 +18,9 @@ def move_summary_files(backup=True, delete_original=True):
     If delete_original is True, the original files are deleted.
     """
 
-    for file in glob.glob(str(TEMPERATURE_SUMMARY_FOLDER) + "/*.nc"):
+    for file in glob.glob(str(temperature_summary_folder) + "/*.nc"):
         move_location = file.replace(
-            str(TEMPERATURE_SUMMARY_FOLDER), str(hd_path_daily_temperature_summary)
+            str(temperature_summary_folder), str(hd_path_daily_temperature_summary)
         )
         move_location = Path(move_location)
 

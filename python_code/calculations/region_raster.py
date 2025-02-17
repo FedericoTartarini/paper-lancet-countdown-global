@@ -5,10 +5,10 @@ import xarray as xr
 from cartopy import crs as ccrs
 from geocube.api.core import make_geocube
 
-from my_config import DATA_SRC, TEMPERATURE_SUMMARY_FOLDER, POP_DATA_SRC
+from my_config import path_local, temperature_summary_folder, pop_data_src
 
 country_polygons = gpd.read_file(
-    DATA_SRC / "admin_boundaries" / "Detailed_Boundary_ADM0" / "GLOBAL_ADM0.shp"
+    path_local / "admin_boundaries" / "Detailed_Boundary_ADM0" / "GLOBAL_ADM0.shp"
 )
 
 # Assuming country_polygons is in WGS84 CRS
@@ -19,7 +19,7 @@ def get_era5_data():
 
     # Open one year of ERA5 data to put population data on the same grid
     era5_data = xr.open_dataset(
-        TEMPERATURE_SUMMARY_FOLDER / "1980_temperature_summary.nc"
+        temperature_summary_folder / "1980_temperature_summary.nc"
     )
 
     # Convert longitudes to -180 to 180 range
@@ -45,7 +45,7 @@ def get_era5_data():
 def get_elderly_data():
     # opening the hybrid population data downloaded from Zenodo
     population_elderly = xr.open_dataarray(
-        POP_DATA_SRC / "hybrid_pop" / "Hybrid Demographics 1950-2020.nc"
+        pop_data_src / "hybrid_pop" / "Hybrid Demographics 1950-2020.nc"
     )
     population_elderly = population_elderly.isel(age_band_lower_bound=-1)
     population_elderly = population_elderly.isel(year=0)
@@ -90,7 +90,7 @@ plt.show()
 
 # rasterized_data = rasterized_data.assign_coords(longitude=era5_data.longitude)
 rasterized_data.to_netcdf(
-    DATA_SRC / "admin_boundaries" / "admin0_raster_report_2024.nc"
+    path_local / "admin_boundaries" / "admin0_raster_report_2024.nc"
 )
 
 # WHO regions raster
@@ -129,13 +129,13 @@ reg_mask = rasterized_data == 3
 # =============================================================================
 
 rasterized_data.to_netcdf(
-    DATA_SRC / "admin_boundaries" / "WHO_regions_raster_report_2024.nc"
+    path_local / "admin_boundaries" / "WHO_regions_raster_report_2024.nc"
 )
 
 # HDI raster
 
 country_lc_grouping = pd.read_excel(
-    DATA_SRC
+    path_local
     / "admin_boundaries"
     / "2025 Global Report Country Names and Groupings.xlsx",
     header=1,
@@ -181,7 +181,7 @@ plt.title("Rasterized Data")
 plt.show()
 
 rasterized_data.to_netcdf(
-    DATA_SRC / "admin_boundaries" / "HDI_group_raster_report_2024.nc"
+    path_local / "admin_boundaries" / "HDI_group_raster_report_2024.nc"
 )
 
 hdi_regions_new_raster = rasterized_data
@@ -234,11 +234,11 @@ plt.show()
 # era5_data = xr.open_dataset(WEATHER_SRC / "era5_0.25deg/daily_temperature_summary/1980_temperature_summary.nc")
 # rasterized_data = rasterized_data.assign_coords(longitude=era5_data.longitude)
 rasterized_data.to_netcdf(
-    DATA_SRC / "admin_boundaries" / "LC_group_raster_report_2024.nc"
+    path_local / "admin_boundaries" / "LC_group_raster_report_2024.nc"
 )
 
 admin1_polygons = gpd.read_file(
-    DATA_SRC
+    path_local
     / "admin_boundaries"
     / "Detailed_Boundary_ADM1"
     / "Detailed_Boundary_ADM1.shp"
@@ -266,5 +266,5 @@ plt.show()
 # era5_data = xr.open_dataset(WEATHER_SRC / "era5_0.25deg/daily_temperature_summary/1980_temperature_summary.nc")
 # rasterized_data = rasterized_data.assign_coords(longitude=era5_data.longitude)
 rasterized_data.to_netcdf(
-    DATA_SRC / "admin_boundaries" / "admin1_raster_report_2024.nc"
+    path_local / "admin_boundaries" / "admin1_raster_report_2024.nc"
 )
