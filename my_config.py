@@ -37,7 +37,12 @@ dir_results_heatwaves.mkdir(parents=True, exist_ok=True)
 dir_results_heatwaves_tmp = dir_results_heatwaves / f"results_{max_year + 1}"
 dir_results_heatwaves_tmp.mkdir(parents=True, exist_ok=True)
 
+dir_figures = Path("python_code/figures")
+
 # Paths to SSD data folders
 temperature_summary_folder = path_ssd / "daily_temperature_summary"
-temperature_summary_folder.mkdir(parents=True, exist_ok=True)
+try:
+    temperature_summary_folder.mkdir(parents=True, exist_ok=True)
+except PermissionError:
+    pass
 pop_data_src = path_ssd / "population"
