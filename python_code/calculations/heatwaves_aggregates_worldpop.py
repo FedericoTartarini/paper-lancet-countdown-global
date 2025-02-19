@@ -209,7 +209,7 @@ def exposure_absolute_by_who_region():
     # Rasterize the WHO regions
     who_region_raster = xr.open_dataset(
         path_local / "admin_boundaries" / "WHO_regions_raster_report_2024.nc"
-    )
+    ).rename({"y": "latitude", "x": "longitude"})
 
     who_regions = country_polygons[["WHO_REGION", "WHO_REGION_ID"]]
     who_regions = who_regions.drop_duplicates()
@@ -221,7 +221,6 @@ def exposure_absolute_by_who_region():
     results_weight = []
 
     with dask.config.set(**{"array.slicing.split_large_chunks": False}):
-
         for _, row in tqdm(who_regions.iterrows(), total=len(who_regions.WHO_REGION)):
             mask = who_region_raster["WHO_REGION_ID"] == row.WHO_REGION_ID
 
@@ -265,7 +264,6 @@ def exposure_absolute_by_who_region():
 
     results = []
     with dask.config.set(**{"array.slicing.split_large_chunks": False}):
-
         for _, row in tqdm(who_regions.iterrows(), total=len(who_regions.WHO_REGION)):
             mask = who_region_raster == row.WHO_REGION_ID
 
@@ -284,11 +282,189 @@ def exposure_absolute_by_who_region():
         )
 
 
+def exposure_absolute_by_hdi():
+    country_polygons = gpd.read_file(
+        path_local / "admin_boundaries" / "Detailed_Boundary_ADM0" / "GLOBAL_ADM0.shp"
+    )
+    country_polygons = country_polygons.merge(
+        country_lc_grouping.rename(columns={"ISO3": "ISO_3_CODE"})
+    )
+
+    hdi_col_name = "HDI Group (2023-24)"
+
+    region_to_id = {
+        region: i
+        for i, region in enumerate(country_polygons[hdi_col_name].unique(), start=1)
+    }
+
+    # Apply the mapping to create a new column with numerical identifiers
+    country_polygons["HDI_ID"] = country_polygons[hdi_col_name].map(region_to_id)
+
+    hdi_raster = xr.open_dataset(
+        path_local / "admin_boundaries" / "HDI_group_raster_report_2024.nc"
+    )
+
+    hdi = country_polygons[["HDI_ID", hdi_col_name]].drop_duplicates()
+
+    pop = []
+    results = []
+    results_weight = []
+
+    hdi = hdi[hdi["HDI_ID"] > 1]
+    with dask.config.set(**{"array.slicing.split_large_chunks": False}):
+
+        for _, row in tqdm(hdi.iterrows(), total=len(hdi[hdi_col_name])):
+            mask = hdi_raster["HDI_ID"] == row.HDI_ID
+
+            masked_population = (
+                (mask * population)
+                .sum(dim=["latitude", "longitude"])
+                .expand_dims(dim={"level_of_human_development": [row[hdi_col_name]]})
+                .compute()
+            )
+            pop.append(masked_population)
+
+            masked_exposures = (
+                (exposures_abs * mask)
+                .sum(dim=["latitude", "longitude"])
+                .expand_dims(dim={"level_of_human_development": [row[hdi_col_name]]})
+                .compute()
+            )
+            results.append(masked_exposures.heatwaves_days)
+
+            masked_exposure_per_person = (
+                masked_exposures.heatwaves_days / masked_population
+            )
+            results_weight.append(masked_exposure_per_person.compute())
+
+        results_pop = xr.concat(pop, dim="level_of_human_development")
+        results_pop = results_pop.to_dataset(name="population")
+
+        results_abs = xr.concat(results, dim="level_of_human_development")
+        results_abs = results_abs.to_dataset(name="exposures_total")
+
+        results_weight = xr.concat(results_weight, dim="level_of_human_development")
+        results_weight = results_weight.to_dataset(name="exposures_weighted")
+
+        exposures_hdi = xr.merge([results_pop, results_abs, results_weight])
+
+    exposures_hdi.to_netcdf(
+        exposures_hdi.to_netcdf(
+            dir_worldpop_exposure_by_region
+            / f"hdi_regions_heatwaves_exposure_{min_year}-{max_year}_worldpop.nc"
+        )
+    )
+
+    print(
+        exposures_hdi.sel(
+            year=2020, age_band_lower_bound=0, level_of_human_development="Very High"
+        ).sum()
+    )
+    print(
+        exposures_hdi.sel(
+            year=2020, age_band_lower_bound=0, level_of_human_development="Low"
+        ).sum()
+    )
+
+    results = []
+    with dask.config.set(**{"array.slicing.split_large_chunks": False}):
+
+        for _, row in tqdm(hdi.iterrows(), total=len(hdi[hdi_col_name])):
+            mask = hdi_raster["HDI_ID"] == row.HDI_ID
+
+            masked_exposures = (exposures_change * mask).sum(
+                dim=["latitude", "longitude"]
+            )
+            masked_exposures = masked_exposures.expand_dims(
+                dim={"level_of_human_development": [row[hdi_col_name]]}
+            )
+            results.append(masked_exposures)
+
+        results = xr.concat(results, dim="level_of_human_development")
+        results.to_netcdf(
+            dir_worldpop_exposure_by_region
+            / f"hdi_regions_heatwaves_exposure_change_{min_year}-{max_year}_worldpop.nc"
+        )
+
+
+def exposure_absolute_by_lc_grouping():
+    country_polygons = gpd.read_file(
+        path_local / "admin_boundaries" / "Detailed_Boundary_ADM0" / "GLOBAL_ADM0.shp"
+    )
+    country_polygons = country_polygons.merge(
+        country_lc_grouping.rename(columns={"ISO3": "ISO_3_CODE"})
+    )
+
+    region_to_id = {
+        region: i
+        for i, region in enumerate(country_polygons["LC Grouping"].unique(), start=1)
+    }
+
+    # Apply the mapping to create a new column with numerical identifiers
+    country_polygons["LC_GROUPING_ID"] = country_polygons["LC Grouping"].map(
+        region_to_id
+    )
+
+    lc_grouping_raster = xr.open_dataset(
+        path_local / "admin_boundaries" / "LC_group_raster_report_2024.nc"
+    )
+
+    lc_grouping = country_polygons[["LC_GROUPING_ID", "LC Grouping"]].drop_duplicates()
+
+    print(lc_grouping)
+
+    pop = []
+    results = []
+    results_weight = []
+
+    with dask.config.set(**{"array.slicing.split_large_chunks": False}):
+
+        for _, row in tqdm(
+            lc_grouping.iterrows(), total=len(lc_grouping["LC Grouping"])
+        ):
+            mask = lc_grouping_raster["LC_GROUPING_ID"] == row.LC_GROUPING_ID
+
+            masked_population = (
+                (mask * population)
+                .sum(dim=["latitude", "longitude"])
+                .expand_dims(dim={"lc_group": [row["LC Grouping"]]})
+                .compute()
+            )
+            pop.append(masked_population)
+
+            masked_exposures = (
+                (exposures_abs * mask)
+                .sum(dim=["latitude", "longitude"])
+                .expand_dims(dim={"lc_group": [row["LC Grouping"]]})
+                .compute()
+            )
+            results.append(masked_exposures.heatwaves_days)
+
+            masked_exposure_per_person = (
+                masked_exposures.heatwaves_days / masked_population
+            )
+            results_weight.append(masked_exposure_per_person.compute())
+
+        results_pop = xr.concat(pop, dim="lc_group")
+        results_pop = results_pop.to_dataset(name="population")
+
+        results_abs = xr.concat(results, dim="lc_group")
+        results_abs = results_abs.to_dataset(name="exposures_total")
+
+        results_weight = xr.concat(results_weight, dim="lc_group")
+        results_weight = results_weight.to_dataset(name="exposures_weighted")
+
+    exposures_lc_grouping = xr.merge([results_pop, results_abs, results_weight])
+
+    exposures_lc_grouping.to_netcdf(
+        dir_worldpop_exposure_by_region / f"exposures_abs_by_lc_group_worldpop.nc"
+    )
+
+
 if __name__ == "__main___":
-    exposure_weighted_change_by_country()  # working 3-sec
-    exposure_total_change_by_country()  # working 2-sec
-    exposure_absolute_by_country()  # working 2-min
-    exposure_absolute_by_who_region()
-    # # todo implement
-    # - exposure by HDI
-    # - Exposure to change weighted by LC Grouping
+    exposure_weighted_change_by_country()  # 3-sec
+    exposure_total_change_by_country()  # 2-sec
+    exposure_absolute_by_country()  # 2-min
+    exposure_absolute_by_who_region()  # 2-sec
+    exposure_absolute_by_hdi()  # 2-sec
+    exposure_absolute_by_lc_grouping()
