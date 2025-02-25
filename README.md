@@ -47,3 +47,11 @@ The weather data used in this analysis is the ERA5 reanalysis data from the Cope
 ## Issues
 - [ ] Infant population projection chart different from the report `compare_worldpop_gpw.py`
 - [ ] Elderly population projection chart different from the report `compare_worldpop_gpw.py`
+
+# Figures
+## Appendix
+- [x] Figure 1 - todo there was an error in last year report, it was showing 2022
+- [x] Figure 2
+- [x] Figure 3
+- [x] Figure 4
+- [x] Figure 5
