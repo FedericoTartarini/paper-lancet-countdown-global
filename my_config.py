@@ -36,6 +36,8 @@ dir_sub_daily_era_folder = (
 )
 dir_sub_daily_era_folder.mkdir(parents=True, exist_ok=True)
 
+dir_era_hourly = dir_local / weather_data / weather_resolution / "hourly_temperature_2m"
+dir_era_hourly.mkdir(parents=True, exist_ok=True)
 dir_era_quantiles = dir_weather / weather_data / weather_resolution / "quantiles"
 dir_era_quantiles.mkdir(parents=True, exist_ok=True)
 

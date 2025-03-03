@@ -15,9 +15,11 @@ This code allows you to:
 
 ## Weather data
 
-The weather data used in this analysis is the ERA5 reanalysis data from the Copernicus Climate Data Store (CDS). The data is available at https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form
+The weather data used in this analysis is the ERA5 reanalysis data from the Copernicus Climate Data Store (CDS). 
+The data is available at https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form
+To download the data you need to:
 
-1. Register on their portal
+1. Register on their portal and save the Personal Access Token in `python_code.secrets.py`
 2. Download the data using the code in `weather/weather_data_download.py`
 3. Calculate the quantiles using the code in `weather/calculate_quantiles.py`
 4. Calculate the heatwaves occurrences using the code in `weather/calculate_heatwaves.py`

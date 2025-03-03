@@ -2,16 +2,12 @@ import cdsapi
 from icecream import ic
 
 from my_config import (
-    dir_local,
+    dir_era_hourly,
     dir_era_daily,
-    hd_path_daily_temperature_summary,
+    year_max_analysis,
+    year_min_analysis,
 )
 from python_code.secrets import copernicus_api_key
-
-SUBDAILY_TEMPERATURES_FOLDER = (
-    dir_local / "era5" / "era5_0.25deg" / "hourly_temperature_2m"
-)
-SUBDAILY_TEMPERATURES_FOLDER.mkdir(parents=True, exist_ok=True)
 
 
 def download_year_era5(year: int = 2022):
@@ -114,17 +110,12 @@ def download_year_era5(year: int = 2022):
 
 
 if __name__ == "__main__":
-    year_max = 2024
-    year_min = 1980
-    for y in range(year_min, year_max + 1):
-        out_file = SUBDAILY_TEMPERATURES_FOLDER / f"{y}_temperature.grib"
+    for y in range(year_min_analysis, year_max_analysis):
+        out_file = dir_era_hourly / f"{y}_temperature.grib"
         summary_file = dir_era_daily / f"{y}_temperature_summary.nc"
-        hd_filepath = hd_path_daily_temperature_summary / f"{y}_temperature_summary.nc"
 
-        if (
-            not out_file.exists()
-            and not summary_file.exists()
-            and not hd_filepath.exists()
-        ):
-            ic("Downloading ERA5 data for year", y)
+        if not out_file.exists() and not summary_file.exists():
+            ic(f"Downloading ERA5 data for year: {y}")
             download_year_era5(y)
+        else:
+            ic(f"{out_file.stem} file already exists, skipping")
