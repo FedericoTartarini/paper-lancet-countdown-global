@@ -29,6 +29,10 @@ dir_figures = Path("python_code/figures")
 # Paths to local data folders
 dir_weather = dir_local / "weather"
 dir_results = dir_local / "results"
+dir_population = dir_local / "population"
+dir_population.mkdir(parents=True, exist_ok=True)
+dir_population_tmp = dir_population / "tmp"
+dir_population_tmp.mkdir(parents=True, exist_ok=True)
 dir_pop_era_grid = dir_results / f"worldpop_{weather_data}_grid"
 dir_pop_era_grid.mkdir(parents=True, exist_ok=True)
 dir_results_pop_exposure = (
