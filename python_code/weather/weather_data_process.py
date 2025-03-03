@@ -1,35 +1,28 @@
 import glob
 import os
-
-import xarray as xr
 import shutil
 
-from my_config import dir_local, dir_era_daily
+import xarray as xr
+from icecream import ic
 
-SUBDAILY_TEMPERATURES_FOLDER = (
-    dir_local / "era5" / "era5_0.25deg" / "hourly_temperature_2m"
-)
-
-one_drive_folder = "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/Temporary/lancet"
+from my_config import dir_era_daily, dir_era_hourly, dir_one_drive_era_hourly
 
 
-def generate_daily_summary(source_file) -> None:
+def generate_daily_summary(source_file, move_source: bool = True) -> None:
 
     summary_file = source_file.replace("_temperature.grib", "_temperature_summary.nc")
-    summary_file = summary_file.replace(
-        str(SUBDAILY_TEMPERATURES_FOLDER), str(dir_era_daily)
-    )
+    summary_file = summary_file.replace(str(dir_era_hourly), str(dir_era_daily))
 
     daily = xr.open_dataset(source_file, engine="cfgrib").load()
     daily = daily.resample(time="1D")
-    tmin = daily.min()
-    tmax = daily.max()
-    tmean = daily.mean()
+    t_min = daily.min()
+    t_max = daily.max()
+    t_mean = daily.mean()
 
-    tmin = tmin.rename({"t2m": "t_min"})
-    tmax = tmax.rename({"t2m": "t_max"})
-    tmean = tmean.rename({"t2m": "t_mean"})
-    daily_summary = xr.merge([tmin, tmax, tmean])
+    t_min = t_min.rename({"t2m": "t_min"})
+    t_max = t_max.rename({"t2m": "t_max"})
+    t_mean = t_mean.rename({"t2m": "t_mean"})
+    daily_summary = xr.merge([t_min, t_max, t_mean])
 
     daily_summary.to_netcdf(
         summary_file,
@@ -40,16 +33,18 @@ def generate_daily_summary(source_file) -> None:
         },
     )
 
-    shutil.move(
-        source_file,
-        source_file.replace(str(SUBDAILY_TEMPERATURES_FOLDER), one_drive_folder),
-    )
+    # I am moving the file to the OneDrive folder to have a backup and save space on the computer
+    if move_source:
+        shutil.move(
+            source_file,
+            source_file.replace(str(dir_era_hourly), dir_one_drive_era_hourly),
+        )
 
 
 if __name__ == "__main__":
-    for file in glob.glob(str(SUBDAILY_TEMPERATURES_FOLDER) + "/*.grib"):
-        # do something with the file
+    for file in glob.glob(str(dir_era_hourly) + "/*.grib"):
+        # checking that the file is fully downloaded before processing it
         size_gb = os.path.getsize(file) / 10**9  # Convert bytes to GB
         if size_gb > 18:
-            print(f"File: {file}, Size: {size_gb:.2f} GB")
+            ic(f"File: {file}, Size: {size_gb:.2f} GB")
             generate_daily_summary(source_file=file)

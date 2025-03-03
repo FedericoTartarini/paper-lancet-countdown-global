@@ -21,8 +21,9 @@ To download the data you need to:
 
 1. Register on their portal and save the Personal Access Token in `python_code.secrets.py`
 2. Download the data using the code in `weather/weather_data_download.py`
-3. Calculate the quantiles using the code in `weather/calculate_quantiles.py`
-4. Calculate the heatwaves occurrences using the code in `weather/calculate_heatwaves.py`
+3. Preprocess the data using the code in `weather/weather_data_process.py`
+4. Calculate the quantiles using the code in `weather/calculate_quantiles.py`
+5. Calculate the heatwaves occurrences using the code in `weather/calculate_heatwaves.py`
 
 ## Population data
 

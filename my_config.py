@@ -15,6 +15,10 @@ dir_local: Path = (
     Path.home() / "Documents" / "lancet_countdown"
 )  # used to store data for analysis
 dir_ssd = Path("/Volumes/T7/lancet_countdown")  # used to store large datasets
+dir_one_drive = Path(
+    "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)"
+)
+dir_one_drive_era_hourly = dir_one_drive / "Temporary" / "lancet"
 
 dir_figures = Path("python_code/figures")
 
@@ -30,11 +34,6 @@ dir_results_pop_exposure = (
 )
 dir_results_pop_exposure.mkdir(parents=True, exist_ok=True)
 dir_pop_hybrid = dir_results / "hybrid_pop"
-
-dir_sub_daily_era_folder = (
-    dir_local / weather_data / weather_resolution / "hourly_temperature_2m"
-)
-dir_sub_daily_era_folder.mkdir(parents=True, exist_ok=True)
 
 dir_era_hourly = dir_local / weather_data / weather_resolution / "hourly_temperature_2m"
 dir_era_hourly.mkdir(parents=True, exist_ok=True)
