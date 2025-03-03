@@ -7,6 +7,8 @@ year_min_analysis: int = 1980
 year_reference_start: int = 1986
 year_reference_end: int = 2005
 
+quantiles = [0.95]
+
 weather_data: str = "era5"
 weather_resolution: str = "0.25deg"
 

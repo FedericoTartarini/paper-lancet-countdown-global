@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import dask
 import xarray as xr
 from dask.diagnostics import ProgressBar
@@ -7,33 +9,29 @@ from my_config import (
     year_reference_start,
     year_reference_end,
     dir_era_quantiles,
+    quantiles,
 )
-
-
-def year_from_filename(name):
-    return int(name.split("_")[-3][-4:])
-
-
-quantiles = [0.95]
 
 if __name__ == "__main__":
 
-    for t_var in ["tmax", "tmin", "tmean"]:
+    for t_var in ["t_max", "t_min", "t_mean"]:
 
         file_list = []
         for file in dir_era_daily.rglob("*.nc"):
-            if (
-                year_reference_start
-                <= year_from_filename(file.name)
-                <= year_reference_end
-            ):
+            file = Path(file)
+            if file.name.startswith("."):
+                continue
+
+            year = int(file.name.split("_")[0])
+
+            if year_reference_start <= year <= year_reference_end:
                 file_list.append(file)
 
         file_list = sorted(file_list)
 
         daily_temperatures = xr.open_mfdataset(
             file_list, combine="by_coords", chunks={"latitude": 100, "longitude": 100}
-        )[t_var.replace("t", "t_")]
+        )[t_var]
 
         daily_temperatures = daily_temperatures.chunk({"time": -1})
 
