@@ -129,8 +129,8 @@ if __name__ == "__main__":
     t_var = "tmin"
 
     CLIMATOLOGY_QUANTILES = (
-            dir_era_quantiles
-            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
+        dir_era_quantiles
+        / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
     )
     t_min_quantiles = xr.open_dataset(CLIMATOLOGY_QUANTILES)
     t_min_threshold = t_min_quantiles.sel(
@@ -139,8 +139,8 @@ if __name__ == "__main__":
 
     t_var = "tmax"
     CLIMATOLOGY_QUANTILES = (
-            dir_era_quantiles
-            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
+        dir_era_quantiles
+        / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
     )
     t_max_quantiles = xr.open_dataset(CLIMATOLOGY_QUANTILES)
     t_max_threshold = t_max_quantiles.sel(
@@ -149,8 +149,8 @@ if __name__ == "__main__":
 
     t_var = "tmean"
     CLIMATOLOGY_QUANTILES = (
-            dir_era_quantiles
-            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
+        dir_era_quantiles
+        / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
     )
 
     t_thresholds = [

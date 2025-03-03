@@ -32,8 +32,8 @@ for t_var in ["tmax", "tmin", "tmean"]:
     daily_temperatures = daily_temperatures.chunk({"time": -1})
 
     climatology_quantiles = (
-            dir_era_quantiles
-            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_{year_reference_start}-{year_reference_end}.nc'
+        dir_era_quantiles
+        / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_{year_reference_start}-{year_reference_end}.nc'
     )
 
     daily_quantiles = daily_temperatures.quantile(quantiles, dim="time")
