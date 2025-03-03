@@ -21,6 +21,7 @@ from my_config import (
     reference_year_start,
 )
 from matplotlib.ticker import MultipleLocator
+import colorsys
 
 
 plt.rcParams["figure.dpi"] = 120
@@ -36,13 +37,11 @@ countries_raster = xr.open_dataset(
 
 map_projection = ccrs.EckertIII()
 
-# By country
-
-c = sns.color_palette("Paired")
+c = sns.color_palette("tab10")
 consistent_colors = dict(
     zip(
-        ["CHN", "EGY", "IDN", "IND", "JPN", "NGA", "Other", "USA", "ITA", "COD"],
-        [c[5], c[6], c[7], c[3], c[8], c[11], c[0], c[1], c[10], c[9]],
+        ["USA", "IDN", "ITA", "CHN", "IND", "JPN", "NGA", "COD", "Other"],
+        [c[0], c[1], c[2], c[3], c[5], c[6], c[7], c[8], c[9]],
     )
 )
 
@@ -400,7 +399,9 @@ def plot_change_in_heatwaves(year=max_year):
     ).sortby("longitude", ascending=False)
     land_mask = countries_raster["OBJECTID"] < 2000
     plot_data = land_mask * plot_data
-    f, ax = plt.subplots(subplot_kw=dict(projection=map_projection))
+    f, ax = plt.subplots(
+        subplot_kw=dict(projection=map_projection), constrained_layout=True
+    )
 
     plot_data.heatwaves_days.plot(
         transform=ccrs.PlateCarree(),
@@ -414,11 +415,22 @@ def plot_change_in_heatwaves(year=max_year):
     ax.set_title(f"Change in {year} relative to 1986-2005 baseline")
     # plt.tight_layout()
     ax.figure.savefig(dir_figures / f"map_hw_change_{year}.pdf")
+    ax.figure.savefig(dir_figures / f"map_hw_change_{year}.png")
     plt.show()
 
 
 def plot_average_number_heatwaves_experienced():
     # Heatwave days per person in 2022. Don't show trend b/c too much variance, more just to give first idea.
+    total_exposure = (
+        exposures_abs.sum(["latitude", "longitude"]).to_dataframe().unstack(1)
+    )
+    print("Total exposure billions", round(total_exposure / 1e9, 1))
+    total_exposure_sum = total_exposure.sum(axis=1)
+    # Calculate the percentage increment
+    percentage_increment = total_exposure_sum.pct_change() * 100
+    # Display the result
+    print("Percentage increment", round(percentage_increment))
+
     exposures_abs_ts = exposures_abs.sum(["latitude", "longitude"]) / population.sel(
         year=slice(1980, max_year)
     ).sum(["latitude", "longitude"])
@@ -429,6 +441,7 @@ def plot_average_number_heatwaves_experienced():
     exposures_abs_ts_df = exposures_abs_ts_df.set_index("year")
     exposures_abs_ts_df.columns = exposures_abs_ts_df.columns.droplevel(0)
     exposures_abs_ts_df.columns.name = "Age group"
+    print(exposures_abs_ts_df.iloc[-1].round(1))
 
     ax = exposures_abs_ts_df.rename(columns={0: "Infants", 65: "Over 65"}).plot()
 
@@ -460,19 +473,23 @@ def plot_total_number_heatwaves_experienced():
     plot_data = plot_data.to_dataframe().unstack(1)
     plot_data = plot_data.reset_index()
     plot_data = plot_data.set_index("year")
+    plot_data.columns = plot_data.columns.droplevel(0)
 
     ax = (
         (plot_data / 1e9).rename(columns={0: "Infants", 65: "Over 65"})
         # .rename_axis(columns="Age group")
         .plot(
-            ylabel="billion person-days",
-            title="Total number of heatwave days experienced",
+            ylabel="Billion person-days",
         )
     )
 
+    ax.set(ylim=(0, 20))
+    ax.legend(frameon=False)
+    sns.despine()
+    ax.grid(ls="--", color="lightgray")
+    ax.yaxis.set_major_locator(MultipleLocator(2.5))
     plt.tight_layout()
     ax.figure.savefig(dir_figures / "heatwaves_exposure_total.pdf")
-    plot_data.to_csv(dir_figures / "heatwaves_exposure_total.csv")
     plt.show()
 
 
@@ -670,7 +687,7 @@ def plot_exposure_vulnerable_to_change_heatwave():
     plot_data.columns = ["infants", "over 65"]
     plot_data = plot_data[["over 65", "infants"]]
 
-    f, ax = plt.subplots(figsize=(6, 2.7))
+    f, ax = plt.subplots(constrained_layout=True)
     ax = plot_data.plot.bar(stacked=True, width=0.89, ax=ax)
     ax.set_ylabel("Billion person-days")
     ax.set_title(
@@ -689,7 +706,6 @@ def plot_exposure_vulnerable_to_change_heatwave():
         p.set_edgecolor("C1")
         p.set_facecolor("w")
 
-    plt.tight_layout()
     plt.savefig(
         dir_figures / f"heatwave person-days hybrid w newborn 1980-{max_year}.pdf"
     )
@@ -707,7 +723,7 @@ def plot_exposure_vulnerable_absolute_heatwave():
     plot_data.columns = ["infants", "over 65"]
     plot_data = plot_data[["over 65", "infants"]]
 
-    f, ax = plt.subplots(figsize=(6, 2.7))
+    f, ax = plt.subplots(constrained_layout=True)
 
     ax = plot_data.plot.bar(stacked=True, width=0.89, ax=ax)
     ax.set_ylabel("Billion person-days")
@@ -816,7 +832,7 @@ def plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=65):
     plt.show()
 
 
-def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2023):
+def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2024):
 
     var = "heatwaves_days"
 
@@ -864,10 +880,14 @@ def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2
     f, ax = plt.subplots()
     (plot_data / 1e9).plot.bar(stacked=True, width=0.9, ax=ax, color=consistent_colors)
 
+    title = "Exposures of individuals over 65 to heatwaves"
+    if age_band == 0:
+        title = "Exposures of infants to heatwaves"
+
     ax.set(
         xlabel="Year",
         ylabel="Billion person-days",
-        title=f"Exposures of age={age_band} to heatwaves",
+        title=title,
     )
     ax.xaxis.set_tick_params(labelsize="small")
     ax.yaxis.set_tick_params(labelsize="small")
@@ -898,11 +918,13 @@ def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2
     plt.show()
 
 
-def plot_exposure_by_hdi():
+def plot_exposure_by_hdi(rolling=False):
+    data = hdi_exposure.exposures_weighted
+    if rolling:
+        data = hdi_exposure.exposures_weighted.rolling(year=rolling).mean()
+
     plot_data = (
-        hdi_exposure.exposures_weighted.rolling(year=10)
-        .mean()
-        .to_dataframe()
+        data.to_dataframe()
         .reset_index()
         .rename(
             columns={
@@ -913,38 +935,45 @@ def plot_exposure_by_hdi():
             }
         )
     )
+
+    df_combined_ages = plot_data.groupby(["Year", "HDI class"]).mean()
+    print(df_combined_ages["Heatwave days"].unstack(level=1).round(1))
+    print(
+        df_combined_ages["Heatwave days"].unstack(level=1).pct_change().round(3) * 100
+    )
+
     plot_data = plot_data[plot_data["HDI class"] != ""]
-    # plot_data[plot_data.age_band_lower_bound ==0]
-    ax = sns.relplot(
-        kind="line",
-        data=plot_data,
-        x="Year",
-        y="Heatwave days",
-        col="Age group",
-        hue="HDI class",
-        facet_kws={"sharey": True},
+
+    f, axs = plt.subplots(
+        2, 1, constrained_layout=True, sharex=True, sharey=True, figsize=(7, 7)
     )
-    # ax.figure.suptitle(
-    #     "10 year rolling mean of population-weighted heatwave days by HDI category"
-    # )
-    ax.set(
-        ylabel="10 year rolling mean of population-weighted heatwave days", ylim=(0, 14)
-    )
-    ax._legend.set(
-        bbox_to_anchor=(0.1, 0.7),
-        loc="center left",
-        title="HDI category",
-    )
-    plt.tight_layout()
-    ax.figure.savefig(dir_figures / "heatwave_days_by_hdi.pdf")
+
+    for ix, age in enumerate(plot_data["Age group"].unique()):
+        plot_data_age = plot_data[plot_data["Age group"] == age]
+        sns.lineplot(
+            data=plot_data_age, x="Year", y="Heatwave days", hue="HDI class", ax=axs[ix]
+        )
+        title = "Infants" if age == 0 else "Over 65"
+        axs[ix].set_title(title)
+        axs[ix].grid(True, ls="--", color="lightgray")
+
+    axs[0].set(ylabel="Average heatwaves days per year")
+    axs[1].set(ylabel="Average heatwaves days per year")
+    if rolling:
+        axs[0].set(
+            ylabel=f"{rolling} year rolling mean of population-weighted heatwave days",
+        )
+    axs[0].legend(title="HDI category", frameon=False)
+    axs[1].legend().remove()
+
+    sns.despine()
+    plt.savefig(dir_figures / "heatwave_days_by_hdi.pdf")
     plt.show()
 
 
 def plot_exposure_by_who():
     plot_data = (
-        who_exposure.exposures_weighted.rolling(year=10)
-        .mean()
-        .to_dataframe()
+        who_exposure.exposures_weighted.to_dataframe()
         .reset_index()
         .rename(
             columns={
@@ -954,28 +983,48 @@ def plot_exposure_by_who():
             }
         )
     )
-    # plot_data[plot_data.age_band_lower_bound ==0]
-    ax = sns.relplot(
-        kind="line",
-        data=plot_data,
-        x="year",
-        y="Heatwave days",
-        col="Age group",
-        hue="WHO region",
-        facet_kws={"sharey": True},
+    plot_data["WHO region"] = plot_data["WHO region"].replace(
+        {
+            "EMRO": "Eastern Med.",
+            "EURO": "Europe",
+            "AFRO": "Africa",
+            "SEARO": "South-East Asia",
+            "WPRO": "Western Pacific",
+            "AMRO": "Americas",
+        },
     )
-    ax.figure.suptitle(
-        "10 year rolling mean of population-weighted heatwave days by WHO Region",
+    f, axs = plt.subplots(
+        2, 1, constrained_layout=True, sharex=True, sharey=True, figsize=(7, 7)
     )
-    plt.tight_layout()
-    ax.figure.savefig(dir_figures / "heatwave_days_by_who.pdf")
+
+    for ix, age in enumerate(plot_data["Age group"].unique()):
+        plot_data_age = plot_data[plot_data["Age group"] == age]
+        sns.lineplot(
+            data=plot_data_age,
+            x="year",
+            y="Heatwave days",
+            hue="WHO region",
+            ax=axs[ix],
+        )
+        title = "Infants" if age == 0 else "Over 65"
+        axs[ix].set_title(title)
+        axs[ix].grid(True, ls="--", color="lightgray")
+
+    axs[0].set(ylabel="Average heatwaves days per year")
+    axs[1].set(ylabel="Average heatwaves days per year", xlabel="Year")
+
+    axs[0].legend(title="WHO category", frameon=False, ncol=2)
+    axs[1].legend().remove()
+
+    sns.despine()
+    plt.savefig(dir_figures / "heatwave_days_by_who.pdf")
     plt.show()
 
 
 if __name__ == "__plot__":
-    plot_heatwaves_days(plot_data=heatwave_metrics, slice_range=slice(1986, 2005))
-    plot_heatwaves_days(plot_data=heatwave_metrics, slice_range=slice(2013, max_year))
-    plot_change_in_heatwaves(year=2022)
+    # plot_heatwaves_days(plot_data=heatwave_metrics, slice_range=slice(1986, 2005))
+    # plot_heatwaves_days(plot_data=heatwave_metrics, slice_range=slice(2013, max_year))
+    # plot_change_in_heatwaves(year=2024)
     plot_average_number_heatwaves_experienced()
     plot_total_number_heatwaves_experienced()
     plot_country_exposure(slice_range=slice(1986, 2005))
@@ -988,7 +1037,8 @@ if __name__ == "__plot__":
     plot_exposure_vulnerable_absolute_heatwave()
     plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=65)
     plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=0)
-    plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=65)
-    plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2023)
-    plot_exposure_by_hdi()
+    plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=65, max_year=2024)
+    plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2024)
+    plot_exposure_by_hdi(ylim=(0, 25))
+    plot_exposure_by_hdi(rolling=2)
     plot_exposure_by_who()
