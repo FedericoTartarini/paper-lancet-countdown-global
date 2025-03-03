@@ -1,13 +1,17 @@
 # Lancet Countdown 2025 Heatwave Indicator
 
-This repository contains the code needed to generate the 2025 heatwave indicator from the Lancet Countdown, as well as the figures in the report and appendix (1.1.2: Exposure of Vulnerable Populations to Heatwaves).
+This repository contains the code needed to generate the heatwave indicator for the Lancet Countdown Global report.
+This code allows you to:
+1. download the raw weather and population data 
+2. process, clean, and combine the data
+3. generate the figures for the report and appendix.
 
 ## How to run the code
 
 1. Clone the repository
 2. Install the required packages using conda
 3. Get your Personal Access Token from your profile on the CDS portal at the address: https://cds.climate.copernicus.eu/profile
-4. Update `my_config.py` with your personal paths
+4. Update `my_config.py`, change the paths and the dates if needed.
 
 ## Weather data
 

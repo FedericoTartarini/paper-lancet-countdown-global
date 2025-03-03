@@ -4,16 +4,16 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 from my_config import (
-    dir_pop_data_era_grid,
+    dir_pop_era_grid,
     dir_results,
-    max_year,
+    year_max_analysis,
 )
 
 
 def load_population_data(group, gender, years, suffix):
     return {
         year: xr.open_dataset(
-            dir_pop_data_era_grid / f"{gender}_{group}_{str(year)}_{suffix}"
+            dir_pop_era_grid / f"{gender}_{group}_{str(year)}_{suffix}"
         )
         for year in years
     }
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     # plt.show()
 
     # Combine data for all years (1950-2020) and extrapolate to 2023
-    extrapolated_years = np.arange(2020, max_year + 1)
+    extrapolated_years = np.arange(2020, year_max_analysis + 1)
     population_infants_1950_1999 = population_infants_1950_1999.to_dataset().rename(
         {"demographic_totals": "infants"}
     )
@@ -121,12 +121,12 @@ if __name__ == "__main__":
     population_infants_worldpop.to_netcdf(
         dir_results
         / f"hybrid_pop"
-        / f"worldpop_infants_1950_{max_year}_era5_compatible.nc"
+        / f"worldpop_infants_1950_{year_max_analysis}_era5_compatible.nc"
     )
     population_elderly_worldpop.to_netcdf(
         dir_results
         / f"hybrid_pop"
-        / f"worldpop_elderly_1950_{max_year}_era5_compatible.nc"
+        / f"worldpop_elderly_1950_{year_max_analysis}_era5_compatible.nc"
     )
 
     fig, ax = plt.subplots()

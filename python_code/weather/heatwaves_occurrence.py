@@ -24,11 +24,11 @@ import xarray as xr
 from joblib import Parallel, delayed
 
 from my_config import (
-    temperature_summary_folder,
-    max_year,
+    dir_era_daily,
+    year_max_analysis,
     dir_results_heatwaves_tmp,
-    climatology_quantiles_folder,
-    min_year,
+    dir_era_quantiles,
+    year_min_analysis,
 )
 from python_code.weather import heatwave_indices
 
@@ -36,7 +36,7 @@ xr.set_options(keep_attrs=True)
 
 
 def ds_for_year(year):
-    ds = xr.open_dataset(temperature_summary_folder / f"{year}_temperature_summary.nc")
+    ds = xr.open_dataset(dir_era_daily / f"{year}_temperature_summary.nc")
     ds = ds.transpose("time", "latitude", "longitude")
     return ds
 
@@ -119,8 +119,8 @@ def apply_func_and_save_yearly(
 
 if __name__ == "__main__":
     temperature_files = [
-        (year, temperature_summary_folder / f"{year}_temperature_summary.nc")
-        for year in range(min_year, max_year + 1)
+        (year, dir_era_daily / f"{year}_temperature_summary.nc")
+        for year in range(year_min_analysis, year_max_analysis + 1)
     ]
 
     quantiles = [0.95]
@@ -129,8 +129,8 @@ if __name__ == "__main__":
     t_var = "tmin"
 
     CLIMATOLOGY_QUANTILES = (
-        climatology_quantiles_folder
-        / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
+            dir_era_quantiles
+            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
     )
     t_min_quantiles = xr.open_dataset(CLIMATOLOGY_QUANTILES)
     t_min_threshold = t_min_quantiles.sel(
@@ -139,8 +139,8 @@ if __name__ == "__main__":
 
     t_var = "tmax"
     CLIMATOLOGY_QUANTILES = (
-        climatology_quantiles_folder
-        / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
+            dir_era_quantiles
+            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
     )
     t_max_quantiles = xr.open_dataset(CLIMATOLOGY_QUANTILES)
     t_max_threshold = t_max_quantiles.sel(
@@ -149,8 +149,8 @@ if __name__ == "__main__":
 
     t_var = "tmean"
     CLIMATOLOGY_QUANTILES = (
-        climatology_quantiles_folder
-        / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
+            dir_era_quantiles
+            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_1986-2005.nc'
     )
 
     t_thresholds = [

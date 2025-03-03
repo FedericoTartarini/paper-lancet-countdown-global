@@ -4,10 +4,10 @@ import os
 import xarray as xr
 import shutil
 
-from my_config import path_local, temperature_summary_folder
+from my_config import dir_local, dir_era_daily
 
 SUBDAILY_TEMPERATURES_FOLDER = (
-    path_local / "era5" / "era5_0.25deg" / "hourly_temperature_2m"
+    dir_local / "era5" / "era5_0.25deg" / "hourly_temperature_2m"
 )
 
 one_drive_folder = "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/Temporary/lancet"
@@ -17,7 +17,7 @@ def generate_daily_summary(source_file) -> None:
 
     summary_file = source_file.replace("_temperature.grib", "_temperature_summary.nc")
     summary_file = summary_file.replace(
-        str(SUBDAILY_TEMPERATURES_FOLDER), str(temperature_summary_folder)
+        str(SUBDAILY_TEMPERATURES_FOLDER), str(dir_era_daily)
     )
 
     daily = xr.open_dataset(source_file, engine="cfgrib").load()

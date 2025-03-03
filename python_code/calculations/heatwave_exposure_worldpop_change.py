@@ -21,12 +21,12 @@ import pandas as pd
 import xarray as xr
 
 from my_config import (
-    max_year,
+    year_max_analysis,
     dir_results,
-    report_year,
-    reference_year_start,
-    reference_year_end,
-    min_year,
+    year_report,
+    year_reference_start,
+    year_reference_end,
+    year_min_analysis,
     dir_results_pop_exposure,
 )
 
@@ -38,10 +38,14 @@ plt.rcParams["axes.titlesize"] = "medium"
 plt.rcParams["savefig.bbox"] = "tight"
 
 population_infants_worldpop = xr.open_dataset(
-    dir_results / "hybrid_pop" / f"worldpop_infants_1950_{max_year}_era5_compatible.nc"
+    dir_results
+    / "hybrid_pop"
+    / f"worldpop_infants_1950_{year_max_analysis}_era5_compatible.nc"
 )
 population_elderly_worldpop = xr.open_dataset(
-    dir_results / "hybrid_pop" / f"worldpop_elderly_1950_{max_year}_era5_compatible.nc"
+    dir_results
+    / "hybrid_pop"
+    / f"worldpop_elderly_1950_{year_max_analysis}_era5_compatible.nc"
 )
 
 population_worldpop = xr.concat(
@@ -53,7 +57,7 @@ population_worldpop = xr.concat(
 )
 
 heatwave_metrics_files = sorted(
-    (dir_results / "heatwaves" / f"results_{report_year}" / "heatwaves_days_era5").glob(
+    (dir_results / "heatwaves" / f"results_{year_report}" / "heatwaves_days_era5").glob(
         "*.nc"
     )
 )
@@ -66,7 +70,7 @@ heatwave_metrics = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords"
 """
 
 heatwaves_metrics_reference = heatwave_metrics.sel(
-    year=slice(reference_year_start, reference_year_end)
+    year=slice(year_reference_start, year_reference_end)
 ).mean(dim="year")
 heatwave_metrics_delta = heatwave_metrics - heatwaves_metrics_reference
 
@@ -96,7 +100,7 @@ print(exposures_over65)
 
 exposures_over65.to_netcdf(
     dir_results_pop_exposure
-    / f"heatwave_exposure_change_over65_multi_threshold_{min_year}-{max_year}_worldpop.nc"
+    / f"heatwave_exposure_change_over65_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 
 exposures_infants = (
@@ -109,7 +113,7 @@ exposures_infants = exposures_infants.rename("heatwaves_days")
 
 exposures_infants.to_netcdf(
     dir_results_pop_exposure
-    / f"heatwave_exposure_change_infants_multi_threshold_{min_year}-{max_year}_worldpop.nc"
+    / f"heatwave_exposure_change_infants_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 
 total_exposures_over65 = exposures_over65.sum(

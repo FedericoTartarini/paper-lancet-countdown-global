@@ -9,9 +9,9 @@ from shapely.geometry import Point
 from tqdm import tqdm
 
 from my_config import (
-    path_local,
-    dir_pop_data_era_grid,
-    temperature_summary_folder,
+    dir_local,
+    dir_pop_era_grid,
+    dir_era_daily,
 )
 
 
@@ -102,9 +102,7 @@ def sum_files(files, directory=""):
 
 def get_era5_grid(year=1980):
     # open on year of era5 to put population data on the same grid
-    era5_data = xr.open_dataset(
-        temperature_summary_folder / f"{year}_temperature_summary.nc"
-    )
+    era5_data = xr.open_dataset(dir_era_daily / f"{year}_temperature_summary.nc")
     era5_data = era5_data.assign_coords(
         longitude=(((era5_data.longitude + 180) % 360) - 180)
     )
@@ -117,7 +115,7 @@ def get_era5_grid(year=1980):
     era_grid = era_grid[["longitude", "latitude", "geometry"]]
 
     gdf_countries = gpd.read_file(
-        path_local / "admin_boundaries" / "Detailed_Boundary_ADM0"
+        dir_local / "admin_boundaries" / "Detailed_Boundary_ADM0"
     )
     era_grid = gpd.sjoin(
         era_grid,
@@ -134,7 +132,7 @@ def get_era5_grid(year=1980):
 def process_and_save_population_data(ages, start_year, sex):
 
     out_path = (
-        dir_pop_data_era_grid
+        dir_pop_era_grid
         / f'{sex}_{"_".join(map(str, ages))}_{start_year}_era5_compatible.nc'
     )
 
@@ -144,7 +142,7 @@ def process_and_save_population_data(ages, start_year, sex):
     ic(sex, ages, start_year)
 
     era5_grid_3395, era5_grid = get_era5_grid()
-    worldpop_dir = path_local / "population"
+    worldpop_dir = dir_local / "population"
     pop_regrided = process_and_combine_ages(
         ages=ages,
         sex=sex,

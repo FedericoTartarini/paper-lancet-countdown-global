@@ -3,10 +3,10 @@ import xarray as xr
 from dask.diagnostics import ProgressBar
 
 from my_config import (
-    temperature_summary_folder,
-    reference_year_start,
-    reference_year_end,
-    climatology_quantiles_folder,
+    dir_era_daily,
+    year_reference_start,
+    year_reference_end,
+    dir_era_quantiles,
 )
 
 
@@ -19,8 +19,8 @@ quantiles = [0.95]
 for t_var in ["tmax", "tmin", "tmean"]:
 
     file_list = []
-    for file in temperature_summary_folder.rglob("*.nc"):
-        if reference_year_start <= year_from_filename(file.name) <= reference_year_end:
+    for file in dir_era_daily.rglob("*.nc"):
+        if year_reference_start <= year_from_filename(file.name) <= year_reference_end:
             file_list.append(file)
 
     file_list = sorted(file_list)
@@ -32,8 +32,8 @@ for t_var in ["tmax", "tmin", "tmean"]:
     daily_temperatures = daily_temperatures.chunk({"time": -1})
 
     climatology_quantiles = (
-        climatology_quantiles_folder
-        / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_{reference_year_start}-{reference_year_end}.nc'
+            dir_era_quantiles
+            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_{year_reference_start}-{year_reference_end}.nc'
     )
 
     daily_quantiles = daily_temperatures.quantile(quantiles, dim="time")

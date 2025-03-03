@@ -2,14 +2,14 @@ import cdsapi
 from icecream import ic
 
 from my_config import (
-    path_local,
-    temperature_summary_folder,
+    dir_local,
+    dir_era_daily,
     hd_path_daily_temperature_summary,
 )
 from python_code.secrets import copernicus_api_key
 
 SUBDAILY_TEMPERATURES_FOLDER = (
-    path_local / "era5" / "era5_0.25deg" / "hourly_temperature_2m"
+    dir_local / "era5" / "era5_0.25deg" / "hourly_temperature_2m"
 )
 SUBDAILY_TEMPERATURES_FOLDER.mkdir(parents=True, exist_ok=True)
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     year_min = 1980
     for y in range(year_min, year_max + 1):
         out_file = SUBDAILY_TEMPERATURES_FOLDER / f"{y}_temperature.grib"
-        summary_file = temperature_summary_folder / f"{y}_temperature_summary.nc"
+        summary_file = dir_era_daily / f"{y}_temperature_summary.nc"
         hd_filepath = hd_path_daily_temperature_summary / f"{y}_temperature_summary.nc"
 
         if (

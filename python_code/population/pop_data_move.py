@@ -17,9 +17,9 @@ def move_summary_files(backup=True, delete_original=True):
 
     number_files_total = 0
     number_file_backup = 0
-    for file in glob.glob(str(my_config.pop_data_src) + "/*.tif"):
+    for file in glob.glob(str(my_config.dir_pop_raw) + "/*.tif"):
         move_location = file.replace(
-            str(my_config.pop_data_src), str(my_config.hd_path_population)
+            str(my_config.dir_pop_raw), str(my_config.dir_ssd_path_population)
         )
         move_location = Path(move_location)
         number_files_total += 1
@@ -42,9 +42,9 @@ def move_summary_files(backup=True, delete_original=True):
 # moved file from computer to external hard drive if not backed up already
 def copy_back_laptop():
     file_to_move = 0
-    for file in glob.glob(str(my_config.hd_path_population) + "/*.tif"):
+    for file in glob.glob(str(my_config.dir_ssd_path_population) + "/*.tif"):
         move_location = file.replace(
-            str(my_config.hd_path_population), str(my_config.pop_data_src)
+            str(my_config.dir_ssd_path_population), str(my_config.dir_pop_raw)
         )
         move_location = Path(move_location)
         if move_location.exists():

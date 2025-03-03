@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import xarray as xr
 
-from my_config import dir_results, path_local
+from my_config import dir_results, dir_local
 from shapely.geometry import Point
 import geopandas as gpd
 import copy
@@ -57,9 +57,7 @@ plt.savefig("python_code/figures/infants_worldpop_vs_gpw_global.pdf")
 plt.show()
 
 
-gdf_countries = gpd.read_file(
-    path_local / "admin_boundaries" / "Detailed_Boundary_ADM0"
-)
+gdf_countries = gpd.read_file(dir_local / "admin_boundaries" / "Detailed_Boundary_ADM0")
 
 infants_gpw_2019 = population_infants_1950_1999.sel(year=2020)
 
