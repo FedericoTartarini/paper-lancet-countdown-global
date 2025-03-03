@@ -39,13 +39,21 @@ dir_pop_hybrid = dir_results / "hybrid_pop"
 
 dir_era_hourly = dir_local / weather_data / weather_resolution / "hourly_temperature_2m"
 dir_era_hourly.mkdir(parents=True, exist_ok=True)
-dir_era_quantiles = dir_weather / weather_data / weather_resolution / "quantiles"
+dir_era_quantiles = (
+    dir_weather / weather_data / f"{weather_data}_{weather_resolution}" / "quantiles"
+)
 dir_era_quantiles.mkdir(parents=True, exist_ok=True)
 
 dir_results_heatwaves = dir_results / "heatwaves"
 dir_results_heatwaves.mkdir(parents=True, exist_ok=True)
 dir_results_heatwaves_tmp = dir_results_heatwaves / f"results_{year_report}"
 dir_results_heatwaves_tmp.mkdir(parents=True, exist_ok=True)
+dir_results_heatwaves_monthly = dir_results_heatwaves_tmp / "heatwaves_monthly_era5"
+dir_results_heatwaves_monthly.mkdir(exist_ok=True)
+dir_results_heatwaves_days = dir_results_heatwaves_tmp / "heatwaves_days_era5"
+dir_results_heatwaves_days.mkdir(exist_ok=True)
+dir_results_heatwaves_count = dir_results_heatwaves_tmp / "heatwaves_count_era5"
+dir_results_heatwaves_count.mkdir(exist_ok=True)
 
 # Paths to SSD data folders
 dir_era_daily = dir_ssd / "daily_temperature_summary"
