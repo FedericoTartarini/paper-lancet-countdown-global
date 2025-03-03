@@ -12,16 +12,20 @@ from my_config import (
     dir_local,
     dir_pop_era_grid,
     dir_era_daily,
+    year_worldpop_start,
+    year_worldpop_end,
+    worldpop_sex,
+    dir_pop_raw,
 )
 
 
-def process_and_combine_ages(ages, sex, start_year, directory, era5_grid):
+def process_and_combine_ages(ages, sex, year, directory, era5_grid):
     combined_files = []
     for age in ages:
         age_files = [
             f
             for f in os.listdir(directory)
-            if f"_{sex}_{age}_{start_year}" in f and f.endswith(".tif")
+            if f"_{sex}_{age}_{year}" in f and f.endswith(".tif")
         ]
         combined_files.extend(age_files)
     # Use sum_files to sum the data from the combined files
@@ -129,40 +133,37 @@ def get_era5_grid(year=1980):
     return era_grid_3395, era_grid
 
 
-def process_and_save_population_data(ages, start_year, sex):
+def process_and_save_population_data(ages, year, sex, era5_grid_3395):
 
     out_path = (
-        dir_pop_era_grid
-        / f'{sex}_{"_".join(map(str, ages))}_{start_year}_era5_compatible.nc'
+        dir_pop_era_grid / f'{sex}_{"_".join(map(str, ages))}_{year}_era5_compatible.nc'
     )
 
     if out_path.exists():
         return
 
-    ic(sex, ages, start_year)
+    ic(sex, ages, year)
 
-    era5_grid_3395, era5_grid = get_era5_grid()
-    worldpop_dir = dir_local / "population"
-    pop_regrided = process_and_combine_ages(
+    pop_gridded = process_and_combine_ages(
         ages=ages,
         sex=sex,
-        start_year=start_year,
-        directory=worldpop_dir,
+        year=year,
+        directory=dir_pop_raw,
         era5_grid=era5_grid_3395,
     )
-    pop_regrided = pop_regrided.rename(
+    pop_gridded = pop_gridded.rename(
         columns={"latitude_right": "latitude", "longitude_right": "longitude"}
     )
-    pop_regrided = era5_grid_3395.merge(
-        pop_regrided[["longitude", "latitude", "pop"]], how="left"
+    pop_gridded = era5_grid_3395.merge(
+        pop_gridded[["longitude", "latitude", "pop"]], how="left"
     )
-    pivoted_df = pop_regrided.pivot(index="latitude", columns="longitude", values="pop")
+    pivoted_df = pop_gridded.pivot(index="latitude", columns="longitude", values="pop")
 
     # Convert the pivoted DataFrame to an xarray DataArray
     da = xr.DataArray(pivoted_df, dims=["latitude", "longitude"])
 
     # Optionally, add the time coordinate (if you have multiple time points, this step will differ)
-    da = da.expand_dims(time=[start_year])
+    da = da.expand_dims(time=[year])
 
     # Convert to Dataset if you want to add more variables or simply prefer a Dataset structure
     pop_resampled = da.to_dataset(name="pop")
@@ -176,17 +177,22 @@ def process_and_save_population_data(ages, start_year, sex):
     pop_resampled.to_netcdf(out_path)
 
 
-if __name__ == "__main__":
+def main():
+    ages_array = [[0], [65, 70, 75, 80], [75, 80]]
+    years_array = np.arange(year_worldpop_start, year_worldpop_end + 1)
+    total_iterations = len(ages_array) * len(worldpop_sex) * len(years_array)
 
-    ages_array = [[0], [65, 70, 75, 80]]
-    sex_array = ["f", "m"]
-    start_year_array = np.arange(2000, 2021)
-    total_iterations = len(ages_array) * len(sex_array) * len(start_year_array)
+    era5_grid_3395, era5_grid = get_era5_grid()
+
     with tqdm(total=total_iterations) as pbar:
-        for ages in ages_array:
-            for start_year in start_year_array:
-                for sex in sex_array:
+        for age in ages_array:
+            for year in years_array:
+                for sex in worldpop_sex:
                     process_and_save_population_data(
-                        ages=ages, start_year=start_year, sex=sex
+                        ages=age, year=year, sex=sex, era5_grid_3395=era5_grid_3395
                     )
                     pbar.update(1)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -6,6 +7,11 @@ year_max_analysis: int = year_report - 1
 year_min_analysis: int = 1980
 year_reference_start: int = 1986
 year_reference_end: int = 2005
+year_worldpop_start: int = 2000
+year_worldpop_end: int = 2020
+
+worldpop_sex = ["f", "m"]
+worldpop_ages = [0, 65, 70, 75, 80]
 
 quantiles = [0.95]
 
@@ -68,3 +74,8 @@ try:
     dir_era_daily.mkdir(parents=True, exist_ok=True)
 except PermissionError:  # just in case the SSD is not mounted
     pass
+
+# remove hidden files from the population folder
+for f in os.listdir(dir_pop_raw):
+    if f.startswith(".") and f.endswith(".tif"):
+        os.remove(dir_pop_raw / f)

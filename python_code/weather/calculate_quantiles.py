@@ -19,8 +19,6 @@ if __name__ == "__main__":
         file_list = []
         for file in dir_era_daily.rglob("*.nc"):
             file = Path(file)
-            if file.name.startswith("."):
-                continue
 
             year = int(file.name.split("_")[0])
 

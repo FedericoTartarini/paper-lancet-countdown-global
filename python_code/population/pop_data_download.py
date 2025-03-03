@@ -9,14 +9,22 @@ import requests
 from icecream import ic
 from tqdm import tqdm
 
-from my_config import dir_population_tmp, dir_pop_raw, dir_population
+from my_config import (
+    dir_population_tmp,
+    dir_pop_raw,
+    dir_population,
+    year_worldpop_end,
+    year_worldpop_start,
+    worldpop_sex,
+    worldpop_ages,
+)
 
 # this is needed to avoid the error in the download in MaxOS
 os.environ["no_proxy"] = "*"
 
 
 base_worldpop_url = "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020/"
-years_range = np.arange(2000, 2021)
+years_range = np.arange(year_worldpop_start, year_worldpop_end + 1)
 
 
 def download_file(url, filepath):
@@ -60,8 +68,8 @@ def create_urls_sex_age_years() -> list[tuple[str, str]]:
     _urls = []
 
     for year in years_range:
-        for sex in ["m", "f"]:
-            for age in [0, 65, 70, 75, 80]:
+        for sex in worldpop_sex:
+            for age in worldpop_ages:
                 download_url = f"{base_worldpop_url}{year}/0_Mosaicked/global_mosaic_1km/global_{sex}_{age}_{year}_1km.tif"
                 filepath = dir_population / f"global_{sex}_{age}_{year}_1km.tif"
                 tmp_filepath = dir_population_tmp / filepath.name
