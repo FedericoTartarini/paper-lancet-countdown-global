@@ -29,13 +29,17 @@ dir_one_drive = Path(
 dir_one_drive_era_hourly = dir_one_drive / "Temporary" / "lancet"
 
 dir_figures = Path("python_code/figures")
-
-# ======== no need to change below this line ========
+dir_figures_interim = dir_figures / "interim"
 
 # Paths to local data folders
 dir_weather = dir_local / "weather"
 dir_results = dir_local / "results"
 dir_population = dir_local / "population"
+dir_population_hybrid = dir_results / "hybrid_pop"
+dir_population_before_2000 = dir_population_hybrid / "Hybrid Demographics 1950-2020.nc"
+
+# ======== no need to change below this line ========
+
 dir_population.mkdir(parents=True, exist_ok=True)
 dir_population_tmp = dir_population / "tmp"
 dir_population_tmp.mkdir(parents=True, exist_ok=True)

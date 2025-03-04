@@ -1,20 +1,26 @@
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import geopandas as gpd
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-
-import matplotlib.pyplot as plt
+from shapely.geometry import box
 
 from my_config import (
     dir_pop_era_grid,
-    dir_results,
     year_max_analysis,
+    year_worldpop_end,
+    year_worldpop_start,
+    dir_population_before_2000,
+    dir_figures_interim,
+    year_report,
+    dir_population_hybrid,
 )
 
 
-def load_population_data(group, gender, years, suffix):
+def load_population_data(age_group, sex, years, suffix="era5_compatible.nc"):
     return {
-        year: xr.open_dataset(
-            dir_pop_era_grid / f"{gender}_{group}_{str(year)}_{suffix}"
-        )
+        year: xr.open_dataset(dir_pop_era_grid / f"{sex}_{age_group}_{year}_{suffix}")
         for year in years
     }
 
@@ -27,114 +33,186 @@ def combine_and_rename(data_m, data_f):
     return xr.concat(combined_data.values(), dim="year")
 
 
-def concatenate_and_extrapolate(old_data, new_data):
+def concatenate_and_extrapolate(old_data, new_data, years_range):
     combined_data = xr.concat([old_data, new_data], dim="year")
     return xr.concat(
         [
             combined_data,
             combined_data.interp(
-                year=extrapolated_years, kwargs={"fill_value": "extrapolate"}
+                year=years_range, kwargs={"fill_value": "extrapolate"}
             ),
         ],
         "year",
     ).load()
 
 
-if __name__ == "__main__":
+def plot_population_data(data, label, year=2001, bounds=(0, 35, 20, 47), v_max=20000):
+    # Create a figure and axis with a cartopy projection centered on longitude 0
+    fig, ax = plt.subplots(
+        subplot_kw={"projection": ccrs.PlateCarree(central_longitude=0)},
+        constrained_layout=True,
+    )
+    # Add features to the map
+    ax.add_feature(cfeature.BORDERS, linestyle=":")
+    ax.add_feature(cfeature.COASTLINE)
+    ax.add_feature(cfeature.LAND, edgecolor="black")
+    ax.add_feature(cfeature.OCEAN)
 
+    # Select the data for the specified year
+    data = data.sel(year=year)
+
+    # Set the CRS for the data
+    data = data.rio.write_crs("EPSG:4326")
+
+    if bounds:
+        # Create a GeoDataFrame with the specified bounds
+        gdf = gpd.GeoDataFrame(geometry=[box(*bounds)], crs="EPSG:4326")
+
+        # Clip the data using the GeoDataFrame
+        data = data.rio.clip(gdf.geometry.values, gdf.crs, drop=True)
+
+    # Filter the data to remove negative values
+    data = data.pop.where(data.pop >= 0)
+
+    # Plot the population data
+    data.plot(
+        vmax=v_max,
+        cmap="viridis",
+        ax=ax,
+        cbar_kwargs={"orientation": "horizontal", "pad": 0.05, "label": "Population"},
+    )
+
+    plt.title(f"{label.capitalize()} population in {year}")
+    # Show the plot
+    plt.savefig(dir_figures_interim / f"pop_data_{label}_{year}.png")
+    plt.show()
+
+
+def plot_population_trends(inf_worldpop, eld_worldpop, eld_75, totals_lancet):
+    fig, axs = plt.subplots(1, 2, sharey=True)
+    inf_sum = inf_worldpop.sum(dim=["latitude", "longitude"])
+    eld_sum = eld_worldpop.sum(dim=["latitude", "longitude"])
+    eld_75 = eld_75.sum(dim=["latitude", "longitude"])
+    axs[1].scatter(inf_sum.year, inf_sum.pop / 10**6, label="Infants")
+    axs[1].scatter(eld_sum.year, eld_sum.pop / 10**6, label="Above 65")
+    axs[1].scatter(eld_75.year, eld_75.pop / 10**6, label="Above 75")
+    axs[1].set(xlabel="Year", ylabel="")
+    axs[1].legend()
+    for age_band in [0, 65]:
+        pop_data = totals_lancet.sel(age_band_lower_bound=age_band).sel(
+            year=slice(1950, 1999)
+        )
+        pop_data = pop_data.sum(dim=["latitude", "longitude"])
+        if age_band == 0:
+            pop_data /= 5
+        axs[0].scatter(pop_data.year, pop_data / 10**6, label=f"Age band {age_band}")
+    axs[0].set(xlabel="Year", ylabel="Population (millions)")
+    axs[0].legend()
+    plt.tight_layout()
+    plt.savefig(dir_figures_interim / "pop_data_trends.png")
+    plt.show()
+
+
+def load_and_combine_population_data(age_group, years_range):
+    data_m = load_population_data(age_group=age_group, sex="m", years=years_range)
+    data_f = load_population_data(age_group=age_group, sex="f", years=years_range)
+    return combine_and_rename(data_m=data_m, data_f=data_f)
+
+
+def main(plot=True):
     # Load and combine infant and elderly population data for 2000-2020
-    years_range = np.arange(2000, 2020)
-    infants_m = load_population_data("0", "m", years_range, "era5_compatible.nc")
-    infants_f = load_population_data("0", "f", years_range, "era5_compatible.nc")
-    elderly_m = load_population_data(
-        "65_70_75_80", "m", years_range, "era5_compatible.nc"
+    # todo I am not using the data from 2020
+    # years_range = np.arange(year_worldpop_start, year_worldpop_end + 1)
+    years_range = np.arange(year_worldpop_start, year_worldpop_end)
+    infants_worldpop = load_and_combine_population_data(
+        age_group="0", years_range=years_range
     )
-    elderly_f = load_population_data(
-        "65_70_75_80", "f", years_range, "era5_compatible.nc"
+    elderly_worldpop = load_and_combine_population_data(
+        age_group="65_70_75_80", years_range=years_range
     )
-
-    # Combine and process data for both infants and elderly
-    infants_worldpop_2000_2020 = combine_and_rename(infants_m, infants_f)
-    elderly_worldpop_2000_2020 = combine_and_rename(elderly_m, elderly_f)
 
     # Load and combine infant and elderly population data for 1950-1999
-    demographics_totals_file = (
-        dir_results / "hybrid_pop" / "Hybrid Demographics 1950-2020.nc"
-    )  # files generated for lancet report 2023
-
-    demographics_totals = xr.open_dataarray(demographics_totals_file)
-    population_infants_1950_1999 = demographics_totals.sel(age_band_lower_bound=0).sel(
+    demographics_totals = xr.open_dataarray(dir_population_before_2000)
+    infants_lancet = demographics_totals.sel(age_band_lower_bound=0).sel(
         year=slice(1950, 1999)
     )
-    population_infants_1950_1999 /= 5  # Divide by 5 to get the number of infants
-    demographics_totals = xr.open_dataarray(demographics_totals_file)
-    elderly_1950_1999 = demographics_totals.sel(age_band_lower_bound=65).sel(
+    infants_lancet /= 5  # Divide by 5 to get the number of infants
+
+    elderly_lancet = demographics_totals.sel(age_band_lower_bound=65).sel(
         year=slice(1950, 1999)
     )
-
-    # fig, axs = plt.subplots(1, 2, sharey=True)
-    # inf_sum = infants_worldpop_2000_2020.sum(dim=["latitude", "longitude"])
-    # eld_sum = elderly_worldpop_2000_2020.sum(dim=["latitude", "longitude"])
-    # axs[1].scatter(inf_sum.year, inf_sum.pop / 10**6, label="Infants")
-    # axs[1].scatter(eld_sum.year, eld_sum.pop / 10**6, label="Elderly")
-    # axs[1].set(xlabel="Year", ylabel="")
-    # axs[1].legend()
-    # for age_band in [0, 65]:
-    #     pop_data = demographics_totals.sel(age_band_lower_bound=age_band).sel(
-    #         year=slice(1950, 1999)
-    #     )
-    #     pop_data = pop_data.sum(dim=["latitude", "longitude"])
-    #     if age_band == 0:
-    #         pop_data /= 5
-    #     axs[0].scatter(pop_data.year, pop_data / 10**6, label=f"Age band {age_band}")
-    # axs[0].set(xlabel="Year", ylabel="Population (millions)")
-    # axs[0].legend()
-    # plt.tight_layout()
-    # plt.show()
 
     # Combine data for all years (1950-2020) and extrapolate to 2023
-    extrapolated_years = np.arange(2020, year_max_analysis + 1)
-    population_infants_1950_1999 = population_infants_1950_1999.to_dataset().rename(
-        {"demographic_totals": "infants"}
+    extrapolated_years = np.arange(year_worldpop_end, year_report)
+
+    infants_lancet = infants_lancet.to_dataset().rename({"demographic_totals": "pop"})
+    infants_pop_analysis = concatenate_and_extrapolate(
+        infants_lancet, infants_worldpop, years_range=extrapolated_years
     )
-    infants_worldpop_2000_2020 = infants_worldpop_2000_2020.rename({"pop": "infants"})
-    population_infants_worldpop = concatenate_and_extrapolate(
-        population_infants_1950_1999, infants_worldpop_2000_2020
-    )
-    population_infants_worldpop = population_infants_worldpop.transpose(
+    infants_pop_analysis = infants_pop_analysis.transpose(
         "year", "latitude", "longitude"
     )
 
-    elderly_1950_1999 = elderly_1950_1999.to_dataset().rename(
-        {"demographic_totals": "elderly"}
-    )
-    elderly_worldpop_2000_2020 = elderly_worldpop_2000_2020.rename({"pop": "elderly"})
+    elderly_lancet = elderly_lancet.to_dataset().rename({"demographic_totals": "pop"})
 
-    population_elderly_worldpop = concatenate_and_extrapolate(
-        elderly_1950_1999, elderly_worldpop_2000_2020
+    elderly_pop_analysis = concatenate_and_extrapolate(
+        elderly_lancet, elderly_worldpop, years_range=extrapolated_years
     )
-    population_elderly_worldpop = population_elderly_worldpop.transpose(
+    elderly_pop_analysis = elderly_pop_analysis.transpose(
         "year", "latitude", "longitude"
     )
 
     # Save the results to NetCDF files
-    population_infants_worldpop.to_netcdf(
-        dir_results
-        / f"hybrid_pop"
+    infants_pop_analysis = infants_pop_analysis.rename({"pop": "infants"})
+    elderly_pop_analysis = elderly_pop_analysis.rename({"pop": "elderly"})
+
+    infants_pop_analysis.to_netcdf(
+        dir_population_hybrid
         / f"worldpop_infants_1950_{year_max_analysis}_era5_compatible.nc"
     )
-    population_elderly_worldpop.to_netcdf(
-        dir_results
-        / f"hybrid_pop"
+    elderly_pop_analysis.to_netcdf(
+        dir_population_hybrid
         / f"worldpop_elderly_1950_{year_max_analysis}_era5_compatible.nc"
     )
 
+    # elderly above 75
+    elderly_worldpop_75 = load_and_combine_population_data(
+        age_group="75_80", years_range=years_range
+    )
+    elderly_worldpop_75.to_netcdf(
+        dir_population_hybrid
+        / f"worldpop_75_80_1950_{year_max_analysis}_era5_compatible.nc"
+    )
+
+    if not plot:
+        return
+
+    plot_population_trends(
+        inf_worldpop=infants_worldpop,
+        eld_worldpop=elderly_worldpop,
+        eld_75=elderly_worldpop_75,
+        totals_lancet=demographics_totals,
+    )
+
+    for year in years_range:
+        plot_population_data(
+            infants_worldpop, label="inf", year=int(year), v_max=20000, bounds=None
+        )
+        plot_population_data(
+            elderly_worldpop, label="eld", year=int(year), v_max=20000, bounds=None
+        )
+
     fig, ax = plt.subplots()
-    plot_data = population_infants_worldpop.sum(dim=["latitude", "longitude"])
+    plot_data = infants_pop_analysis.sum(dim=["latitude", "longitude"])
     ax.scatter(plot_data.year, plot_data.infants)
     plt.show()
 
     fig, ax = plt.subplots()
-    plot_data = population_elderly_worldpop.sum(dim=["latitude", "longitude"])
+    plot_data = elderly_pop_analysis.sum(dim=["latitude", "longitude"])
     ax.scatter(plot_data.year, plot_data.elderly)
     plt.show()
+
+
+if __name__ == "__main__":
+    main(plot=False)
+    pass

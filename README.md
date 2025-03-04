@@ -30,11 +30,16 @@ To download the data you need to:
 1. Download the WorldPop data using the code in `population/pop_data_download.py`
 2. Regrid the data to the ERA5 grid using the code in `population/pop_data_process.py`
 3. Combine the age groups using the code in `population/pop_data_combine.py`
-4. Calculate the absolute exposure to heatwaves using the code in `population/heatwave_exposure_pop_abs.py`
-5. Calculate the change in exposure to heatwaves using the code in `population/heatwave_exposure_pop_change.py`
+
+## Heatwaves exposure
+
+1. Calculate the absolute exposure to heatwaves using the code in `population/heatwave_exposure_pop_abs.py`
+2. Calculate the change in exposure to heatwaves using the code in `population/heatwave_exposure_pop_change.py`
 
 
 # TODO
+- [ ] re-download the infant population for 2020
+- [ ] re-analyze the infant population for 2020
 
 ## Weather data
 - [x] Download ERA5 data
@@ -46,6 +51,8 @@ To download the data you need to:
 - [x] Download WorldPop data
 - [x] Process the data (regrid and combine ages)
 - [x] Combine the population data
+
+## Heatwaves exposure
 - [ ] Calculate the absolute exposure to heatwaves
 
 ## Other
