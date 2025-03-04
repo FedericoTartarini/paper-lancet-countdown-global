@@ -83,3 +83,18 @@ except PermissionError:  # just in case the SSD is not mounted
 for f in os.listdir(dir_pop_raw):
     if f.startswith(".") and f.endswith(".tif"):
         os.remove(dir_pop_raw / f)
+
+# paths to important files
+dir_pop_infants_file = (
+    dir_population_hybrid
+    / f"worldpop_infants_1950_{year_max_analysis}_era5_compatible.nc"
+)
+dir_pop_elderly_file = (
+    dir_population_hybrid
+    / f"worldpop_elderly_1950_{year_max_analysis}_era5_compatible.nc"
+)
+dir_pop_above_75_file = (
+    dir_population_hybrid
+    / f"worldpop_75_80_1950_{year_max_analysis}_era5_compatible.nc"
+)
+dir_file_detailed_boundaries = dir_local / "admin_boundaries" / "Detailed_Boundary_ADM0"

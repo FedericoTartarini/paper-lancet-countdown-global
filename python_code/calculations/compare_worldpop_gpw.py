@@ -1,300 +1,192 @@
-import matplotlib.pyplot as plt
-import xarray as xr
-
-from my_config import dir_results, dir_local
-from shapely.geometry import Point
-import geopandas as gpd
 import copy
-import pandas as pd
+
 import geopandas as gpd
-import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-
+import matplotlib.pyplot as plt
+import pandas as pd
+import xarray as xr
 from cartopy import crs as ccrs
+from shapely.geometry import Point
 
-
-# Load and combine infant and elderly population data for 1950-1999
-demographics_totals_file = (
-    dir_results / "hybrid_pop" / "Hybrid Demographics 1950-2020.nc"
-)  # files generated for lancet report 2023
-
-infants_worldpop = xr.open_dataset(
-    dir_results / f"hybrid_pop" / f"worldpop_infants_1950_2024_era5_compatible.nc"
+from my_config import (
+    dir_population_before_2000,
+    dir_pop_infants_file,
+    dir_file_detailed_boundaries,
+    dir_figures,
+    dir_pop_elderly_file,
 )
 
-infants_isimip_sum = infants_worldpop.sum(dim=("latitude", "longitude")).sel(
-    year=slice(1950, 1999)
-)
-infants_worldpop_sum = infants_worldpop.sum(dim=("latitude", "longitude")).sel(
-    year=slice(2000, 2020)
-)
-demographics_totals = xr.open_dataarray(demographics_totals_file)
-population_infants_1950_1999 = demographics_totals.sel(age_band_lower_bound=0)
-population_infants_1950_1999 /= 5  # Divide by 5 to get the number of infants
-infants_gpw_sum = population_infants_1950_1999.sum(dim=("latitude", "longitude")).sel(
-    year=slice(2000, 2020)
-)
+gdf_countries = gpd.read_file(dir_file_detailed_boundaries)
 
-fig, ax = plt.subplots(figsize=(6, 4))
-
-# Plot GPW data
-ax.plot(infants_gpw_sum.year, infants_gpw_sum / 1e6, label="GPW")
-
-# Plot WorldPop data
-ax.plot(infants_worldpop_sum.year, infants_worldpop_sum.infants / 1e6, label="WorldPop")
-
-ax.plot(
-    infants_isimip_sum.year,
-    infants_isimip_sum.infants / 1e6,
-    label="ISIMIP",
-    linestyle="--",
-)
-
-ax.legend()
-ax.set_title("Infants Global Population")
-ax.set_ylabel("Population (millions)")
-plt.savefig("python_code/figures/infants_worldpop_vs_gpw_global.pdf")
-plt.show()
+map_projection = ccrs.EckertIII()
 
 
-gdf_countries = gpd.read_file(dir_local / "admin_boundaries" / "Detailed_Boundary_ADM0")
-
-infants_gpw_2019 = population_infants_1950_1999.sel(year=2020)
-
-infants_gpw_2019_gdf = infants_gpw_2019.to_dataframe().reset_index()
-
-infants_gpw_2019_gdf["adjusted_longitude"] = infants_gpw_2019_gdf["longitude"].apply(
-    lambda x: x - 360 if x > 180 else x
-)
-
-geometry = [
-    Point(xy)
-    for xy in zip(
-        infants_gpw_2019_gdf.adjusted_longitude, infants_gpw_2019_gdf.latitude
+def plot_population_data(data_lancet, data_worldpop, data_isimip, population="infants"):
+    data_gpw_sum = data_lancet.sum(dim=("latitude", "longitude")).sel(
+        year=slice(2000, 2020)
     )
-]
 
-infants_gpw_2019_gdf = gpd.GeoDataFrame(
-    infants_gpw_2019_gdf, crs="EPSG:4326", geometry=geometry
-)
+    fig, ax = plt.subplots(constrained_layout=True)
 
-infants_gpw_2019_gdf = gpd.sjoin(
-    infants_gpw_2019_gdf, gdf_countries, how="inner", predicate="within"
-)
+    # Plot GPW data
+    ax.plot(data_gpw_sum.year, data_gpw_sum / 1e6, label="GPW")
 
-infants_gpw_2019_gdf_countries = (
-    infants_gpw_2019_gdf[["demographic_totals", "ISO_3_CODE"]]
-    .groupby("ISO_3_CODE")
-    .sum()
-)
-infants_worldpop_2019 = infants_worldpop.sel(year=2020).to_dataframe().reset_index()
+    # Plot WorldPop data
+    ax.plot(data_worldpop.year, data_worldpop[population] / 1e6, label="WorldPop")
 
-infants_worldpop_2019["adjusted_longitude"] = infants_worldpop_2019["longitude"].apply(
-    lambda x: x - 360 if x > 180 else x
-)
-
-geometry = [
-    Point(xy)
-    for xy in zip(
-        infants_worldpop_2019.adjusted_longitude, infants_worldpop_2019.latitude
+    ax.plot(
+        data_isimip.year,
+        data_isimip[population] / 1e6,
+        label="ISIMIP",
+        linestyle="--",
     )
-]
 
-infants_worldpop_2019_gdf = gpd.GeoDataFrame(
-    infants_worldpop_2019, crs="EPSG:4326", geometry=geometry
-)
+    ax.legend()
+    ax.set_title(f"{population} Global Population")
+    ax.set_ylabel("Population (millions)")
+    plt.savefig(dir_figures / f"worldpop_vs_gpw_global_{population}.pdf")
+    plt.show()
 
-infants_worldpop_2019_gdf = gpd.sjoin(
-    infants_worldpop_2019_gdf, gdf_countries, how="inner", predicate="within"
-)
 
-infants_worldpop_2019_countries = (
-    infants_worldpop_2019_gdf[["infants", "ISO_3_CODE"]].groupby("ISO_3_CODE").sum()
-)
+def process_and_combine_data(data, year, population="infants"):
+    _data = data.sel(year=year).to_dataframe().reset_index()
 
-diff_gdf = copy.deepcopy(infants_gpw_2019_gdf_countries).rename(
-    columns={"infants": "infants_gpw"}
-)
-diff_gdf["infants_worldpop"] = infants_worldpop_2019_countries["infants"]
-diff_gdf["diff (%)"] = (
-    (
-        infants_gpw_2019_gdf_countries["demographic_totals"]
-        - infants_worldpop_2019_countries["infants"]
+    _data["adjusted_longitude"] = _data["longitude"].apply(
+        lambda x: x - 360 if x > 180 else x
     )
-    / infants_gpw_2019_gdf_countries["demographic_totals"]
-    * 100
-)
 
-print(diff_gdf.loc[["USA", "CHE", "IND", "CHN"]])
+    geometry = [Point(xy) for xy in zip(_data.adjusted_longitude, _data.latitude)]
 
+    _data = gpd.GeoDataFrame(_data, crs="EPSG:4326", geometry=geometry)
 
-MAP_PROJECTION = ccrs.EckertIII()
+    _data = gpd.sjoin(_data, gdf_countries, how="inner", predicate="within")
 
-# Assuming gdf_countries and diff_gdf are previously defined and populated
+    if "demographic_totals" in _data.columns:
+        _data = _data.rename(columns={"demographic_totals": population})
 
-# Reset index of diff_gdf if needed and merge it with gdf_countries
-diff_gdf = pd.merge(gdf_countries[["geometry", "ISO_3_CODE"]], diff_gdf.reset_index())
-diff_gdf = gpd.GeoDataFrame(diff_gdf, geometry=diff_gdf.geometry)
-
-# Create the plot
-fig, ax = plt.subplots(
-    1, 1, figsize=(8, 6), subplot_kw=dict(projection=MAP_PROJECTION)
-)  # You can adjust the dimensions as needed
-
-# Plotting the data with specified vmin and vmax
-diff_gdf.plot(
-    "diff (%)", vmin=-50, vmax=50, ax=ax, cmap="bwr", transform=ccrs.PlateCarree()
-)
-
-# Create a ScalarMappable with the colormap and norm specified
-norm = mcolors.Normalize(vmin=-50, vmax=50)
-cbar = plt.cm.ScalarMappable(cmap="bwr", norm=norm)
-
-# Add the colorbar to the figure based on the ScalarMappable
-fig.colorbar(cbar, ax=ax, orientation="horizontal").set_label(
-    "Relative Difference GPW - WorldPop (%)"
-)  # Customize your label here
-
-# Save the figure
-plt.savefig("python_code/figures/infants_worldpop_vs_gpw_by_country.pdf")
-plt.show()
+    return _data[[population, "ISO_3_CODE"]].groupby("ISO_3_CODE").sum()
 
 
-# Over 65
-elderly_gpw = demographics_totals.sel(age_band_lower_bound=65)
+def plot_map_comparison(data, population, year):
 
-elderly_worldpop = xr.open_dataset(
-    dir_results / f"hybrid_pop" / f"worldpop_elderly_1950_2024_era5_compatible.nc"
-)
+    # Reset index of diff_gdf if needed and merge it with gdf_countries
+    diff_gdf = pd.merge(gdf_countries[["geometry", "ISO_3_CODE"]], data.reset_index())
+    diff_gdf = gpd.GeoDataFrame(diff_gdf, geometry=diff_gdf.geometry)
+    # Create the plot
+    fig, ax = plt.subplots(
+        1, 1, figsize=(8, 6), subplot_kw=dict(projection=map_projection)
+    )  # You can adjust the dimensions as needed
 
-elderly_isimip_sum = elderly_worldpop.sum(dim=("latitude", "longitude")).sel(
-    year=slice(1950, 1999)
-)
-elderly_worldpop_sum = elderly_worldpop.sum(dim=("latitude", "longitude")).sel(
-    year=slice(2000, 2020)
-)
-elderly_gpw_sum = elderly_gpw.sum(dim=("latitude", "longitude")).sel(
-    year=slice(2000, 2020)
-)
-
-fig, ax = plt.subplots(figsize=(6, 4))
-
-# Plot GPW data
-ax.plot(elderly_gpw_sum.year, elderly_gpw_sum / 1e6, label="GPW")
-
-# Plot WorldPop data
-ax.plot(elderly_worldpop_sum.year, elderly_worldpop_sum.elderly / 1e6, label="WorldPop")
-
-# Plot ISIMIP data (dashed line before year 2000)
-
-ax.plot(
-    elderly_isimip_sum.year,
-    elderly_isimip_sum.elderly / 1e6,
-    label="ISIMIP",
-    linestyle="--",
-)
-
-ax.legend()
-ax.set_title("Elderly Global Population")
-ax.set_ylabel("Population (millions)")
-
-plt.savefig("python_code/figures/elderly_worldpop_vs_gpw_global.pdf")
-plt.show()
-
-elderly_gpw_2019 = elderly_gpw.sel(
-    year=2020
-)  # Assuming 'elderly_gpw' is your data variable for the elderly population
-
-elderly_gpw_2019_gdf = elderly_gpw_2019.to_dataframe().reset_index()
-
-elderly_gpw_2019_gdf["adjusted_longitude"] = elderly_gpw_2019_gdf["longitude"].apply(
-    lambda x: x - 360 if x > 180 else x
-)
-
-geometry = [
-    Point(xy)
-    for xy in zip(
-        elderly_gpw_2019_gdf.adjusted_longitude, elderly_gpw_2019_gdf.latitude
+    # Plotting the data with specified vmin and vmax
+    diff_gdf.plot(
+        "diff (%)", vmin=-50, vmax=50, ax=ax, cmap="bwr", transform=ccrs.PlateCarree()
     )
-]
 
-elderly_gpw_2019_gdf = gpd.GeoDataFrame(
-    elderly_gpw_2019_gdf, crs="EPSG:4326", geometry=geometry
-)
+    # Create a ScalarMappable with the colormap and norm specified
+    norm = mcolors.Normalize(vmin=-50, vmax=50)
+    cbar = plt.cm.ScalarMappable(cmap="bwr", norm=norm)
 
-elderly_gpw_2019_gdf = gpd.sjoin(
-    elderly_gpw_2019_gdf, gdf_countries, how="inner", predicate="within"
-)
+    # Add the colorbar to the figure based on the ScalarMappable
+    fig.colorbar(cbar, ax=ax, orientation="horizontal").set_label(
+        "Relative Difference GPW - WorldPop (%)"
+    )  # Customize your label here
 
-elderly_gpw_2019_gdf_countries = (
-    elderly_gpw_2019_gdf[["demographic_totals", "ISO_3_CODE"]]
-    .groupby("ISO_3_CODE")
-    .sum()
-)
+    # Save the figure
+    plt.savefig(dir_figures / f"{population}_{year}_worldpop_vs_gpw_by_country.pdf")
+    plt.show()
 
-elderly_worldpop_2019 = elderly_worldpop.sel(year=2020).to_dataframe().reset_index()
 
-elderly_worldpop_2019["adjusted_longitude"] = elderly_worldpop_2019["longitude"].apply(
-    lambda x: x - 360 if x > 180 else x
-)
+def main(year_map_comparison=2019):
+    # Load and combine infant and elderly population data for 1950-1999
+    infants_worldpop = xr.open_dataset(dir_pop_infants_file)
 
-geometry = [
-    Point(xy)
-    for xy in zip(
-        elderly_worldpop_2019.adjusted_longitude, elderly_worldpop_2019.latitude
+    infants_isimip_sum = infants_worldpop.sum(dim=("latitude", "longitude")).sel(
+        year=slice(1950, 1999)
     )
-]
-
-elderly_worldpop_2019_gdf = gpd.GeoDataFrame(
-    elderly_worldpop_2019, crs="EPSG:4326", geometry=geometry
-)
-
-elderly_worldpop_2019_gdf = gpd.sjoin(
-    elderly_worldpop_2019_gdf, gdf_countries, how="inner", predicate="within"
-)
-
-elderly_worldpop_2019_countries = (
-    elderly_worldpop_2019_gdf[["elderly", "ISO_3_CODE"]].groupby("ISO_3_CODE").sum()
-)
-
-diff_gdf = copy.deepcopy(elderly_gpw_2019_gdf_countries).rename(
-    columns={"demographic_totals": "elderly_gpw"}
-)
-diff_gdf["elderly_worldpop"] = elderly_worldpop_2019_countries["elderly"]
-diff_gdf["diff (%)"] = (
-    (
-        elderly_gpw_2019_gdf_countries["demographic_totals"]
-        - elderly_worldpop_2019_countries["elderly"]
+    infants_worldpop_sum = infants_worldpop.sum(dim=("latitude", "longitude")).sel(
+        year=slice(2000, 2020)
     )
-    / elderly_gpw_2019_gdf_countries["demographic_totals"]
-    * 100
-)
 
-print(diff_gdf.loc[["USA", "CHE", "IND", "CHN", "FRA", "AUS", "DEU"]])
+    demographics_totals = xr.open_dataarray(dir_population_before_2000)
+    population_infants_1950_1999 = demographics_totals.sel(age_band_lower_bound=0)
+    population_infants_1950_1999 /= 5  # Divide by 5 to get the number of infants
 
-# Reset index of diff_gdf if needed and merge it with gdf_countries
-diff_gdf = pd.merge(gdf_countries[["geometry", "ISO_3_CODE"]], diff_gdf.reset_index())
-diff_gdf = gpd.GeoDataFrame(diff_gdf, geometry=diff_gdf.geometry)
+    plot_population_data(
+        population_infants_1950_1999, infants_worldpop_sum, infants_isimip_sum
+    )
 
-# Create the plot
-fig, ax = plt.subplots(
-    1, 1, figsize=(8, 6), subplot_kw=dict(projection=MAP_PROJECTION)
-)  # You can adjust the dimensions as needed
+    infants_gpw_2019_gdf_countries = process_and_combine_data(
+        data=population_infants_1950_1999,
+        year=year_map_comparison,
+    )
 
-# Plotting the data with specified vmin and vmax
-diff_gdf.plot(
-    "diff (%)", vmin=-50, vmax=50, ax=ax, cmap="bwr", transform=ccrs.PlateCarree()
-)
+    infants_worldpop_2019_countries = process_and_combine_data(
+        infants_worldpop, year_map_comparison
+    )
 
-# Create a ScalarMappable with the colormap and norm specified
-norm = mcolors.Normalize(vmin=-50, vmax=50)
-cbar = plt.cm.ScalarMappable(cmap="bwr", norm=norm)
+    diff_gdf = copy.deepcopy(infants_gpw_2019_gdf_countries).rename(
+        columns={"infants": "infants_gpw"}
+    )
+    diff_gdf["infants_worldpop"] = infants_worldpop_2019_countries["infants"]
+    diff_gdf["diff (%)"] = (
+        (
+            infants_gpw_2019_gdf_countries["infants"]
+            - infants_worldpop_2019_countries["infants"]
+        )
+        / infants_gpw_2019_gdf_countries["infants"]
+        * 100
+    )
 
-# Add the colorbar to the figure based on the ScalarMappable
-fig.colorbar(cbar, ax=ax, orientation="horizontal").set_label(
-    "Relative Difference GPW - WorldPop (%)"
-)  # Customize your label here
+    print(diff_gdf.loc[["USA", "CHE", "IND", "CHN"]])
 
-# Save the figure
-plt.savefig("python_code/figures/elderly_worldpop_vs_gpw_by_country.pdf")
-plt.show()
+    plot_map_comparison(data=diff_gdf, population="infants", year=year_map_comparison)
+
+    # Over 65
+    elderly_gpw = demographics_totals.sel(age_band_lower_bound=65)
+
+    elderly_worldpop = xr.open_dataset(dir_pop_elderly_file)
+
+    elderly_isimip_sum = elderly_worldpop.sum(dim=("latitude", "longitude")).sel(
+        year=slice(1950, 1999)
+    )
+    elderly_worldpop_sum = elderly_worldpop.sum(dim=("latitude", "longitude")).sel(
+        year=slice(2000, 2020)
+    )
+
+    plot_population_data(
+        elderly_gpw, elderly_worldpop_sum, elderly_isimip_sum, population="elderly"
+    )
+
+    elderly_gpw_2019_gdf_countries = process_and_combine_data(
+        data=elderly_gpw,
+        year=year_map_comparison,
+        population="elderly",
+    )
+
+    elderly_worldpop_2019_countries = process_and_combine_data(
+        data=elderly_worldpop,
+        year=year_map_comparison,
+        population="elderly",
+    )
+
+    diff_gdf = copy.deepcopy(elderly_gpw_2019_gdf_countries).rename(
+        columns={"elderly": "elderly_gpw"}
+    )
+    diff_gdf["elderly_worldpop"] = elderly_worldpop_2019_countries["elderly"]
+    diff_gdf["diff (%)"] = (
+        (
+            elderly_gpw_2019_gdf_countries["elderly"]
+            - elderly_worldpop_2019_countries["elderly"]
+        )
+        / elderly_gpw_2019_gdf_countries["elderly"]
+        * 100
+    )
+
+    print(diff_gdf.loc[["USA", "CHE", "IND", "CHN", "FRA", "AUS", "DEU"]])
+
+    plot_map_comparison(data=diff_gdf, population="elderly", year=year_map_comparison)
+
+
+if __name__ == "__main__":
+    main(year_map_comparison=2019)
+    pass

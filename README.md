@@ -30,6 +30,7 @@ To download the data you need to:
 1. Download the WorldPop data using the code in `population/pop_data_download.py`
 2. Regrid the data to the ERA5 grid using the code in `population/pop_data_process.py`
 3. Combine the age groups using the code in `population/pop_data_combine.py`
+4. The file called `compare_worldpop_gpw.py` compares the WorldPop and GPW data for the infant and elderly population. Not essential for the new report.
 
 ## Heatwaves exposure
 

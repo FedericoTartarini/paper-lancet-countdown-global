@@ -8,13 +8,14 @@ from shapely.geometry import box
 
 from my_config import (
     dir_pop_era_grid,
-    year_max_analysis,
     year_worldpop_end,
     year_worldpop_start,
     dir_population_before_2000,
     dir_figures_interim,
     year_report,
-    dir_population_hybrid,
+    dir_pop_infants_file,
+    dir_pop_elderly_file,
+    dir_pop_above_75_file,
 )
 
 
@@ -166,23 +167,14 @@ def main(plot=True):
     infants_pop_analysis = infants_pop_analysis.rename({"pop": "infants"})
     elderly_pop_analysis = elderly_pop_analysis.rename({"pop": "elderly"})
 
-    infants_pop_analysis.to_netcdf(
-        dir_population_hybrid
-        / f"worldpop_infants_1950_{year_max_analysis}_era5_compatible.nc"
-    )
-    elderly_pop_analysis.to_netcdf(
-        dir_population_hybrid
-        / f"worldpop_elderly_1950_{year_max_analysis}_era5_compatible.nc"
-    )
+    infants_pop_analysis.to_netcdf(dir_pop_infants_file)
+    elderly_pop_analysis.to_netcdf(dir_pop_elderly_file)
 
     # elderly above 75
     elderly_worldpop_75 = load_and_combine_population_data(
         age_group="75_80", years_range=years_range
     )
-    elderly_worldpop_75.to_netcdf(
-        dir_population_hybrid
-        / f"worldpop_75_80_1950_{year_max_analysis}_era5_compatible.nc"
-    )
+    elderly_worldpop_75.to_netcdf(dir_pop_above_75_file)
 
     if not plot:
         return
