@@ -9,7 +9,7 @@ from cartopy import crs as ccrs
 from shapely.geometry import Point
 
 from my_config import (
-    dir_population_before_2000,
+    dir_file_population_before_2000,
     dir_pop_infants_file,
     dir_file_detailed_boundaries,
     dir_figures,
@@ -107,7 +107,7 @@ def main(year_map_comparison=2019):
         year=slice(2000, 2020)
     )
 
-    demographics_totals = xr.open_dataarray(dir_population_before_2000)
+    demographics_totals = xr.open_dataarray(dir_file_population_before_2000)
     population_infants_1950_1999 = demographics_totals.sel(age_band_lower_bound=0)
     population_infants_1950_1999 /= 5  # Divide by 5 to get the number of infants
 

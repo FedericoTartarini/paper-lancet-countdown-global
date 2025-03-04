@@ -10,7 +10,7 @@ from my_config import (
     dir_pop_era_grid,
     year_worldpop_end,
     year_worldpop_start,
-    dir_population_before_2000,
+    dir_file_population_before_2000,
     dir_figures_interim,
     year_report,
     dir_pop_infants_file,
@@ -133,7 +133,7 @@ def main(plot=True):
     )
 
     # Load and combine infant and elderly population data for 1950-1999
-    demographics_totals = xr.open_dataarray(dir_population_before_2000)
+    demographics_totals = xr.open_dataarray(dir_file_population_before_2000)
     infants_lancet = demographics_totals.sel(age_band_lower_bound=0).sel(
         year=slice(1950, 1999)
     )

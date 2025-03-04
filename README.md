@@ -32,6 +32,10 @@ To download the data you need to:
 3. Combine the age groups using the code in `population/pop_data_combine.py`
 4. The file called `compare_worldpop_gpw.py` compares the WorldPop and GPW data for the infant and elderly population. Not essential for the new report.
 
+## Other files
+
+1. Generate the rasterized data using the code in `region_raster.py`
+
 ## Heatwaves exposure
 
 1. Calculate the absolute exposure to heatwaves using the code in `population/heatwave_exposure_pop_abs.py`

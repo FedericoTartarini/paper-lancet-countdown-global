@@ -36,7 +36,9 @@ dir_weather = dir_local / "weather"
 dir_results = dir_local / "results"
 dir_population = dir_local / "population"
 dir_population_hybrid = dir_results / "hybrid_pop"
-dir_population_before_2000 = dir_population_hybrid / "Hybrid Demographics 1950-2020.nc"
+dir_file_population_before_2000 = (
+    dir_population_hybrid / "Hybrid Demographics 1950-2020.nc"
+)
 
 # ======== no need to change below this line ========
 
@@ -97,4 +99,17 @@ dir_pop_above_75_file = (
     dir_population_hybrid
     / f"worldpop_75_80_1950_{year_max_analysis}_era5_compatible.nc"
 )
-dir_file_detailed_boundaries = dir_local / "admin_boundaries" / "Detailed_Boundary_ADM0"
+dir_admin_boundaries = dir_local / "admin_boundaries"
+dir_file_detailed_boundaries = dir_admin_boundaries / "Detailed_Boundary_ADM0"
+dir_file_country_polygons = dir_file_detailed_boundaries / "GLOBAL_ADM0.shp"
+dir_file_admin1_polygons = (
+    dir_admin_boundaries / "Detailed_Boundary_ADM1" / "Detailed_Boundary_ADM1.shp"
+)
+dir_file_country_raster_report = dir_admin_boundaries / "admin0_raster_report_2024.nc"
+dir_file_who_raster_report = dir_admin_boundaries / "WHO_regions_raster_report_2024.nc"
+dir_file_hdi_raster_report = dir_admin_boundaries / "HDI_group_raster_report_2024.nc"
+dir_file_lancet_raster_report = dir_admin_boundaries / "LC_group_raster_report_2024.nc"
+dir_file_admin1_raster_report = dir_admin_boundaries / "admin1_raster_report_2024.nc"
+dir_file_lancet_country_info = (
+    dir_admin_boundaries / "2025 Global Report Country Names and Groupings.xlsx"
+)
