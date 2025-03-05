@@ -7,35 +7,27 @@ import pandas as pd
 import seaborn as sns
 import xarray as xr
 from cartopy import crs as ccrs
-from matplotlib.pyplot import xlabel
+from matplotlib.ticker import MultipleLocator
 
 from my_config import (
     dir_local,
-    dir_pop_hybrid,
     year_min_analysis,
     year_max_analysis,
-    year_report,
-    dir_results,
     dir_figures,
     year_reference_end,
     year_reference_start,
-)
-from matplotlib.ticker import MultipleLocator
-import colorsys
-
-
-plt.rcParams["figure.dpi"] = 120
-plt.rcParams["savefig.dpi"] = 600
-plt.rcParams["figure.figsize"] = (7, 4)
-plt.rcParams["figure.titlesize"] = "medium"
-plt.rcParams["axes.titlesize"] = "medium"
-plt.rcParams["savefig.bbox"] = "tight"
-
-countries_raster = xr.open_dataset(
-    dir_local / "admin_boundaries" / "admin0_raster_report_2024.nc"
+    dir_file_country_raster_report,
+    dir_file_lancet_country_info,
+    dir_file_country_polygons,
+    dir_pop_infants_file,
+    dir_pop_elderly_file,
+    dir_results_heatwaves_days,
+    dir_results_pop_exposure,
+    dir_worldpop_exposure_by_region,
+    map_projection,
 )
 
-map_projection = ccrs.EckertIII()
+countries_raster = xr.open_dataset(dir_file_country_raster_report)
 
 c = sns.color_palette("tab10")
 consistent_colors = dict(
@@ -60,26 +52,15 @@ def _summary(data, yrs):
 
 
 country_lc_grouping = pd.read_excel(
-    dir_local
-    / "admin_boundaries"
-    / "2025 Global Report Country Names and Groupings.xlsx",
+    dir_file_lancet_country_info,
     header=1,
 )
 
-countries = gpd.read_file(
-    dir_local / "admin_boundaries" / "Detailed_Boundary_ADM0" / "GLOBAL_ADM0.shp"
-)
+countries = gpd.read_file(dir_file_country_polygons)
 countries = countries.rename(columns={"ISO_3_CODE": "country"})
 
-infants_totals_file = (
-    dir_pop_hybrid / f"worldpop_infants_1950_{year_max_analysis}_era5_compatible.nc"
-)
-elderly_totals_file = (
-    dir_pop_hybrid / f"worldpop_elderly_1950_{year_max_analysis}_era5_compatible.nc"
-)
-
-population_over_65 = xr.open_dataarray(elderly_totals_file)
-population_infants = xr.open_dataarray(infants_totals_file)
+population_over_65 = xr.open_dataarray(dir_pop_elderly_file)
+population_infants = xr.open_dataarray(dir_pop_infants_file)
 
 population_over_65["age_band_lower_bound"] = 65
 population = xr.concat(
@@ -87,27 +68,16 @@ population = xr.concat(
 )
 population.name = "population"
 
-heatwave_metrics_files = sorted(
-    (dir_results / "heatwaves" / f"results_{year_report}" / "heatwaves_days_era5").glob(
-        "*.nc"
-    )
-)
+heatwave_metrics_files = sorted(dir_results_heatwaves_days.glob("*.nc"))
 heatwave_metrics = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
 
-results_folder = (
-    dir_results
-    / f"results_{year_max_analysis + 1}"
-    / "pop_exposure"
-    / "worldpop_hw_exposure"
-)
-
 exposures_over65 = xr.open_dataset(
-    results_folder
+    dir_results_pop_exposure
     / f"heatwave_exposure_change_over65_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 
 exposures_infants = xr.open_dataset(
-    results_folder
+    dir_results_pop_exposure
     / f"heatwave_exposure_change_infants_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 
@@ -133,7 +103,7 @@ total_exposures_change_infants = total_exposures.sel(
 
 # Load exposure absolute values (not exposure to change)
 exposures_abs = xr.open_dataset(
-    results_folder
+    dir_results_pop_exposure
     / f"heatwave_exposure_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 population_df = (
@@ -146,7 +116,7 @@ print(exposures_abs_df)
 exposures_abs_df = exposures_abs_df.rename({"heatwaves_days": "total heatwave days"})
 
 with pd.ExcelWriter(
-    results_folder / "indicator_1_1_2_heatwaves_summary.xlsx"
+    dir_results_pop_exposure / "indicator_1_1_2_heatwaves_summary.xlsx"
 ) as writer:
     pd.merge(population_df, exposures_abs_df).to_excel(
         writer, sheet_name="Global", index=False
@@ -154,57 +124,51 @@ with pd.ExcelWriter(
 
 # Load the country exposure results
 country_weighted = xr.open_dataset(
-    results_folder
-    / f"exposure_by_region_or_grouping/countries_heatwaves_exposure_weighted_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+    dir_worldpop_exposure_by_region
+    / f"countries_heatwaves_exposure_weighted_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 country_exposure_change = xr.open_dataset(
-    results_folder
-    / f"exposure_by_region_or_grouping/countries_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+    dir_worldpop_exposure_by_region
+    / f"countries_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 country_exposure_abs = xr.open_dataset(
-    results_folder
-    / f"exposure_by_region_or_grouping/countries_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+    dir_worldpop_exposure_by_region
+    / f"countries_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 # Load aggregated by hdi and WHO region data
 hdi_exposure = xr.open_dataset(
-    results_folder
-    / f"exposure_by_region_or_grouping/hdi_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+    dir_worldpop_exposure_by_region
+    / f"hdi_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 who_exposure = xr.open_dataset(
-    results_folder
-    / f"exposure_by_region_or_grouping/who_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+    dir_worldpop_exposure_by_region
+    / f"who_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 
 hdi_exposure_change = xr.open_dataset(
-    results_folder
-    / f"exposure_by_region_or_grouping/hdi_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+    dir_worldpop_exposure_by_region
+    / f"hdi_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 who_exposure_change = xr.open_dataset(
-    results_folder
-    / f"exposure_by_region_or_grouping/who_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+    dir_worldpop_exposure_by_region
+    / f"who_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 
-# Load results by LC grouping
-# exposures_change_lc_groups = xr.open_dataset(
-#     RESULTS_FOLDER
-#     / "exposure_by_region_or_grouping/exposures_change_by_lc_group_worldpop.nc"
-# )
 exposures_abs_lc_groups = xr.open_dataset(
-    results_folder
-    / "exposure_by_region_or_grouping/exposures_abs_by_lc_group_worldpop.nc"
+    dir_worldpop_exposure_by_region / "exposures_abs_by_lc_group_worldpop.nc"
 )
 
 # Re-export data tables as csv
 (
     country_weighted.heatwaves_days.to_dataframe().to_csv(
-        results_folder
-        / "exposure_by_region_or_grouping/heatwave_exposure_wieghted_change_days_by_country_w_hdi_worldpop.csv"
+        dir_worldpop_exposure_by_region
+        / "heatwave_exposure_wieghted_change_days_by_country_w_hdi_worldpop.csv"
     )
 )
 (
     country_exposure_change.heatwaves_days.to_dataframe().to_csv(
-        results_folder
-        / "exposure_by_region_or_grouping/heatwave_exposure_days_by_country_worldpop.csv"
+        dir_worldpop_exposure_by_region
+        / "heatwave_exposure_days_by_country_worldpop.csv"
     )
 )
 country_exposure_abs_df = (
@@ -215,7 +179,7 @@ country_exposure_abs_df = (
 )
 
 country_exposure_abs_df.merge(country_lc_grouping).dropna(axis="index").to_csv(
-    results_folder / "heatwave_exposure_abs_days_by_country.csv"
+    dir_results_pop_exposure / "heatwave_exposure_abs_days_by_country.csv"
 )
 
 country_exposure_abs_df = country_exposure_abs_df.drop(columns="exposures_weighted")
@@ -223,7 +187,7 @@ country_exposure_abs_df = country_exposure_abs_df.rename(
     columns={"exposures_total": "total heatwave days"}
 )
 with pd.ExcelWriter(
-    results_folder / "indicator_1_1_2_heatwaves_summary.xlsx",
+    dir_results_pop_exposure / "indicator_1_1_2_heatwaves_summary.xlsx",
     engine="openpyxl",
     mode="a",
 ) as writer:
@@ -234,15 +198,15 @@ with pd.ExcelWriter(
 
 (
     who_exposure.to_dataframe().to_csv(
-        results_folder
-        / "exposure_by_region_or_grouping/heatwave_exposure_days_by_who_region_worldpop.csv"
+        dir_worldpop_exposure_by_region
+        / "heatwave_exposure_days_by_who_region_worldpop.csv"
     )
 )
 
 (
     who_exposure_change.to_dataframe().to_csv(
-        results_folder
-        / "exposure_by_region_or_grouping/heatwave_exposure_days_change_by_who_region_worldpop.csv"
+        dir_worldpop_exposure_by_region
+        / "heatwave_exposure_days_change_by_who_region_worldpop.csv"
     )
 )
 who_exposure_df = who_exposure.to_dataframe().reset_index()
@@ -254,7 +218,7 @@ who_exposure_df = who_exposure_df.rename(
 who_exposure_df = who_exposure_df.drop(columns="exposures_weighted")
 
 with pd.ExcelWriter(
-    results_folder / "indicator_1_1_2_heatwaves_summary.xlsx",
+    dir_results_pop_exposure / "indicator_1_1_2_heatwaves_summary.xlsx",
     engine="openpyxl",
     mode="a",
 ) as writer:
@@ -269,22 +233,21 @@ hdi_exposure_df = hdi_exposure_df.rename(
     columns={"level_of_human_development": "HDI Group"}
 )
 with pd.ExcelWriter(
-    results_folder / "indicator_1_1_2_heatwaves_summary.xlsx",
+    dir_results_pop_exposure / "indicator_1_1_2_heatwaves_summary.xlsx",
     engine="openpyxl",
     mode="a",
 ) as writer:
     hdi_exposure_df.to_excel(writer, sheet_name="HDI Group", index=False)
 (
     hdi_exposure.to_dataframe().to_csv(
-        results_folder
-        / "exposure_by_region_or_grouping/heatwave_exposure_days_by_hdi_worldpop.csv"
+        dir_worldpop_exposure_by_region / "heatwave_exposure_days_by_hdi_worldpop.csv"
     )
 )
 
 (
     hdi_exposure_change.to_dataframe().to_csv(
-        results_folder
-        / "exposure_by_region_or_grouping/heatwave_exposure_days_change_by_hdi_worldpop.csv"
+        dir_worldpop_exposure_by_region
+        / "heatwave_exposure_days_change_by_hdi_worldpop.csv"
     )
 )
 LC_exposures_abs_lc_groups_df = (
@@ -302,15 +265,15 @@ LC_exposures_abs_lc_groups_df = LC_exposures_abs_lc_groups_df.rename(
 # )
 
 with pd.ExcelWriter(
-    results_folder / "indicator_1_1_2_heatwaves_summary.xlsx",
+    dir_results_pop_exposure / "indicator_1_1_2_heatwaves_summary.xlsx",
     engine="openpyxl",
     mode="a",
 ) as writer:
     LC_exposures_abs_lc_groups_df.to_excel(writer, sheet_name="LC Region", index=False)
 (
     exposures_abs_lc_groups.to_dataframe().to_csv(
-        results_folder
-        / "exposure_by_region_or_grouping/heatwave_exposure_days_by_lc_group_worldpop.csv"
+        dir_worldpop_exposure_by_region
+        / "heatwave_exposure_days_by_lc_group_worldpop.csv"
     )
 )
 # (
@@ -441,7 +404,9 @@ def plot_average_number_heatwaves_experienced():
     ).sum(["latitude", "longitude"])
     exposures_abs_ts_df = exposures_abs_ts.to_dataframe().unstack(1)
     # exposures_abs_ts_df = exposures_abs_ts_df.transpose()
-    exposures_abs_ts_df.to_csv(results_folder / "heatwave_days_experienced.csv")
+    exposures_abs_ts_df.to_csv(
+        dir_results_pop_exposure / "heatwave_days_experienced.csv"
+    )
     exposures_abs_ts_df = exposures_abs_ts_df.reset_index()
     exposures_abs_ts_df = exposures_abs_ts_df.set_index("year")
     exposures_abs_ts_df.columns = exposures_abs_ts_df.columns.droplevel(0)
@@ -469,7 +434,7 @@ def plot_average_number_heatwaves_experienced():
     # 2013-2022, bit random. Otherwise 2010-2020
     exposures_abs_rolling = exposures_abs_ts_df.rolling(10).mean().dropna()
     exposures_abs_rolling.unstack().to_csv(
-        results_folder / "heatwave_days_experienced_10_year_rolling_mean.csv"
+        dir_results_pop_exposure / "heatwave_days_experienced_10_year_rolling_mean.csv"
     )
 
 
@@ -1058,6 +1023,6 @@ if __name__ == "__plot__":
     plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=0)
     plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=65, max_year=2024)
     plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2024)
-    plot_exposure_by_hdi(ylim=(0, 25))
+    plot_exposure_by_hdi()
     plot_exposure_by_hdi(rolling=2)
     plot_exposure_by_who()

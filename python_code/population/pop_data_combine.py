@@ -122,9 +122,7 @@ def load_and_combine_population_data(age_group, years_range):
 
 def main(plot=True):
     # Load and combine infant and elderly population data for 2000-2020
-    # todo I am not using the data from 2020
-    # years_range = np.arange(year_worldpop_start, year_worldpop_end + 1)
-    years_range = np.arange(year_worldpop_start, year_worldpop_end)
+    years_range = np.arange(year_worldpop_start, year_worldpop_end + 1)
     infants_worldpop = load_and_combine_population_data(
         age_group="0", years_range=years_range
     )
@@ -206,5 +204,5 @@ def main(plot=True):
 
 
 if __name__ == "__main__":
-    main(plot=False)
+    main(plot=True)
     pass
