@@ -12,10 +12,9 @@ from my_config import (
     year_worldpop_start,
     dir_file_population_before_2000,
     dir_figures_interim,
-    year_report,
     dir_pop_infants_file,
     dir_pop_elderly_file,
-    dir_pop_above_75_file,
+    dir_pop_above_75_file, year_max_analysis,
 )
 
 
@@ -133,16 +132,16 @@ def main(plot=True):
     # Load and combine infant and elderly population data for 1950-1999
     demographics_totals = xr.open_dataarray(dir_file_population_before_2000)
     infants_lancet = demographics_totals.sel(age_band_lower_bound=0).sel(
-        year=slice(1950, 1999)
+        year=slice(1950, year_worldpop_start - 1)
     )
     infants_lancet /= 5  # Divide by 5 to get the number of infants
 
     elderly_lancet = demographics_totals.sel(age_band_lower_bound=65).sel(
-        year=slice(1950, 1999)
+        year=slice(1950, year_worldpop_start - 1)
     )
 
     # Combine data for all years (1950-2020) and extrapolate to 2023
-    extrapolated_years = np.arange(year_worldpop_end, year_report)
+    extrapolated_years = np.arange(year_worldpop_end + 1, year_max_analysis)
 
     infants_lancet = infants_lancet.to_dataset().rename({"demographic_totals": "pop"})
     infants_pop_analysis = concatenate_and_extrapolate(
@@ -204,5 +203,5 @@ def main(plot=True):
 
 
 if __name__ == "__main__":
-    main(plot=True)
+    main(plot=False)
     pass

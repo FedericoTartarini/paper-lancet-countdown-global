@@ -188,5 +188,5 @@ def main(year_map_comparison=2019):
 
 
 if __name__ == "__main__":
-    main(year_map_comparison=2019)
+    main(year_map_comparison=2020)
     pass

@@ -1,3 +1,5 @@
+import os
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import xarray as xr
@@ -73,6 +75,8 @@ def create_country_raster(country_polygons, era5_data):
     # Plot the rasterized data
     plot_world_map(chn_data)
 
+    if os.path.exists(dir_file_country_raster_report):
+        os.remove(dir_file_country_raster_report)
     rasterized_data.to_netcdf(dir_file_country_raster_report)
 
 
