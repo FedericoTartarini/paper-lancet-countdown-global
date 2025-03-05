@@ -23,51 +23,26 @@ import pandas as pd
 import xarray as xr
 
 from my_config import (
-    year_max_analysis,
     dir_results_pop_exposure,
-    year_min_analysis,
-    dir_pop_infants_file,
-    dir_pop_elderly_file,
     dir_results_heatwaves_days,
-    dir_file_elderly_exposure,
-    dir_file_infants_exposure,
-    dir_file_all_exposure,
+    dir_file_elderly_exposure_abs,
+    dir_file_infants_exposure_abs,
+    dir_file_all_exposure_abs,
 )
-
-
-def calculate_exposure_population(data, heatwave_metrics):
-    exposure = heatwave_metrics["heatwaves_days"].transpose(
-        "year", "latitude", "longitude"
-    ) * data.transpose("year", "latitude", "longitude")
-
-    exposure = exposure.to_array()
-    exposure = exposure.squeeze().drop_vars("variable")
-
-    exposure = exposure.rename("heatwaves_days")
-
-    return exposure
+from python_code.shared_functions import (
+    read_pop_data_processed,
+    calculate_exposure_population,
+)
 
 
 def main():
 
+    population_infants_worldpop, population_elderly_worldpop, _ = (
+        read_pop_data_processed()
+    )
+
     heatwave_metrics_files = sorted(dir_results_heatwaves_days.glob("*.nc"))
     heatwave_metrics = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
-
-    population_infants_worldpop = xr.open_dataset(dir_pop_infants_file).sel(
-        year=slice(year_min_analysis, year_max_analysis)
-    )
-    population_elderly_worldpop = xr.open_dataset(dir_pop_elderly_file).sel(
-        year=slice(year_min_analysis, year_max_analysis)
-    )
-
-    # I should save this file rather than two separate ones for infants and elderly
-    population_worldpop = xr.concat(
-        [
-            population_infants_worldpop.rename({"infants": "pop"}),
-            population_elderly_worldpop.rename({"elderly": "pop"}),
-        ],
-        dim=pd.Index([0, 65], name="age_band_lower_bound"),
-    )
 
     exposures_over65 = calculate_exposure_population(
         data=population_elderly_worldpop, heatwave_metrics=heatwave_metrics
@@ -81,11 +56,11 @@ def main():
         dim=pd.Index([0, 65], name="age_band_lower_bound"),
     )
 
-    exposures_over65.to_netcdf(dir_file_elderly_exposure)
+    exposures_over65.to_netcdf(dir_file_elderly_exposure_abs)
 
-    exposures_infants.to_netcdf(dir_file_infants_exposure)
+    exposures_infants.to_netcdf(dir_file_infants_exposure_abs)
 
-    exposures.to_netcdf(dir_file_all_exposure)
+    exposures.to_netcdf(dir_file_all_exposure_abs)
 
     total_exposures_over65 = exposures_over65.sum(
         dim=["latitude", "longitude"]

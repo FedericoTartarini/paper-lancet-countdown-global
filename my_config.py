@@ -102,15 +102,23 @@ dir_pop_above_75_file = (
     dir_population_hybrid
     / f"worldpop_75_80_1950_{year_max_analysis}_era5_compatible.nc"
 )
-dir_file_elderly_exposure = (
+dir_file_elderly_exposure_abs = (
     dir_results_pop_exposure
     / f"heatwave_exposure_over65_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
-dir_file_infants_exposure = (
+dir_file_elderly_exposure_change = (
+    dir_results_pop_exposure
+    / f"heatwave_exposure_change_over65_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+)
+dir_file_infants_exposure_abs = (
     dir_results_pop_exposure
     / f"heatwave_exposure_infants_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
-dir_file_all_exposure = (
+dir_file_infants_exposure_change = (
+    dir_results_pop_exposure
+    / f"heatwave_exposure_change_infants_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+)
+dir_file_all_exposure_abs = (
     dir_results_pop_exposure
     / f"heatwave_exposure_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
