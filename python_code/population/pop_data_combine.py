@@ -14,7 +14,8 @@ from my_config import (
     dir_figures_interim,
     dir_pop_infants_file,
     dir_pop_elderly_file,
-    dir_pop_above_75_file, year_max_analysis,
+    dir_pop_above_75_file,
+    year_max_analysis,
 )
 
 
