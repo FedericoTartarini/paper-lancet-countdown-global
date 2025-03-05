@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 from pathlib import Path
+from cartopy import crs as ccrs
 
 year_report: int = datetime.now().year
 year_max_analysis: int = year_report - 1
@@ -14,6 +15,8 @@ worldpop_sex = ["f", "m"]
 worldpop_ages = [0, 65, 70, 75, 80]
 
 quantiles = [0.95]
+
+map_projection = ccrs.EckertIII()
 
 weather_data: str = "era5"
 weather_resolution: str = "0.25deg"
@@ -99,6 +102,20 @@ dir_pop_above_75_file = (
     dir_population_hybrid
     / f"worldpop_75_80_1950_{year_max_analysis}_era5_compatible.nc"
 )
+dir_file_elderly_exposure = (
+    dir_results_pop_exposure
+    / f"heatwave_exposure_over65_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+)
+dir_file_infants_exposure = (
+    dir_results_pop_exposure
+    / f"heatwave_exposure_infants_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+)
+dir_file_all_exposure = (
+    dir_results_pop_exposure
+    / f"heatwave_exposure_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+)
+
+# boundaries and rasters
 dir_admin_boundaries = dir_local / "admin_boundaries"
 dir_file_detailed_boundaries = dir_admin_boundaries / "Detailed_Boundary_ADM0"
 dir_file_country_polygons = dir_file_detailed_boundaries / "GLOBAL_ADM0.shp"

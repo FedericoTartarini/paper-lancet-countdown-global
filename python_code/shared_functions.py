@@ -1,6 +1,6 @@
+import geopandas as gpd
 import numpy as np
 import pandas as pd
-import geopandas as gpd
 
 from my_config import dir_file_lancet_country_info, dir_file_country_polygons
 
