@@ -73,6 +73,10 @@ dir_results_heatwaves_days = dir_results_heatwaves_tmp / "heatwaves_days_era5"
 dir_results_heatwaves_days.mkdir(exist_ok=True)
 dir_results_heatwaves_count = dir_results_heatwaves_tmp / "heatwaves_count_era5"
 dir_results_heatwaves_count.mkdir(exist_ok=True)
+dir_worldpop_exposure_by_region = (
+    dir_results_pop_exposure / "exposure_by_region_or_grouping"
+)
+dir_worldpop_exposure_by_region.mkdir(parents=True, exist_ok=True)
 
 # Paths to SSD data folders
 dir_era_daily = dir_ssd / "daily_temperature_summary"

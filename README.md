@@ -38,9 +38,12 @@ To download the data you need to:
 
 ## Heatwaves exposure
 
-1. Calculate the absolute exposure to heatwaves using the code in `population/heatwave_exposure_pop_abs.py`
-2. Calculate the change in exposure to heatwaves using the code in `population/heatwave_exposure_pop_change.py`. These data are not used in the report.
-3. 
+1. Calculate the absolute exposure to heatwaves using [heatwave_exposure_pop_abs.py](python_code/calculations/heatwave_exposure_pop_abs.py)
+2. Run the file [heatwaves_aggregates_worldpop.py](python_code/calculations/heatwaves_aggregates_worldpop.py)
+
+## Other calculations
+1. Calculate the change in exposure to heatwaves using the code in `population/heatwave_exposure_pop_change.py`. These data are not used in the report.
+2. Calculate the worldpop exposure to heatwaves using the code in `population/heatwave_exposure_worldpop_change.py`. These data are not used in the report.
 
 
 # TODO

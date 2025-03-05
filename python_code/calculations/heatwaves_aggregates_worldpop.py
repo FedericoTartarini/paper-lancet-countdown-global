@@ -1,62 +1,43 @@
-from pathlib import Path
-import numpy as np
-import pandas as pd
-import geopandas as gpd
-import xarray as xr
-import matplotlib.pyplot as plt
-
-from cartopy import crs as ccrs
-from scipy import stats
-from tqdm.notebook import tqdm
-import os
-import sys
-
-from tqdm import tqdm
 import dask
+import geopandas as gpd
+import pandas as pd
+import xarray as xr
+from tqdm import tqdm
 
 from my_config import (
-    dir_pop_hybrid,
     year_max_analysis,
     dir_results_pop_exposure,
     year_min_analysis,
-    dir_local,
+    dir_pop_infants_file,
+    dir_pop_elderly_file,
+    dir_file_elderly_exposure_change,
+    dir_file_infants_exposure_change,
+    dir_file_lancet_country_info,
+    dir_file_country_polygons,
+    dir_file_country_raster_report,
+    dir_worldpop_exposure_by_region,
+    dir_file_who_raster_report,
+    dir_file_hdi_raster_report,
+    dir_file_lancet_raster_report,
 )
 
-infants_totals_file = (
-    dir_pop_hybrid / f"worldpop_infants_1950_{year_max_analysis}_era5_compatible.nc"
-)
-elderly_totals_file = (
-    dir_pop_hybrid / f"worldpop_elderly_1950_{year_max_analysis}_era5_compatible.nc"
-)
-population_over_65 = xr.open_dataarray(elderly_totals_file)
-population_infants = xr.open_dataarray(infants_totals_file)
+population_over_65 = xr.open_dataarray(dir_pop_elderly_file)
+population_infants = xr.open_dataarray(dir_pop_infants_file)
 
 population_over_65["age_band_lower_bound"] = 65
 population = xr.concat(
     [population_infants, population_over_65], dim="age_band_lower_bound"
 )
 population.name = "population"
+
 # chunk for parallel
 population = population.chunk(dict(age_band_lower_bound=1, year=20))
 population = population.assign_coords(
     longitude=(((population.longitude + 180) % 360) - 180)
 ).sortby("longitude", ascending=False)
 
-exposures_over65 = xr.open_dataset(
-    dir_results_pop_exposure
-    / f"heatwave_exposure_change_over65_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-)
-exposures_over65 = exposures_over65.assign_coords(
-    longitude=(((exposures_over65.longitude + 180) % 360) - 180)
-).sortby("longitude", ascending=False)
-
-exposures_infants = xr.open_dataset(
-    dir_results_pop_exposure
-    / f"heatwave_exposure_change_infants_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-)
-exposures_infants = exposures_infants.assign_coords(
-    longitude=(((exposures_infants.longitude + 180) % 360) - 180)
-).sortby("longitude", ascending=False)
+exposures_over65 = xr.open_dataset(dir_file_elderly_exposure_change)
+exposures_infants = xr.open_dataset(dir_file_infants_exposure_change)
 
 exposures_change = xr.concat(
     [exposures_infants, exposures_over65],
@@ -77,27 +58,16 @@ exposures_abs = exposures_abs.assign_coords(
 ).sortby("longitude", ascending=False)
 
 country_lc_grouping = pd.read_excel(
-    dir_local
-    / "admin_boundaries"
-    / "2025 Global Report Country Names and Groupings.xlsx",
+    dir_file_lancet_country_info,
     header=1,
 )
 
-country_polygons = gpd.read_file(
-    dir_local / "admin_boundaries" / "Detailed_Boundary_ADM0" / "GLOBAL_ADM0.shp"
-)
-
-countries_raster = xr.open_dataset(
-    dir_local / "admin_boundaries" / "admin0_raster_report_2024.nc"
-)
-
-dir_worldpop_exposure_by_region = (
-    dir_results_pop_exposure / "exposure_by_region_or_grouping"
-)
-dir_worldpop_exposure_by_region.mkdir(parents=True, exist_ok=True)
+countries_raster = xr.open_dataset(dir_file_country_raster_report)
 
 
 def exposure_weighted_change_by_country():
+
+    country_polygons = gpd.read_file(dir_file_country_polygons)
     # Calculate Exposure weighted change by country (population normalised)
     with dask.config.set(**{"array.slicing.split_large_chunks": False}):
         weighted_results = []
@@ -124,6 +94,7 @@ def exposure_weighted_change_by_country():
 
 
 def exposure_total_change_by_country():
+    country_polygons = gpd.read_file(dir_file_country_polygons)
     # Exposure to change by country, total
     with dask.config.set(**{"array.slicing.split_large_chunks": False}):
         results_tot = []
@@ -150,6 +121,7 @@ def exposure_total_change_by_country():
 
 
 def exposure_absolute_by_country():
+    country_polygons = gpd.read_file(dir_file_country_polygons)
     # Exposures absolute by country
     pop = []
     results = []
@@ -198,6 +170,7 @@ def exposure_absolute_by_country():
 
 
 def exposure_absolute_by_who_region():
+    country_polygons = gpd.read_file(dir_file_country_polygons)
     # Exposures absolute by WHO region
     region_to_id = {
         region: i
@@ -207,9 +180,7 @@ def exposure_absolute_by_who_region():
     country_polygons["WHO_REGION_ID"] = country_polygons["WHO_REGION"].map(region_to_id)
 
     # Rasterize the WHO regions
-    who_region_raster = xr.open_dataset(
-        dir_local / "admin_boundaries" / "WHO_regions_raster_report_2024.nc"
-    ).rename({"y": "latitude", "x": "longitude"})
+    who_region_raster = xr.open_dataset(dir_file_who_raster_report)
 
     who_regions = country_polygons[["WHO_REGION", "WHO_REGION_ID"]]
     who_regions = who_regions.drop_duplicates()
@@ -283,9 +254,7 @@ def exposure_absolute_by_who_region():
 
 
 def exposure_absolute_by_hdi():
-    country_polygons = gpd.read_file(
-        dir_local / "admin_boundaries" / "Detailed_Boundary_ADM0" / "GLOBAL_ADM0.shp"
-    )
+    country_polygons = gpd.read_file(dir_file_country_polygons)
     country_polygons = country_polygons.merge(
         country_lc_grouping.rename(columns={"ISO3": "ISO_3_CODE"})
     )
@@ -300,9 +269,7 @@ def exposure_absolute_by_hdi():
     # Apply the mapping to create a new column with numerical identifiers
     country_polygons["HDI_ID"] = country_polygons[hdi_col_name].map(region_to_id)
 
-    hdi_raster = xr.open_dataset(
-        dir_local / "admin_boundaries" / "HDI_group_raster_report_2024.nc"
-    )
+    hdi_raster = xr.open_dataset(dir_file_hdi_raster_report)
 
     hdi = country_polygons[["HDI_ID", hdi_col_name]].drop_duplicates()
 
@@ -388,9 +355,7 @@ def exposure_absolute_by_hdi():
 
 
 def exposure_absolute_by_lc_grouping():
-    country_polygons = gpd.read_file(
-        dir_local / "admin_boundaries" / "Detailed_Boundary_ADM0" / "GLOBAL_ADM0.shp"
-    )
+    country_polygons = gpd.read_file(dir_file_country_polygons)
     country_polygons = country_polygons.merge(
         country_lc_grouping.rename(columns={"ISO3": "ISO_3_CODE"})
     )
@@ -405,9 +370,7 @@ def exposure_absolute_by_lc_grouping():
         region_to_id
     )
 
-    lc_grouping_raster = xr.open_dataset(
-        dir_local / "admin_boundaries" / "LC_group_raster_report_2024.nc"
-    )
+    lc_grouping_raster = xr.open_dataset(dir_file_lancet_raster_report)
 
     lc_grouping = country_polygons[["LC_GROUPING_ID", "LC Grouping"]].drop_duplicates()
 
@@ -461,7 +424,7 @@ def exposure_absolute_by_lc_grouping():
     )
 
 
-if __name__ == "__main___":
+if __name__ == "__main__":
     exposure_weighted_change_by_country()  # 3-sec
     exposure_total_change_by_country()  # 2-sec
     exposure_absolute_by_country()  # 2-min
