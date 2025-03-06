@@ -32,7 +32,9 @@ warnings.filterwarnings(
 )
 
 
-def main(year_max: int = year_max_analysis):
+def calculate_effect_climate_change_compared_to_pop_change(
+    year_max: int = year_max_analysis,
+):
     heatwave_metrics_files = sorted(dir_results_heatwaves_days.glob("*.nc"))
     hw = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
     elderly = xr.open_dataset(dir_pop_elderly_file)
@@ -234,43 +236,6 @@ def main(year_max: int = year_max_analysis):
     ).sum() / merged_gdf["Over 65 mean recent"].sum()
     print(f"over65_hw_no_cc_recent={over65_hw_no_cc_recent:.1f}")
 
-    plot_world_map(increase_infants_population["infants"], v_min_max=[-1000, 1000])
-    plot_world_map(increase_elderly_population["elderly"], v_min_max=[-1000, 1000])
-
-    countries_raster = xr.open_dataset(dir_file_country_raster_report)
-
-    diff = climate_recent - climate_past
-    land_mask = countries_raster["OBJECTID"] < 2000
-    diff = diff.assign_coords(longitude=(((diff.longitude + 180) % 360) - 180)).sortby(
-        "longitude"
-    )
-
-    diff = diff * land_mask
-
-    plot_world_map(diff, v_min_max=[-5, 5])
-
-    fig, ax = plt.subplots(constrained_layout=True)
-    ax.plot(infants.year, infants.sum(dim=("latitude", "longitude"))["infants"])
-    ax.set(xlabel="Year", ylabel="Infants population")
-    plt.show()
-
-    increase_elderly_population_gdf = (
-        increase_elderly_population.to_dataframe().reset_index()
-    )
-    increase_infants_population_gdf = (
-        increase_infants_population.to_dataframe().reset_index()
-    )
-
-    increase_elderly_climate_gdf = increase_elderly_climate.to_dataframe().reset_index()
-    increase_infants_climate_gdf = increase_infants_climate.to_dataframe().reset_index()
-
-    combined_increase_elderly_gdf = (
-        combined_increase_elderly.to_dataframe().reset_index()
-    )
-    combined_increase_infants_gdf = (
-        combined_increase_infants.to_dataframe().reset_index()
-    )
-
     # Data for plotting
     impact_factors = ["Only Climate Change", "Combined"]
     elderly_values = [
@@ -307,6 +272,63 @@ def main(year_max: int = year_max_analysis):
 
     plt.savefig(dir_figures / "barplots_dominant_effect_change.pdf")
     plt.show()
+
+    return (
+        climate_recent,
+        climate_past,
+        increase_infants_population,
+        increase_elderly_population,
+        increase_elderly_climate,
+        increase_infants_climate,
+        combined_increase_elderly,
+        combined_increase_infants,
+    )
+
+
+def plots(year_max: int = year_max_analysis):
+
+    (
+        climate_recent,
+        climate_past,
+        increase_infants_population,
+        increase_elderly_population,
+        increase_elderly_climate,
+        increase_infants_climate,
+        combined_increase_elderly,
+        combined_increase_infants,
+    ) = calculate_effect_climate_change_compared_to_pop_change(year_max=year_max)
+
+    countries_raster = xr.open_dataset(dir_file_country_raster_report)
+    land_mask = countries_raster["OBJECTID"] < 2000
+
+    diff = climate_recent - climate_past
+    diff = diff.assign_coords(longitude=(((diff.longitude + 180) % 360) - 180)).sortby(
+        "longitude"
+    )
+
+    diff = diff * land_mask
+
+    plot_world_map(diff, v_min_max=[-5, 5])
+
+    plot_world_map(increase_infants_population["infants"], v_min_max=[-1000, 1000])
+    plot_world_map(increase_elderly_population["elderly"], v_min_max=[-1000, 1000])
+
+    increase_elderly_population_gdf = (
+        increase_elderly_population.to_dataframe().reset_index()
+    )
+    increase_infants_population_gdf = (
+        increase_infants_population.to_dataframe().reset_index()
+    )
+
+    increase_elderly_climate_gdf = increase_elderly_climate.to_dataframe().reset_index()
+    increase_infants_climate_gdf = increase_infants_climate.to_dataframe().reset_index()
+
+    combined_increase_elderly_gdf = (
+        combined_increase_elderly.to_dataframe().reset_index()
+    )
+    combined_increase_infants_gdf = (
+        combined_increase_infants.to_dataframe().reset_index()
+    )
 
     # dominant effect: check per grid point what is the dominant effect based on the average of this period
     geometry = [
@@ -401,7 +423,12 @@ def main(year_max: int = year_max_analysis):
     for effect, color in color_map.items():
         dominant_effect_elderly[
             dominant_effect_elderly["dominant_effect"] == effect
-        ].plot(ax=ax, color=color, transform=ccrs.PlateCarree())
+        ].plot(
+            ax=ax,
+            color=color,
+            transform=ccrs.PlateCarree(),
+            markersize=0.01,
+        )
         patches.append(mpatches.Patch(color=color, label=effect))
 
     # Add the legend with the custom patches
@@ -505,25 +532,25 @@ def main(year_max: int = year_max_analysis):
     color_map = {"Climate Change": "coral", "Population Change": "steelblue"}
     # Plot the map
 
-    fig, ax = plt.subplots(
-        1, 1, figsize=(8, 6), subplot_kw=dict(projection=map_projection)
-    )
-    # merged_gdf.plot(column='dominant_effect', ax=ax, legend=True)
-    patches = []
-    for effect, color in color_map.items():
-        dominant_effect_infants[
-            dominant_effect_infants["dominant_effect"] == effect
-        ].plot(ax=ax, color=color, transform=ccrs.PlateCarree())
-        patches.append(mpatches.Patch(color=color, label=effect))
-
-    # Add the legend with the custom patches
-    ax.legend(handles=patches, loc="lower left")
-
-    # Optional: Set additional options for the plot
-    ax.set_title("Infants")
-    # ax.set_axis_off()
-
-    plt.savefig(dir_figures / "dominant_effect_change_countries_infants.pdf")
+    # fig, ax = plt.subplots(
+    #     1, 1, figsize=(8, 6), subplot_kw=dict(projection=map_projection)
+    # )
+    # # merged_gdf.plot(column='dominant_effect', ax=ax, legend=True)
+    # patches = []
+    # for effect, color in color_map.items():
+    #     dominant_effect_infants[
+    #         dominant_effect_infants["dominant_effect"] == effect
+    #     ].plot(ax=ax, color=color, transform=ccrs.PlateCarree())
+    #     patches.append(mpatches.Patch(color=color, label=effect))
+    #
+    # # Add the legend with the custom patches
+    # ax.legend(handles=patches, loc="lower left")
+    #
+    # # Optional: Set additional options for the plot
+    # ax.set_title("Infants")
+    # # ax.set_axis_off()
+    #
+    # plt.savefig(dir_figures / "dominant_effect_change_countries_infants.pdf")
 
     # Step 1: Rename columns for clarity
     increase_infants_population_gdf.rename(
@@ -581,7 +608,11 @@ def main(year_max: int = year_max_analysis):
     ]
 
     # Create the plot with Cartopy
-    fig, ax = plt.subplots(figsize=(8, 6), subplot_kw={"projection": map_projection})
+    fig, ax = plt.subplots(
+        figsize=(8, 6),
+        subplot_kw={"projection": map_projection},
+        constrained_layout=True,
+    )
     ax.coastlines()  # Add coastlines
 
     # Transform the geometries to the correct projection with `.to_crs()`
@@ -618,7 +649,7 @@ def main(year_max: int = year_max_analysis):
 
     # Step 1: Rename columns for clarity
     increase_elderly_population_gdf.rename(
-        columns={"elderly": "eldery_population_growth"}, inplace=True
+        columns={"elderly": "elderly_population_growth"}, inplace=True
     )
     increase_elderly_climate_gdf.rename(
         columns={"elderly": "elderly_climate_effect"}, inplace=True
@@ -629,7 +660,7 @@ def main(year_max: int = year_max_analysis):
 
     # Step 2: Combine data into a new DataFrame
     combined_df = increase_elderly_population_gdf[
-        ["geometry", "eldery_population_growth"]
+        ["geometry", "elderly_population_growth"]
     ].copy()
     combined_df["elderly_climate_effect"] = increase_elderly_climate_gdf[
         "elderly_climate_effect"
@@ -637,14 +668,14 @@ def main(year_max: int = year_max_analysis):
 
     # Drop rows where either effect is NaN to ensure we only compare complete data
     combined_df.dropna(
-        subset=["eldery_population_growth", "elderly_climate_effect"], inplace=True
+        subset=["elderly_population_growth", "elderly_climate_effect"], inplace=True
     )
 
     # Step 3: Determine the dominant effect
     combined_df["dominant_effect"] = combined_df.apply(
         lambda row: (
             "Population Change"
-            if row["eldery_population_growth"] > row["elderly_climate_effect"]
+            if row["elderly_population_growth"] > row["elderly_climate_effect"]
             else "Climate Change"
         ),
         axis=1,
@@ -672,7 +703,11 @@ def main(year_max: int = year_max_analysis):
     ]
 
     # Create the plot with Cartopy
-    fig, ax = plt.subplots(figsize=(8, 6), subplot_kw={"projection": map_projection})
+    fig, ax = plt.subplots(
+        figsize=(8, 6),
+        subplot_kw={"projection": map_projection},
+        constrained_layout=True,
+    )
     ax.coastlines()  # Add coastlines
 
     # Transform the geometries to the correct projection with `.to_crs()`
@@ -729,7 +764,11 @@ def main(year_max: int = year_max_analysis):
 
     # Create the plot with Cartopy for both age groups side by side
     fig, axs = plt.subplots(
-        nrows=1, ncols=2, figsize=(16, 6), subplot_kw={"projection": map_projection}
+        nrows=1,
+        ncols=2,
+        figsize=(16, 6),
+        subplot_kw={"projection": map_projection},
+        constrained_layout=True,
     )
 
     # Plot for infants
@@ -793,7 +832,11 @@ def main(year_max: int = year_max_analysis):
     plt.show()
 
     fig, axs = plt.subplots(
-        nrows=1, ncols=2, figsize=(16, 6), subplot_kw={"projection": map_projection}
+        nrows=1,
+        ncols=2,
+        figsize=(16, 6),
+        subplot_kw={"projection": map_projection},
+        constrained_layout=True,
     )
     increase_infants_climate_gdf.dropna().plot(
         "infants",
@@ -877,7 +920,6 @@ def main(year_max: int = year_max_analysis):
 
 
 if __name__ == "__main__":
-    for year in range(2023, 2025):
-        ic(year)
-        main(year_max=year)
+    # _ = calculate_effect_climate_change_compared_to_pop_change(year_max=year_max_analysis)
+    plots(year_max=year_max_analysis)
     pass
