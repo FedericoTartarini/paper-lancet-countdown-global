@@ -462,12 +462,12 @@ def plot_average_number_heatwaves_experienced():
 def plot_total_number_heatwaves_experienced():
     plot_data = exposures_abs.sum(["latitude", "longitude"])
     plot_data = plot_data.to_dataframe().unstack(1)
-    print("Total exposure billions", round(plot_data / 1e9, 1))
+    print("Total exposure billions", round(plot_data.iloc[-1] / 1e9, 1))
 
     # Calculate the percentage increment
     percentage_increment = plot_data.pct_change() * 100
     # Display the result
-    print("Percentage increment", round(percentage_increment))
+    print("Percentage increment", round(percentage_increment.iloc[-1]))
 
     plot_data = plot_data.reset_index()
     plot_data = plot_data.set_index("year")
