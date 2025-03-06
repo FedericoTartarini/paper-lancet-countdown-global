@@ -25,6 +25,8 @@ from my_config import (
     dir_results_pop_exposure,
     dir_worldpop_exposure_by_region,
     map_projection,
+    dir_file_exposures_abs_by_lc_group_worldpop,
+    dir_file_all_exposure_abs,
 )
 
 countries_raster = xr.open_dataset(dir_file_country_raster_report)
@@ -32,8 +34,8 @@ countries_raster = xr.open_dataset(dir_file_country_raster_report)
 c = sns.color_palette("tab10")
 consistent_colors = dict(
     zip(
-        ["USA", "IDN", "ITA", "CHN", "IND", "JPN", "NGA", "COD", "Other"],
-        [c[0], c[1], c[2], c[3], c[5], c[6], c[7], c[8], c[9]],
+        ["USA", "IDN", "ITA", "CHN", "IND", "JPN", "NGA", "COD", "Other", "EGY"],
+        [c[0], c[1], c[2], c[3], c[5], c[6], c[7], c[8], c[9], c[4]],
     )
 )
 
@@ -102,10 +104,7 @@ total_exposures_change_infants = total_exposures.sel(
 ).to_dataframe("infants")
 
 # Load exposure absolute values (not exposure to change)
-exposures_abs = xr.open_dataset(
-    dir_results_pop_exposure
-    / f"heatwave_exposure_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-)
+exposures_abs = xr.open_dataset(dir_file_all_exposure_abs)
 population_df = (
     population.sum(dim=["latitude", "longitude"]).to_dataframe().reset_index()
 )
@@ -154,9 +153,8 @@ who_exposure_change = xr.open_dataset(
     / f"who_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
 
-exposures_abs_lc_groups = xr.open_dataset(
-    dir_worldpop_exposure_by_region / "exposures_abs_by_lc_group_worldpop.nc"
-)
+# fixme this file has repeated values for the same year
+exposures_abs_lc_groups = xr.open_dataset(dir_file_exposures_abs_by_lc_group_worldpop)
 
 # Re-export data tables as csv
 (
@@ -503,16 +501,18 @@ def plot_country_change():
     plt.show()
 
 
-def plot_absolute_exposure_lc_group():
+def plot_absolute_exposure_lc_group(year=year_max_analysis):
+
+    data_year_max = exposures_abs_lc_groups.exposures_weighted.sel(year=year)
+    df_data_year_max = data_year_max.to_dataframe()
+
     ax = (
-        exposures_abs_lc_groups.exposures_weighted.sel(year=year_max_analysis)
-        .to_dataframe()
-        .exposures_weighted.unstack(1)
+        df_data_year_max.exposures_weighted.unstack(1)
         .rename_axis(index="", columns="Heatwave days")
         .rename(index={"South and Central America": "South and \nCentral America"})
         .plot.bar(
             ylabel="days/year",
-            title=f"Heatwave days per vulnerable person in {year_max_analysis}",
+            title=f"Heatwave days per vulnerable person in {year}",
         )
         .legend(
             bbox_to_anchor=(1.04, 0.5),
@@ -522,7 +522,7 @@ def plot_absolute_exposure_lc_group():
         )
     )
     plt.tight_layout()
-    ax.figure.savefig(dir_figures / f"heatwave_days_lc_group_{year_max_analysis}.pdf")
+    ax.figure.savefig(dir_figures / f"heatwave_days_lc_group_{year}.pdf")
     plt.show()
 
 
@@ -1006,17 +1006,25 @@ def plot_exposure_by_who():
 
 
 if __name__ == "__plot__":
-    # plot_heatwaves_days(plot_data=heatwave_metrics, slice_range=slice(1986, 2005))
-    # plot_heatwaves_days(plot_data=heatwave_metrics, slice_range=slice(2013, max_year))
-    # plot_change_in_heatwaves(year=2024)
+    # world plot, slow to generate
+    plot_heatwaves_days(plot_data=heatwave_metrics, slice_range=slice(1986, 2005))
+    plot_heatwaves_days(
+        plot_data=heatwave_metrics, slice_range=slice(2013, year_max_analysis)
+    )
+    plot_change_in_heatwaves(year=year_max_analysis)
+
+    # plot trends
     plot_average_number_heatwaves_experienced()
     plot_total_number_heatwaves_experienced()
+    plot_total_exposure()
     plot_country_exposure(slice_range=slice(1986, 2005))
     plot_country_exposure(slice_range=slice(2013, year_max_analysis))
     plot_country_change()
-    plot_absolute_exposure_lc_group()
+
+    plot_absolute_exposure_lc_group(year=year_max_analysis)
+    plot_absolute_exposure_lc_group(year=2023)
+
     plot_absolute_and_change_exposure_range_years_lc_group()
-    plot_total_exposure()
     plot_exposure_vulnerable_to_change_heatwave()
     plot_exposure_vulnerable_absolute_heatwave()
     plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=65)

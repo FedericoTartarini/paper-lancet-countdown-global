@@ -19,11 +19,11 @@ The weather data used in this analysis is the ERA5 reanalysis data from the Cope
 The data is available at https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form
 To download the data you need to:
 
-1. Register on their portal and save the Personal Access Token in `python_code.secrets.py`
-2. Download the data using the code in `weather/weather_data_download.py`
-3. Preprocess the data using the code in `weather/weather_data_process.py`
-4. Calculate the quantiles using the code in `weather/calculate_quantiles.py`
-5. Calculate the heatwaves occurrences using the code in `weather/calculate_heatwaves.py`
+1. Register on their portal and save the Personal Access Token in [secrets.py](python_code/secrets.py). Create the file if the file does not exist and save the token as `copernicus_api_key = "XX".
+2. Download the data using [weather_data_download.py](python_code/weather/weather_data_download.py)
+3. Preprocess the data using [weather_data_process.py](python_code/weather/weather_data_process.py)
+4. Calculate the quantiles using [calculate_quantiles.py](python_code/weather/calculate_quantiles.py)
+5. Calculate the heatwaves occurrences using [calculate_heatwaves.py](python_code/weather/calculate_heatwaves.py)
 
 ## Population data
 
@@ -43,8 +43,8 @@ To download the data you need to:
 3. Finally generate the results using [results_heatwaves_worldpop.py](python_code/calculations/results_heatwaves_worldpop.py)
 
 ## Other calculations
-1. Calculate the change in exposure to heatwaves using the code in `population/heatwave_exposure_pop_change.py`. These data are not used in the report.
-2. Calculate the worldpop exposure to heatwaves using the code in `population/heatwave_exposure_worldpop_change.py`. These data are not used in the report.
+1. Calculate the change in exposure to heatwaves using [heatwave_exposure_pop_change.py](python_code/calculations/heatwave_exposure_pop_change.py). These data are not used in the report.
+2. Calculate the worldpop exposure to heatwaves using [heatwave_exposure_worldpop_change.py](python_code/calculations/heatwave_exposure_worldpop_change.py). These data are not used in the report.
 
 
 # TODO

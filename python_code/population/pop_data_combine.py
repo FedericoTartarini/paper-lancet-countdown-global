@@ -1,3 +1,5 @@
+import os
+
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import geopandas as gpd
@@ -15,6 +17,7 @@ from my_config import (
     dir_pop_infants_file,
     dir_pop_elderly_file,
     dir_pop_above_75_file,
+    year_report,
     year_max_analysis,
 )
 
@@ -141,8 +144,8 @@ def main(plot=True):
         year=slice(1950, year_worldpop_start - 1)
     )
 
-    # Combine data for all years (1950-2020) and extrapolate to 2023
-    extrapolated_years = np.arange(year_worldpop_end + 1, year_max_analysis)
+    # Combine data for all years (1950-2020) and extrapolate
+    extrapolated_years = np.arange(year_worldpop_end + 1, year_report)
 
     infants_lancet = infants_lancet.to_dataset().rename({"demographic_totals": "pop"})
     infants_pop_analysis = concatenate_and_extrapolate(
@@ -165,21 +168,39 @@ def main(plot=True):
     infants_pop_analysis = infants_pop_analysis.rename({"pop": "infants"})
     elderly_pop_analysis = elderly_pop_analysis.rename({"pop": "elderly"})
 
+    if dir_pop_infants_file.exists():
+        os.remove(dir_pop_infants_file)
     infants_pop_analysis.to_netcdf(dir_pop_infants_file)
+
+    if dir_pop_elderly_file.exists():
+        os.remove(dir_pop_elderly_file)
     elderly_pop_analysis.to_netcdf(dir_pop_elderly_file)
 
     # elderly above 75
     elderly_worldpop_75 = load_and_combine_population_data(
         age_group="75_80", years_range=years_range
     )
+    elderly_worldpop_75 = xr.concat(
+        [
+            elderly_worldpop_75,
+            elderly_worldpop_75.interp(
+                year=extrapolated_years, kwargs={"fill_value": "extrapolate"}
+            ),
+        ],
+        "year",
+    ).load()
     elderly_worldpop_75.to_netcdf(dir_pop_above_75_file)
 
     if not plot:
         return
 
     plot_population_trends(
-        inf_worldpop=infants_worldpop,
-        eld_worldpop=elderly_worldpop,
+        inf_worldpop=infants_pop_analysis.sel(
+            year=slice(2000, year_max_analysis)
+        ).rename({"infants": "pop"}),
+        eld_worldpop=elderly_pop_analysis.sel(
+            year=slice(2000, year_max_analysis)
+        ).rename({"elderly": "pop"}),
         eld_75=elderly_worldpop_75,
         totals_lancet=demographics_totals,
     )

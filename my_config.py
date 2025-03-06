@@ -126,6 +126,37 @@ dir_file_all_exposure_abs = (
     dir_results_pop_exposure
     / f"heatwave_exposure_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
+dir_file_countries_heatwave_exposure = (
+    dir_worldpop_exposure_by_region
+    / f"countries_heatwaves_exposure_weighted_change_1980-{year_max_analysis}_worldpop.nc"
+)
+dir_file_exposures_abs_by_lc_group_worldpop = (
+    dir_worldpop_exposure_by_region / f"exposures_abs_by_lc_group_worldpop.nc"
+)
+dir_file_countries_heatwaves_exposure_change = (
+    dir_worldpop_exposure_by_region
+    / f"countries_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+)
+dir_file_countries_heatwaves_exposure = (
+    dir_worldpop_exposure_by_region
+    / f"countries_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+)
+dir_file_who_regions_heatwaves_exposure = (
+    dir_worldpop_exposure_by_region
+    / f"who_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+)
+dir_file_who_regions_heatwaves_exposure_change = (
+    dir_worldpop_exposure_by_region
+    / f"who_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+)
+dir_file_hdi_regions_heatwaves_exposure = (
+    dir_worldpop_exposure_by_region
+    / f"hdi_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+)
+dir_file_hdi_regions_heatwaves_exposure_change = (
+    dir_worldpop_exposure_by_region
+    / f"hdi_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+)
 
 # boundaries and rasters
 dir_admin_boundaries = dir_local / "admin_boundaries"

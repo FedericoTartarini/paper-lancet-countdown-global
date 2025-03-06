@@ -16,6 +16,7 @@ from my_config import (
     year_worldpop_end,
     worldpop_sex,
     dir_pop_raw,
+    dir_file_detailed_boundaries,
 )
 
 
@@ -118,9 +119,7 @@ def get_era5_grid(year=1980):
     era_grid.set_crs("EPSG:4326", inplace=True)
     era_grid = era_grid[["longitude", "latitude", "geometry"]]
 
-    gdf_countries = gpd.read_file(
-        dir_local / "admin_boundaries" / "Detailed_Boundary_ADM0"
-    )
+    gdf_countries = gpd.read_file(dir_file_detailed_boundaries)
     era_grid = gpd.sjoin(
         era_grid,
         gdf_countries[["ISO_3_CODE", "geometry"]],
@@ -195,5 +194,8 @@ def main():
 
 
 if __name__ == "__main__":
+    """
+    This file process the population data for the years 2000-2020 and saves it in a format compatible with the ERA5 grid
+    """
     main()
     # pass

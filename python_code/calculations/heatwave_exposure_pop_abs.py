@@ -60,6 +60,7 @@ def main():
 
     exposures_infants.to_netcdf(dir_file_infants_exposure_abs)
 
+    dir_file_all_exposure_abs.unlink(missing_ok=True)
     exposures.to_netcdf(dir_file_all_exposure_abs)
 
     total_exposures_over65 = exposures_over65.sum(

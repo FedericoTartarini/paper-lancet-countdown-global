@@ -15,10 +15,17 @@ from my_config import (
     dir_file_lancet_country_info,
     dir_file_country_polygons,
     dir_file_country_raster_report,
-    dir_worldpop_exposure_by_region,
     dir_file_who_raster_report,
     dir_file_hdi_raster_report,
     dir_file_lancet_raster_report,
+    dir_file_countries_heatwave_exposure,
+    dir_file_exposures_abs_by_lc_group_worldpop,
+    dir_file_countries_heatwaves_exposure_change,
+    dir_file_countries_heatwaves_exposure,
+    dir_file_who_regions_heatwaves_exposure,
+    dir_file_who_regions_heatwaves_exposure_change,
+    dir_file_hdi_regions_heatwaves_exposure,
+    dir_file_hdi_regions_heatwaves_exposure_change,
 )
 
 population_over_65 = xr.open_dataarray(dir_pop_elderly_file)
@@ -87,10 +94,9 @@ def exposure_weighted_change_by_country():
             weighted_results.append(country_exposures)
 
         weighted_results = xr.concat(weighted_results, dim="country")
-        weighted_results.to_netcdf(
-            dir_worldpop_exposure_by_region
-            / f"countries_heatwaves_exposure_weighted_change_1980-{year_max_analysis}_worldpop.nc"
-        )
+
+        dir_file_countries_heatwave_exposure.unlink(missing_ok=True)
+        weighted_results.to_netcdf(dir_file_countries_heatwave_exposure)
 
 
 def exposure_total_change_by_country():
@@ -114,10 +120,9 @@ def exposure_total_change_by_country():
             results_tot.append(country_exposures)
 
         results_tot = xr.concat(results_tot, dim="country")
-        results_tot.to_netcdf(
-            dir_worldpop_exposure_by_region
-            / f"countries_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-        )
+
+        dir_file_countries_heatwaves_exposure_change.unlink(missing_ok=True)
+        results_tot.to_netcdf(dir_file_countries_heatwaves_exposure_change)
 
 
 def exposure_absolute_by_country():
@@ -163,10 +168,8 @@ def exposure_absolute_by_country():
 
     exposures_countries = xr.merge([results_pop, results_abs, results_weight])
 
-    exposures_countries.to_netcdf(
-        dir_worldpop_exposure_by_region
-        / f"countries_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-    )
+    dir_file_countries_heatwaves_exposure.unlink(missing_ok=True)
+    exposures_countries.to_netcdf(dir_file_countries_heatwaves_exposure)
 
 
 def exposure_absolute_by_who_region():
@@ -227,10 +230,8 @@ def exposure_absolute_by_who_region():
 
         exposures_who = xr.merge([results_pop, results_abs, results_weight])
 
-    exposures_who.to_netcdf(
-        dir_worldpop_exposure_by_region
-        / f"who_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-    )
+    dir_file_who_regions_heatwaves_exposure.unlink(missing_ok=True)
+    exposures_who.to_netcdf(dir_file_who_regions_heatwaves_exposure)
     print(exposures_who.sel(year=2020).population.sum())
 
     results = []
@@ -247,10 +248,9 @@ def exposure_absolute_by_who_region():
             results.append(masked_exposures)
 
         results = xr.concat(results, dim="who_region")
-        results.to_netcdf(
-            dir_worldpop_exposure_by_region
-            / f"who_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-        )
+
+    dir_file_who_regions_heatwaves_exposure_change.unlink(missing_ok=True)
+    results.to_netcdf(dir_file_who_regions_heatwaves_exposure_change)
 
 
 def exposure_absolute_by_hdi():
@@ -315,12 +315,8 @@ def exposure_absolute_by_hdi():
 
         exposures_hdi = xr.merge([results_pop, results_abs, results_weight])
 
-    exposures_hdi.to_netcdf(
-        exposures_hdi.to_netcdf(
-            dir_worldpop_exposure_by_region
-            / f"hdi_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-        )
-    )
+    dir_file_hdi_regions_heatwaves_exposure.unlink(missing_ok=True)
+    exposures_hdi.to_netcdf(dir_file_hdi_regions_heatwaves_exposure)
 
     print(
         exposures_hdi.sel(
@@ -348,10 +344,9 @@ def exposure_absolute_by_hdi():
             results.append(masked_exposures)
 
         results = xr.concat(results, dim="level_of_human_development")
-        results.to_netcdf(
-            dir_worldpop_exposure_by_region
-            / f"hdi_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-        )
+
+    dir_file_hdi_regions_heatwaves_exposure_change.unlink(missing_ok=True)
+    results.to_netcdf(dir_file_hdi_regions_heatwaves_exposure_change)
 
 
 def exposure_absolute_by_lc_grouping():
@@ -419,12 +414,12 @@ def exposure_absolute_by_lc_grouping():
 
     exposures_lc_grouping = xr.merge([results_pop, results_abs, results_weight])
 
-    exposures_lc_grouping.to_netcdf(
-        dir_worldpop_exposure_by_region / f"exposures_abs_by_lc_group_worldpop.nc"
-    )
+    dir_file_exposures_abs_by_lc_group_worldpop.unlink(missing_ok=True)
+    exposures_lc_grouping.to_netcdf(dir_file_exposures_abs_by_lc_group_worldpop)
 
 
 if __name__ == "__main__":
+    # pass
     exposure_weighted_change_by_country()  # 3-sec
     exposure_total_change_by_country()  # 2-sec
     exposure_absolute_by_country()  # 2-min
