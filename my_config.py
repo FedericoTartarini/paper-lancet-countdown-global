@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from cartopy import crs as ccrs
+from matplotlib import pyplot as plt
 
 year_report: int = datetime.now().year
 year_max_analysis: int = year_report - 1
@@ -17,6 +18,8 @@ worldpop_ages = [0, 65, 70, 75, 80]
 quantiles = [0.95]
 
 map_projection = ccrs.EckertIII()
+plt.rcParams["figure.figsize"] = [7, 3]
+plt.rcParams["savefig.dpi"] = 300
 
 weather_data: str = "era5"
 weather_resolution: str = "0.25deg"

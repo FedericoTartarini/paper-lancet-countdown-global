@@ -7,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 import xarray as xr
 from cartopy import crs as ccrs
+import cartopy.feature as cfeature
 from matplotlib.ticker import MultipleLocator
 
 from my_config import (
@@ -27,6 +28,7 @@ from my_config import (
     map_projection,
     dir_file_exposures_abs_by_lc_group_worldpop,
     dir_file_all_exposure_abs,
+    dir_pop_above_75_file,
 )
 
 countries_raster = xr.open_dataset(dir_file_country_raster_report)
@@ -63,6 +65,7 @@ countries = countries.rename(columns={"ISO_3_CODE": "country"})
 
 population_over_65 = xr.open_dataarray(dir_pop_elderly_file)
 population_infants = xr.open_dataarray(dir_pop_infants_file)
+population_over_75 = xr.open_dataarray(dir_pop_above_75_file)
 
 population_over_65["age_band_lower_bound"] = 65
 population = xr.concat(
@@ -365,39 +368,55 @@ def plot_change_in_heatwaves(year=year_max_analysis):
     ).sortby("longitude", ascending=False)
     land_mask = countries_raster["OBJECTID"] < 2000
     plot_data = land_mask * plot_data
+    # Define the structure of the figure with space for the colorbar
     f, ax = plt.subplots(
-        subplot_kw=dict(projection=map_projection), constrained_layout=True
+        1,
+        1,
+        figsize=(7, 5),
+        subplot_kw=dict(projection=map_projection),
+        constrained_layout=True,
     )
 
+    cbar_ax = f.add_axes([0.1, 0.1, 0.8, 0.03])  # Position of the colorbar
+
+    # plot_data_downsized = plot_data.heatwaves_days.coarsen(
+    #     latitude=10, longitude=10, boundary="trim"
+    # ).mean()
+    ax.coastlines(linewidths=0.25, resolution="110m")
+    ax.add_feature(cfeature.OCEAN)
+
+    # Plot the downsized data
     plot_data.heatwaves_days.plot(
         transform=ccrs.PlateCarree(),
         ax=ax,
         vmin=-50,
         vmax=50,
         cmap="RdBu_r",
-        cbar_kwargs={"label": "Change in Heatwave Days"},
+        cbar_kwargs={
+            "label": "Change in number of heatwave days",
+            "orientation": "horizontal",
+            "cax": cbar_ax,
+        },
     )
-    ax.coastlines()
+    for spine in ax.spines.values():
+        spine.set_edgecolor("lightgray")
+        spine.set_linewidth(0.5)
     ax.set_title(f"Change in {year} relative to 1986-2005 baseline")
-    # plt.tight_layout()
-    ax.figure.savefig(dir_figures / f"map_hw_change_{year}.pdf")
-    ax.figure.savefig(dir_figures / f"map_hw_change_{year}.png")
+    # ax.figure.savefig(dir_figures / f"map_hw_change_{year}.pdf")
+    ax.figure.savefig(dir_figures / f"map_hw_change_{year}.png", dpi=300)
     plt.show()
 
 
 def plot_average_number_heatwaves_experienced():
-    # Heatwave days per person in 2022. Don't show trend b/c too much variance, more just to give first idea.
-    total_exposure = (
-        exposures_abs.sum(["latitude", "longitude"]).to_dataframe().unstack(1)
+    population = xr.concat(
+        [
+            population_infants,
+            population_over_65,
+            population_over_75.assign_coords(age_band_lower_bound=75),
+        ],
+        dim="age_band_lower_bound",
     )
-    print("Total exposure billions", round(total_exposure / 1e9, 1))
-    total_exposure.columns = total_exposure.columns.droplevel(0)
-    total_exposure_sum = total_exposure[[0, 65]].sum(axis=1)
-    # Calculate the percentage increment
-    percentage_increment = total_exposure_sum.pct_change() * 100
-    # Display the result
-    print("Percentage increment", round(percentage_increment))
-
+    population.name = "population"
     exposures_abs_ts = exposures_abs.sum(["latitude", "longitude"]) / population.sel(
         year=slice(1980, year_max_analysis)
     ).sum(["latitude", "longitude"])
@@ -412,7 +431,10 @@ def plot_average_number_heatwaves_experienced():
     exposures_abs_ts_df.columns.name = "Age group"
     print(exposures_abs_ts_df.iloc[-1].round(1))
 
-    ax = exposures_abs_ts_df.rename(columns={0: "Infants", 65: "Over 65"}).plot()
+    f, ax = plt.subplots(figsize=(7, 4))
+    exposures_abs_ts_df.rename(
+        columns={0: "Infants", 65: "Over 65", 75: "Over 75"}
+    ).plot(ax=ax)
 
     ylim = ax.get_ylim()
     ax.set(
@@ -440,16 +462,21 @@ def plot_average_number_heatwaves_experienced():
 def plot_total_number_heatwaves_experienced():
     plot_data = exposures_abs.sum(["latitude", "longitude"])
     plot_data = plot_data.to_dataframe().unstack(1)
+    print("Total exposure billions", round(plot_data / 1e9, 1))
+
+    # Calculate the percentage increment
+    percentage_increment = plot_data.pct_change() * 100
+    # Display the result
+    print("Percentage increment", round(percentage_increment))
+
     plot_data = plot_data.reset_index()
     plot_data = plot_data.set_index("year")
     plot_data.columns = plot_data.columns.droplevel(0)
 
-    ax = (
-        (plot_data / 1e9).rename(columns={0: "Infants", 65: "Over 65"})
-        # .rename_axis(columns="Age group")
-        .plot(
-            ylabel="Billion person-days",
-        )
+    f, ax = plt.subplots(figsize=(7, 4))
+
+    (plot_data / 1e9).rename(columns={0: "Infants", 65: "Over 65", 75: "Over 75"}).plot(
+        ylabel="Billion person-days", ax=ax
     )
 
     ax.set(ylim=(0, 20))
@@ -698,8 +725,7 @@ def plot_exposure_vulnerable_absolute_heatwave():
         .unstack("age_band_lower_bound")
     )
 
-    plot_data.columns = ["infants", "over 65"]
-    plot_data = plot_data[["over 65", "infants"]]
+    plot_data.columns = ["infants", "over 65", "over 75"]
 
     f, ax = plt.subplots(constrained_layout=True)
 
@@ -862,7 +888,7 @@ def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2
     # invert column order
     plot_data = plot_data[plot_data.columns[::-1]]
 
-    f, ax = plt.subplots()
+    f, ax = plt.subplots(figsize=(7, 4))
     (plot_data / 1e9).plot.bar(stacked=True, width=0.9, ax=ax, color=consistent_colors)
 
     title = "Exposures of individuals over 65 to heatwaves"
@@ -874,7 +900,6 @@ def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2
         ylabel="Billion person-days",
         title=title,
     )
-    ax.xaxis.set_tick_params(labelsize="small")
     ax.yaxis.set_tick_params(labelsize="small")
 
     # Manually order the legend
@@ -897,6 +922,7 @@ def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2
     ordered_handles = [d[l] for l in iso_codes]
     ax.legend(ordered_handles, ordered_labels, frameon=False)
 
+    ax.grid(True, ls="--", color="lightgray", axis="y")
     plt.tight_layout()
     sns.despine()
     f.savefig(dir_figures / f"hw_exposure_age_{age_band}_countries_1980-{max_year}.pdf")
@@ -1023,15 +1049,18 @@ if __name__ == "__plot__":
     plot_country_change()
 
     plot_absolute_exposure_lc_group(year=year_max_analysis)
-    plot_absolute_exposure_lc_group(year=2023)
 
     plot_absolute_and_change_exposure_range_years_lc_group()
     plot_exposure_vulnerable_to_change_heatwave()
     plot_exposure_vulnerable_absolute_heatwave()
     plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=65)
     plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=0)
-    plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=65, max_year=2024)
-    plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2024)
+    plot_exposure_vulnerable_absolute_by_country_heatwave(
+        age_band=65, max_year=year_max_analysis
+    )
+    plot_exposure_vulnerable_absolute_by_country_heatwave(
+        age_band=0, max_year=year_max_analysis
+    )
     plot_exposure_by_hdi()
     plot_exposure_by_hdi(rolling=2)
     plot_exposure_by_who()

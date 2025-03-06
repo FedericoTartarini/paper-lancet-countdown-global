@@ -53,27 +53,34 @@ def calculate_effect_climate_change_compared_to_pop_change(
 
     hw = hw.sortby("latitude")
     # mean number of heatwave days per grid point for each period
+    print(
+        "Comparison period in the past is from",
+        year_reference_start,
+        "to",
+        year_reference_end,
+    )
     climate_past = (
         hw.transpose("latitude", "longitude", "year")["heatwaves_days"]
         .sel(year=slice(year_reference_start, year_reference_end))
         .mean(dim="year")
     )
+    print("Current period is from", year_reference_end + 1, "to", year_max)
     climate_recent = (
         hw.transpose("latitude", "longitude", "year")["heatwaves_days"]
-        .sel(year=slice(year_reference_end, year_max))
+        .sel(year=slice(year_reference_end + 1, year_max))
         .mean(dim="year")
     )
     # mean number of people per grid point for each period
     elderly_past = elderly.sel(
         year=slice(year_reference_start, year_reference_end)
     ).mean(dim="year")
-    elderly_recent = elderly.sel(year=slice(year_reference_end, year_max)).mean(
+    elderly_recent = elderly.sel(year=slice(year_reference_end + 1, year_max)).mean(
         dim="year"
     )
     infants_past = infants.sel(
         year=slice(year_reference_start, year_reference_end)
     ).mean(dim="year")
-    infants_recent = infants.sel(year=slice(year_reference_end, year_max)).mean(
+    infants_recent = infants.sel(year=slice(year_reference_end + 1, year_max)).mean(
         dim="year"
     )
 
@@ -200,8 +207,7 @@ def calculate_effect_climate_change_compared_to_pop_change(
     print(f"vulm_hw_cc_recent={vulm_hw_cc_recent:.1f}")
 
     print(
-        f"percentage decrease no climate change",
-        (vulm_hw_cc_recent - vulm_hw_no_cc_recent) / vulm_hw_cc_recent,
+        f"percentage decrease no climate change {((vulm_hw_cc_recent - vulm_hw_no_cc_recent) / vulm_hw_cc_recent):.2f}",
     )
 
     infants_hw_cc_recent = (
@@ -920,6 +926,8 @@ def plots(year_max: int = year_max_analysis):
 
 
 if __name__ == "__main__":
-    # _ = calculate_effect_climate_change_compared_to_pop_change(year_max=year_max_analysis)
-    plots(year_max=year_max_analysis)
+    _ = calculate_effect_climate_change_compared_to_pop_change(
+        year_max=year_max_analysis
+    )
+    # plots(year_max=year_max_analysis)
     pass
