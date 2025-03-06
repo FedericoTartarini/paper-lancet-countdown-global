@@ -37,23 +37,24 @@ from python_code.shared_functions import (
 
 def main():
 
-    population_infants_worldpop, population_elderly_worldpop, _ = (
-        read_pop_data_processed()
-    )
+    pop_inf, pop_eld, _, pop_75 = read_pop_data_processed(get_pop_75=True)
 
     heatwave_metrics_files = sorted(dir_results_heatwaves_days.glob("*.nc"))
     heatwave_metrics = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
 
     exposures_over65 = calculate_exposure_population(
-        data=population_elderly_worldpop, heatwave_metrics=heatwave_metrics
+        data=pop_eld, heatwave_metrics=heatwave_metrics
     )
     exposures_infants = calculate_exposure_population(
-        data=population_infants_worldpop, heatwave_metrics=heatwave_metrics
+        data=pop_inf, heatwave_metrics=heatwave_metrics
+    )
+    exposures_75 = calculate_exposure_population(
+        data=pop_75, heatwave_metrics=heatwave_metrics
     )
 
     exposures = xr.concat(
-        [exposures_infants, exposures_over65],
-        dim=pd.Index([0, 65], name="age_band_lower_bound"),
+        [exposures_infants, exposures_over65, exposures_75],
+        dim=pd.Index([0, 65, 75], name="age_band_lower_bound"),
     )
 
     exposures_over65.to_netcdf(dir_file_elderly_exposure_abs)

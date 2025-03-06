@@ -391,7 +391,8 @@ def plot_average_number_heatwaves_experienced():
         exposures_abs.sum(["latitude", "longitude"]).to_dataframe().unstack(1)
     )
     print("Total exposure billions", round(total_exposure / 1e9, 1))
-    total_exposure_sum = total_exposure.sum(axis=1)
+    total_exposure.columns = total_exposure.columns.droplevel(0)
+    total_exposure_sum = total_exposure[[0, 65]].sum(axis=1)
     # Calculate the percentage increment
     percentage_increment = total_exposure_sum.pct_change() * 100
     # Display the result
@@ -1014,9 +1015,9 @@ if __name__ == "__plot__":
     plot_change_in_heatwaves(year=year_max_analysis)
 
     # plot trends
-    plot_average_number_heatwaves_experienced()
-    plot_total_number_heatwaves_experienced()
     plot_total_exposure()
+    plot_total_number_heatwaves_experienced()
+    plot_average_number_heatwaves_experienced()
     plot_country_exposure(slice_range=slice(1986, 2005))
     plot_country_exposure(slice_range=slice(2013, year_max_analysis))
     plot_country_change()

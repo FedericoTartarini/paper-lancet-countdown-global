@@ -168,10 +168,15 @@ def create_admin1_raster(era5_data):
     rasterized_data.to_netcdf(dir_file_admin1_raster_report)
 
 
-def plot_world_map(data):
+def plot_world_map(data, v_min_max=False):
     plt.subplots(figsize=(10, 6), constrained_layout=True)
     ax = plt.axes(projection=ccrs.PlateCarree())
-    data.plot(ax=ax, alpha=0.8, transform=ccrs.PlateCarree())
+    if v_min_max:
+        data.plot(
+            ax=ax, transform=ccrs.PlateCarree(), vmin=v_min_max[0], vmax=v_min_max[1]
+        )
+    else:
+        data.plot(ax=ax, transform=ccrs.PlateCarree())
     ax.coastlines()
     plt.show()
 
