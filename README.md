@@ -11,7 +11,7 @@ This code allows you to:
 1. Clone the repository
 2. Install the required packages using conda
 3. Get your Personal Access Token from your profile on the CDS portal at the address: https://cds.climate.copernicus.eu/profile
-4. Update `my_config.py`, change the paths and the dates if needed.
+4. Update [my_config.py](my_config.py), change the paths and the dates if needed.
 
 ## Weather data
 
@@ -46,37 +46,3 @@ To download the data you need to:
 ## Other calculations
 1. Calculate the change in exposure to heatwaves using [heatwave_exposure_pop_change.py](python_code/calculations/heatwave_exposure_pop_change.py). These data are not used in the report.
 2. Calculate the worldpop exposure to heatwaves using [heatwave_exposure_worldpop_change.py](python_code/calculations/heatwave_exposure_worldpop_change.py). These data are not used in the report.
-
-
-# TODO
-- [ ] re-download the infant population for 2020
-- [ ] re-analyze the infant population for 2020
-
-## Weather data
-- [x] Download ERA5 data
-- [x] Preprocess the data
-- [x] Calculate the quantiles
-- [x] Calculate the heatwaves occurrences
-
-## Population data
-- [x] Download WorldPop data
-- [x] Process the data (regrid and combine ages)
-- [x] Combine the population data
-
-## Heatwaves exposure
-- [ ] Calculate the absolute exposure to heatwaves
-
-## Other
-- [x] Rasterize the data
-
-## Issues
-- [ ] Infant population projection chart different from the report `compare_worldpop_gpw.py`
-- [ ] Elderly population projection chart different from the report `compare_worldpop_gpw.py`
-
-# Figures
-## Appendix
-- [x] Figure 1 - todo there was an error in last year report, it was showing 2022
-- [x] Figure 2
-- [x] Figure 3
-- [x] Figure 4
-- [x] Figure 5
