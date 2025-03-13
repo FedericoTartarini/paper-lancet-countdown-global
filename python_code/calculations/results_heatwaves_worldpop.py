@@ -1,5 +1,6 @@
 import math
 
+import cartopy.feature as cfeature
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,8 +8,9 @@ import pandas as pd
 import seaborn as sns
 import xarray as xr
 from cartopy import crs as ccrs
-import cartopy.feature as cfeature
 from matplotlib.ticker import MultipleLocator
+from openpyxl import load_workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
 
 from my_config import (
     dir_local,
@@ -29,6 +31,8 @@ from my_config import (
     dir_file_exposures_abs_by_lc_group_worldpop,
     dir_file_all_exposure_abs,
     dir_pop_above_75_file,
+    dir_file_excel_submission,
+    SheetsFinalSubmission,
 )
 
 countries_raster = xr.open_dataset(dir_file_country_raster_report)
@@ -40,6 +44,44 @@ consistent_colors = dict(
         [c[0], c[1], c[2], c[3], c[5], c[6], c[7], c[8], c[9], c[4]],
     )
 )
+
+
+def update_excel_results(
+    data,
+    sheet_name,
+    message: str,
+    file_name=dir_file_excel_submission,
+    col_offset=0,
+    rw_offset=0,
+    clear_sheet=False,
+) -> tuple[int, int]:
+    # Load the existing Excel file
+    book = load_workbook(file_name)
+
+    # Check if the sheet exists, if not, create it
+    if sheet_name not in book.sheetnames:
+        sheet = book.create_sheet(sheet_name)
+    else:
+        sheet = book[sheet_name]
+
+    if clear_sheet:
+        # Clear the contents of the sheet
+        for row in sheet.iter_rows():
+            for cell in row:
+                cell.value = None
+
+    # Write the new data to the sheet starting from cell A1
+    for r_idx, row in enumerate(
+        dataframe_to_rows(data, index=False, header=True), rw_offset + 2
+    ):
+        for c_idx, value in enumerate(row, col_offset + 1):
+            sheet.cell(row=r_idx, column=c_idx, value=value)
+
+    sheet.cell(row=rw_offset + 1, column=col_offset + 1, value=message)
+
+    book.save(file_name)
+
+    return r_idx, c_idx
 
 
 def _summary_weight(data, yrs):
@@ -114,7 +156,6 @@ population_df = (
 exposures_abs_df = (
     exposures_abs.sum(dim=["latitude", "longitude"]).to_dataframe().reset_index()
 )
-print(exposures_abs_df)
 exposures_abs_df = exposures_abs_df.rename({"heatwaves_days": "total heatwave days"})
 
 with pd.ExcelWriter(
@@ -137,41 +178,7 @@ country_exposure_abs = xr.open_dataset(
     dir_worldpop_exposure_by_region
     / f"countries_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
-# Load aggregated by hdi and WHO region data
-hdi_exposure = xr.open_dataset(
-    dir_worldpop_exposure_by_region
-    / f"hdi_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-)
-who_exposure = xr.open_dataset(
-    dir_worldpop_exposure_by_region
-    / f"who_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-)
 
-hdi_exposure_change = xr.open_dataset(
-    dir_worldpop_exposure_by_region
-    / f"hdi_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-)
-who_exposure_change = xr.open_dataset(
-    dir_worldpop_exposure_by_region
-    / f"who_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
-)
-
-# fixme this file has repeated values for the same year
-exposures_abs_lc_groups = xr.open_dataset(dir_file_exposures_abs_by_lc_group_worldpop)
-
-# Re-export data tables as csv
-(
-    country_weighted.heatwaves_days.to_dataframe().to_csv(
-        dir_worldpop_exposure_by_region
-        / "heatwave_exposure_wieghted_change_days_by_country_w_hdi_worldpop.csv"
-    )
-)
-(
-    country_exposure_change.heatwaves_days.to_dataframe().to_csv(
-        dir_worldpop_exposure_by_region
-        / "heatwave_exposure_days_by_country_worldpop.csv"
-    )
-)
 country_exposure_abs_df = (
     country_exposure_abs.sel(year=slice(1980, None))
     .to_dataframe()
@@ -179,119 +186,13 @@ country_exposure_abs_df = (
     .rename(columns={"country": "ISO3"})
 )
 
-country_exposure_abs_df.merge(country_lc_grouping).dropna(axis="index").to_csv(
-    dir_results_pop_exposure / "heatwave_exposure_abs_days_by_country.csv"
-)
-
 country_exposure_abs_df = country_exposure_abs_df.drop(columns="exposures_weighted")
 country_exposure_abs_df = country_exposure_abs_df.rename(
     columns={"exposures_total": "total heatwave days"}
 )
-with pd.ExcelWriter(
-    dir_results_pop_exposure / "indicator_1_1_2_heatwaves_summary.xlsx",
-    engine="openpyxl",
-    mode="a",
-) as writer:
 
-    country_exposure_abs_df.merge(country_lc_grouping).to_excel(
-        writer, sheet_name="Country", index=False
-    )
-
-(
-    who_exposure.to_dataframe().to_csv(
-        dir_worldpop_exposure_by_region
-        / "heatwave_exposure_days_by_who_region_worldpop.csv"
-    )
-)
-
-(
-    who_exposure_change.to_dataframe().to_csv(
-        dir_worldpop_exposure_by_region
-        / "heatwave_exposure_days_change_by_who_region_worldpop.csv"
-    )
-)
-who_exposure_df = who_exposure.to_dataframe().reset_index()
-who_exposure_df = who_exposure_df.rename(columns={"who_region": "WHO Region"})
-
-who_exposure_df = who_exposure_df.rename(
-    columns={"exposures_total": "total heatwave days"}
-)
-who_exposure_df = who_exposure_df.drop(columns="exposures_weighted")
-
-with pd.ExcelWriter(
-    dir_results_pop_exposure / "indicator_1_1_2_heatwaves_summary.xlsx",
-    engine="openpyxl",
-    mode="a",
-) as writer:
-    who_exposure_df.to_excel(writer, sheet_name="WHO Region", index=False)
-hdi_exposure_df = hdi_exposure.sel(year=slice(1980, 2024)).to_dataframe().reset_index()
-hdi_exposure_df = hdi_exposure_df.rename(
-    columns={"exposures_total": "total heatwave days"}
-)
-hdi_exposure_df = hdi_exposure_df.drop(columns="exposures_weighted")
-
-hdi_exposure_df = hdi_exposure_df.rename(
-    columns={"level_of_human_development": "HDI Group"}
-)
-with pd.ExcelWriter(
-    dir_results_pop_exposure / "indicator_1_1_2_heatwaves_summary.xlsx",
-    engine="openpyxl",
-    mode="a",
-) as writer:
-    hdi_exposure_df.to_excel(writer, sheet_name="HDI Group", index=False)
-(
-    hdi_exposure.to_dataframe().to_csv(
-        dir_worldpop_exposure_by_region / "heatwave_exposure_days_by_hdi_worldpop.csv"
-    )
-)
-
-(
-    hdi_exposure_change.to_dataframe().to_csv(
-        dir_worldpop_exposure_by_region
-        / "heatwave_exposure_days_change_by_hdi_worldpop.csv"
-    )
-)
-LC_exposures_abs_lc_groups_df = (
-    exposures_abs_lc_groups.sel(year=slice(1980, 2024)).to_dataframe().reset_index()
-)
-LC_exposures_abs_lc_groups_df = LC_exposures_abs_lc_groups_df.rename(
-    columns={"lc_group": "Lancet Countdown Region"}
-)
-
-LC_exposures_abs_lc_groups_df = LC_exposures_abs_lc_groups_df.rename(
-    columns={"exposures_total": "total heatwave days"}
-)
-# LC_exposures_abs_lc_groups_df = LC_exposures_abs_lc_groups_df.drop(
-#     columns="exposures_weighted"
-# )
-
-with pd.ExcelWriter(
-    dir_results_pop_exposure / "indicator_1_1_2_heatwaves_summary.xlsx",
-    engine="openpyxl",
-    mode="a",
-) as writer:
-    LC_exposures_abs_lc_groups_df.to_excel(writer, sheet_name="LC Region", index=False)
-(
-    exposures_abs_lc_groups.to_dataframe().to_csv(
-        dir_worldpop_exposure_by_region
-        / "heatwave_exposure_days_by_lc_group_worldpop.csv"
-    )
-)
-# (
-#     exposures_change_lc_groups.to_dataframe().to_csv(
-#         RESULTS_FOLDER
-#         / "exposure_by_region_or_grouping/heatwave_exposure_days_change_by_lc_group_worldpop.csv"
-#     )
-# )
-
-# Plots
-# Plot days of heatwave experienced (exposure weighted days)
-
-# This is again different from previous plots because we weight the absolute exposures instead of the changes. The
-# idea is to be able to say something like in the 90s you would typically experience X days of heatwave per year
-# while in the 2010s you experience Y days
-
-# =============================
+# fixme this file has repeated values for the same year
+exposures_abs_lc_groups = xr.open_dataset(dir_file_exposures_abs_by_lc_group_worldpop)
 
 # IMPORTANT need to use weighted average for HW 'raw' can't just do the sum across pixels cus that's bollocks.
 cos_lat = np.cos(np.radians(heatwave_metrics.latitude))
@@ -300,6 +201,8 @@ hw_ref = _summary_weight(heatwave_metrics.heatwaves_days, slice(1986, 2005))
 hw_dec = _summary_weight(
     heatwave_metrics.heatwaves_days, slice(2013, year_max_analysis)
 )
+
+
 # fixme the following code is not working since the rolling function cannot be calculated
 # hw_rol = (
 #     (heatwave_metrics.heatwaves_days * cos_lat)
@@ -431,10 +334,20 @@ def plot_average_number_heatwaves_experienced():
     exposures_abs_ts_df.columns.name = "Age group"
     print(exposures_abs_ts_df.iloc[-1].round(1))
 
-    f, ax = plt.subplots(figsize=(7, 4))
-    exposures_abs_ts_df.rename(
+    exposures_abs_ts_df = exposures_abs_ts_df.rename(
         columns={0: "Infants", 65: "Over 65", 75: "Over 75"}
-    ).plot(ax=ax)
+    )
+
+    update_excel_results(
+        clear_sheet=True,
+        data=exposures_abs_ts_df.reset_index(),
+        sheet_name=SheetsFinalSubmission.global_average.value,
+        file_name=dir_file_excel_submission,
+        message="Average number of heatwaves days experienced per year by older adults (over 65 and over 75)  and infants",
+    )
+
+    f, ax = plt.subplots(figsize=(7, 4))
+    exposures_abs_ts_df.plot(ax=ax)
 
     ylim = ax.get_ylim()
     ax.set(
@@ -464,20 +377,39 @@ def plot_total_number_heatwaves_experienced():
     plot_data = plot_data.to_dataframe().unstack(1)
     print("Total exposure billions", round(plot_data.iloc[-1] / 1e9, 1))
 
-    # Calculate the percentage increment
-    percentage_increment = plot_data.pct_change() * 100
-    # Display the result
-    print("Percentage increment", round(percentage_increment.iloc[-1]))
-
     plot_data = plot_data.reset_index()
     plot_data = plot_data.set_index("year")
     plot_data.columns = plot_data.columns.droplevel(0)
+    plot_data = plot_data.rename(columns={0: "Infants", 65: "Over 65", 75: "Over 75"})
+    plot_data.reset_index(inplace=True)
+
+    _, col_max = update_excel_results(
+        clear_sheet=True,
+        data=plot_data,
+        sheet_name=SheetsFinalSubmission.global_total.value,
+        file_name=dir_file_excel_submission,
+        message="Total number of heatwaves days experienced per year by older adults (over 65 and over 75)  and infants",
+    )
+
+    # Calculate the percentage increment
+    percentage_increment = plot_data.pct_change() * 100
+    percentage_increment = percentage_increment.drop(columns="year")
+    # Display the result
+    print("Percentage increment", round(percentage_increment.iloc[-1]))
+
+    update_excel_results(
+        data=percentage_increment,
+        sheet_name=SheetsFinalSubmission.global_total.value,
+        file_name=dir_file_excel_submission,
+        message="Percentage change (current year compared to year before) in total number of heatwaves days experienced per year by older adults (over 65 and over 75) and infants",
+        col_offset=col_max + 1,
+    )
+
+    plot_data = plot_data.drop(columns="year")
 
     f, ax = plt.subplots(figsize=(7, 4))
 
-    (plot_data / 1e9).rename(columns={0: "Infants", 65: "Over 65", 75: "Over 75"}).plot(
-        ylabel="Billion person-days", ax=ax
-    )
+    (plot_data / 1e9).plot(ylabel="Billion person-days", ax=ax)
 
     ax.set(ylim=(0, 20))
     ax.legend(frameon=False)
@@ -490,7 +422,6 @@ def plot_total_number_heatwaves_experienced():
 
 
 def plot_country_exposure(slice_range=slice(1986, 2005)):
-
     plot_df = (
         country_exposure_abs.exposures_weighted.sel(age_band_lower_bound=65, drop=True)
         .sel(year=slice_range)
@@ -530,7 +461,6 @@ def plot_country_change():
 
 
 def plot_absolute_exposure_lc_group(year=year_max_analysis):
-
     data_year_max = exposures_abs_lc_groups.exposures_weighted.sel(year=year)
     df_data_year_max = data_year_max.to_dataframe()
 
@@ -644,44 +574,6 @@ def plot_absolute_and_change_exposure_range_years_lc_group():
     plt.show()
 
 
-def plot_total_exposure():
-    # Plot exposures to change
-
-    # **NOTE** Some of this is already saved out automatically in the data gen notebook
-
-    # > Plot exposures combining the 1980-2000 values calculated using histsoc with the 2000-2020 values. Highlight that
-    # the data sources are different
-    with sns.axes_style("whitegrid"):
-        f, ax = plt.subplots()
-
-        (exposures_over65.sum(dim=["latitude", "longitude"]) / 1e9).loc[2000:].plot(
-            ax=ax, label="WorldPop"
-        )
-        (exposures_over65.sum(dim=["latitude", "longitude"]) / 1e9).loc[:2000].plot(
-            label="ISIMIP", ax=ax
-        )
-        ax.legend()
-        ax.set_ylabel("Billion person-days")
-        f.savefig(
-            dir_figures / f"heatwave person-days hybrid 1980-{year_max_analysis}.pdf"
-        )
-        plt.show()
-
-    plot_data = (
-        (exposures_over65.sum(dim=["latitude", "longitude"]) / 1e9)
-        .rolling(year=10)
-        .mean()
-    )
-    with sns.axes_style("whitegrid"):
-        f, ax = plt.subplots()
-
-        plot_data.plot(ax=ax, label="10-year rolling mean")
-        #     (total_exposures_over65[var] / 1e9).loc[:1999].rolling(10).mean().plot(style=':', label='ISIMIP', ax=ax)
-        ax.legend()
-        ax.set_ylabel("Billion person-days")
-        plt.show()
-
-
 def plot_exposure_vulnerable_to_change_heatwave():
     plot_data = (
         exposures_change.sum(["latitude", "longitude"])
@@ -737,7 +629,6 @@ def plot_exposure_vulnerable_absolute_heatwave():
 
 
 def plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=65):
-
     country_lc_grouping = pd.read_excel(
         dir_local
         / "admin_boundaries"
@@ -844,7 +735,6 @@ def plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=65):
 
 
 def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2024):
-
     var = "heatwaves_days"
 
     top_codes = (
@@ -856,15 +746,6 @@ def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2
         .head(5)[var]
         .index.to_list()
     )
-    selected_data_list = []
-
-    # Loop through each country code
-    for country_code in top_codes:
-        # Select the data for the current country
-        selected_data = country_exposure_change[var].sel(country=country_code)
-
-        # Append the selected data to the list
-        selected_data_list.append(selected_data)
 
     var = "exposures_total"
 
@@ -883,6 +764,7 @@ def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2
         .unstack()
         .T
     )
+
     # Difference between sum of top5 countries and total gives the 'other' category
     plot_data["Other"] = _total_exposures - plot_data.sum(axis=1)
     # invert column order
@@ -928,29 +810,88 @@ def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2
     f.savefig(dir_figures / f"hw_exposure_age_{age_band}_countries_1980-{max_year}.pdf")
     plt.show()
 
-
-def plot_exposure_by_hdi(rolling=False):
-    data = hdi_exposure.exposures_weighted
-    if rolling:
-        data = hdi_exposure.exposures_weighted.rolling(year=rolling).mean()
-
-    plot_data = (
-        data.to_dataframe()
-        .reset_index()
-        .rename(
-            columns={
-                "age_band_lower_bound": "Age group",
-                "exposures_weighted": "Heatwave days",
-                "level_of_human_development": "HDI class",
-                "year": "Year",
-            }
-        )
+    # calculate exposures for each country
+    var = "heatwaves_days"
+    all_country_codes = (
+        country_exposure_change[var]
+        .sel(year=slice(2015, max_year), age_band_lower_bound=age_band, drop=True)
+        .mean(dim="year")
+        .to_dataframe()
+        .sort_values(by=var, ascending=False)[var]
+        .index.to_list()
     )
 
+    var = "exposures_total"
+    data_export = (
+        country_exposure_abs[var]
+        .sel(country=country_exposure_abs.country.isin(all_country_codes))
+        .sel(age_band_lower_bound=age_band, year=slice(1980, max_year), drop=True)
+        .to_dataframe()[var]
+        .reset_index()
+    )
+
+    if age_band == 0:
+        sheet = SheetsFinalSubmission.country_infants.value
+    elif age_band == 65:
+        sheet = SheetsFinalSubmission.country_over65.value
+    elif age_band == 75:
+        sheet = SheetsFinalSubmission.country_over75.value
+    update_excel_results(
+        clear_sheet=True,
+        data=data_export,
+        sheet_name=sheet,
+        file_name=dir_file_excel_submission,
+        message="Total heatwave person-days experienced by country",
+    )
+
+
+def plot_exposure_by_hdi():
+    # Load aggregated by hdi and WHO region data
+    hdi_exposure = xr.open_dataset(
+        dir_worldpop_exposure_by_region
+        / f"hdi_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+    )
+
+    # hdi_exposure_change = xr.open_dataset(
+    #     dir_worldpop_exposure_by_region
+    #     / f"hdi_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+    # )
+
+    hdi_exposure_df = hdi_exposure.to_dataframe().reset_index().dropna()
+    hdi_exposure_df = hdi_exposure_df.rename(
+        columns={
+            "exposures_total": "total heatwave days",
+            "level_of_human_development": "HDI class",
+            "age_band_lower_bound": "Age group",
+            "exposures_weighted": "Average heatwave days",
+            "year": "Year",
+        }
+    )
+
+    plot_data = hdi_exposure_df.drop(columns="total heatwave days")
+
     df_combined_ages = plot_data.groupby(["Year", "HDI class"]).mean()
-    print(df_combined_ages["Heatwave days"].unstack(level=1).round(1))
-    print(
-        df_combined_ages["Heatwave days"].unstack(level=1).pct_change().round(3) * 100
+    df_combined_ages = (
+        df_combined_ages["Average heatwave days"].unstack(level=1).round(2).dropna()
+    )
+    print(df_combined_ages)
+
+    _, col_max = update_excel_results(
+        clear_sheet=True,
+        data=hdi_exposure_df,
+        sheet_name=SheetsFinalSubmission.hdi_group.value,
+        file_name=dir_file_excel_submission,
+        message="Average number of heatwaves days experienced per year by older adults (over 65) and infants combined",
+    )
+
+    print(df_combined_ages.pct_change().round(3) * 100)
+
+    update_excel_results(
+        data=(df_combined_ages.pct_change().round(3) * 100).reset_index(),
+        sheet_name=SheetsFinalSubmission.hdi_group.value,
+        file_name=dir_file_excel_submission,
+        message="Percentage change from previous year (current year compared to year before) in average number of heatwaves days experienced per year by older adults (over 65) and infants combined",
+        col_offset=col_max + 1,
     )
 
     plot_data = plot_data[plot_data["HDI class"] != ""]
@@ -962,7 +903,11 @@ def plot_exposure_by_hdi(rolling=False):
     for ix, age in enumerate(plot_data["Age group"].unique()):
         plot_data_age = plot_data[plot_data["Age group"] == age]
         sns.lineplot(
-            data=plot_data_age, x="Year", y="Heatwave days", hue="HDI class", ax=axs[ix]
+            data=plot_data_age,
+            x="Year",
+            y="Average heatwave days",
+            hue="HDI class",
+            ax=axs[ix],
         )
         title = "Infants" if age == 0 else "Over 65"
         axs[ix].set_title(title)
@@ -970,10 +915,10 @@ def plot_exposure_by_hdi(rolling=False):
 
     axs[0].set(ylabel="Average heatwaves days per year")
     axs[1].set(ylabel="Average heatwaves days per year")
-    if rolling:
-        axs[0].set(
-            ylabel=f"{rolling} year rolling mean of population-weighted heatwave days",
-        )
+    # if rolling:
+    #     axs[0].set(
+    #         ylabel=f"{rolling} year rolling mean of population-weighted heatwave days",
+    #     )
     axs[0].legend(title="HDI category", frameon=False)
     axs[1].legend().remove()
 
@@ -983,16 +928,28 @@ def plot_exposure_by_hdi(rolling=False):
 
 
 def plot_exposure_by_who():
-    plot_data = (
-        who_exposure.exposures_weighted.to_dataframe()
-        .reset_index()
-        .rename(
-            columns={
-                "age_band_lower_bound": "Age group",
-                "exposures_weighted": "Heatwave days",
-                "who_region": "WHO region",
-            }
-        )
+    who_exposure = xr.open_dataset(
+        dir_worldpop_exposure_by_region
+        / f"who_regions_heatwaves_exposure_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
+    )
+
+    who_exposure_df = who_exposure.to_dataframe().reset_index().dropna()
+
+    update_excel_results(
+        clear_sheet=True,
+        data=who_exposure_df,
+        sheet_name=SheetsFinalSubmission.who_region.value,
+        file_name=dir_file_excel_submission,
+        message="Average heatwave person-days experienced by WHO region",
+    )
+
+    # plot the data
+    plot_data = who_exposure_df.drop(columns=["exposures_total"]).rename(
+        columns={
+            "age_band_lower_bound": "Age group",
+            "exposures_weighted": "Average heatwave days",
+            "who_region": "WHO region",
+        }
     )
     plot_data["WHO region"] = plot_data["WHO region"].replace(
         {
@@ -1004,6 +961,7 @@ def plot_exposure_by_who():
             "AMRO": "Americas",
         },
     )
+
     f, axs = plt.subplots(
         2, 1, constrained_layout=True, sharex=True, sharey=True, figsize=(7, 7)
     )
@@ -1013,7 +971,7 @@ def plot_exposure_by_who():
         sns.lineplot(
             data=plot_data_age,
             x="year",
-            y="Heatwave days",
+            y="Average heatwave days",
             hue="WHO region",
             ax=axs[ix],
         )
@@ -1032,6 +990,26 @@ def plot_exposure_by_who():
     plt.show()
 
 
+def save_lc_data_to_excel():
+    lc_exposures_abs_lc_groups_df = (
+        exposures_abs_lc_groups.to_dataframe().reset_index().dropna()
+    )
+    lc_exposures_abs_lc_groups_df = lc_exposures_abs_lc_groups_df.rename(
+        columns={
+            "lc_group": "Lancet Countdown Region",
+            "exposures_total": "total heatwave days",
+        }
+    )
+
+    _, col_max = update_excel_results(
+        clear_sheet=True,
+        data=lc_exposures_abs_lc_groups_df,
+        sheet_name=SheetsFinalSubmission.lc_region.value,
+        file_name=dir_file_excel_submission,
+        message="Results by LC region",
+    )
+
+
 if __name__ == "__plot__":
     # world plot, slow to generate
     plot_heatwaves_days(plot_data=heatwave_metrics, slice_range=slice(1986, 2005))
@@ -1041,10 +1019,8 @@ if __name__ == "__plot__":
     plot_change_in_heatwaves(year=year_max_analysis)
 
     # plot trends
-    plot_total_exposure()
     plot_total_number_heatwaves_experienced()
     plot_average_number_heatwaves_experienced()
-    plot_country_exposure(slice_range=slice(1986, 2005))
     plot_country_exposure(slice_range=slice(2013, year_max_analysis))
     plot_country_change()
 
@@ -1062,5 +1038,5 @@ if __name__ == "__plot__":
         age_band=0, max_year=year_max_analysis
     )
     plot_exposure_by_hdi()
-    plot_exposure_by_hdi(rolling=2)
     plot_exposure_by_who()
+    save_lc_data_to_excel()

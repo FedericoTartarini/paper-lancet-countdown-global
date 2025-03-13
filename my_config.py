@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from cartopy import crs as ccrs
 from matplotlib import pyplot as plt
@@ -91,10 +92,13 @@ try:
 except PermissionError:  # just in case the SSD is not mounted
     pass
 
-# remove hidden files from the population folder
-for f in os.listdir(dir_pop_raw):
-    if f.startswith(".") and f.endswith(".tif"):
-        os.remove(dir_pop_raw / f)
+try:
+    # remove hidden files from the population folder
+    for f in os.listdir(dir_pop_raw):
+        if f.startswith(".") and f.endswith(".tif"):
+            os.remove(dir_pop_raw / f)
+except FileNotFoundError:
+    pass
 
 # paths to important files
 dir_pop_infants_file = (
@@ -160,6 +164,23 @@ dir_file_hdi_regions_heatwaves_exposure_change = (
     dir_worldpop_exposure_by_region
     / f"hdi_regions_heatwaves_exposure_change_{year_min_analysis}-{year_max_analysis}_worldpop.nc"
 )
+dir_manuscript_submission = Path("manuscript") / f"{year_report}"
+dir_file_excel_submission = (
+    dir_manuscript_submission
+    / f"1.1.1 - {year_report} Global Report - Data Submission - Tartarini.xlsx"
+)
+
+
+class SheetsFinalSubmission(Enum):
+    global_total = "Global total"
+    global_average = "Global average"
+    country_infants = "Country infants"
+    country_over65 = "Country 65+"
+    country_over75 = "Country 75+"
+    hdi_group = "HDI Group"
+    who_region = "WHO Region"
+    lc_region = "LC Region"
+
 
 # boundaries and rasters
 dir_admin_boundaries = dir_local / "admin_boundaries"
