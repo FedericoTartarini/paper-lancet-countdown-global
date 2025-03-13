@@ -8,17 +8,9 @@ import xarray as xr
 from cartopy import crs as ccrs
 from shapely.geometry import Point
 
-from my_config import (
-    dir_file_population_before_2000,
-    dir_pop_infants_file,
-    dir_file_detailed_boundaries,
-    dir_figures,
-    dir_pop_elderly_file,
-)
+from my_config import Vars, Dirs
 
-gdf_countries = gpd.read_file(dir_file_detailed_boundaries)
-
-map_projection = ccrs.EckertIII()
+gdf_countries = gpd.read_file(Dirs.dir_file_detailed_boundaries)
 
 
 def plot_population_data(data_lancet, data_worldpop, data_isimip, population="infants"):
@@ -44,7 +36,7 @@ def plot_population_data(data_lancet, data_worldpop, data_isimip, population="in
     ax.legend()
     ax.set_title(f"{population} Global Population")
     ax.set_ylabel("Population (millions)")
-    plt.savefig(dir_figures / f"worldpop_vs_gpw_global_{population}.pdf")
+    plt.savefig(Dirs.dir_figures.value / f"worldpop_vs_gpw_global_{population}.pdf")
     plt.show()
 
 
@@ -74,7 +66,7 @@ def plot_map_comparison(data, population, year):
     diff_gdf = gpd.GeoDataFrame(diff_gdf, geometry=diff_gdf.geometry)
     # Create the plot
     fig, ax = plt.subplots(
-        1, 1, figsize=(8, 6), subplot_kw=dict(projection=map_projection)
+        1, 1, figsize=(8, 6), subplot_kw=dict(projection=Vars.map_projection)
     )  # You can adjust the dimensions as needed
 
     # Plotting the data with specified vmin and vmax
@@ -92,13 +84,15 @@ def plot_map_comparison(data, population, year):
     )  # Customize your label here
 
     # Save the figure
-    plt.savefig(dir_figures / f"{population}_{year}_worldpop_vs_gpw_by_country.pdf")
+    plt.savefig(
+        Dirs.dir_figures.value / f"{population}_{year}_worldpop_vs_gpw_by_country.pdf"
+    )
     plt.show()
 
 
 def main(year_map_comparison=2019):
     # Load and combine infant and elderly population data for 1950-1999
-    infants_worldpop = xr.open_dataset(dir_pop_infants_file)
+    infants_worldpop = xr.open_dataset(Dirs.dir_pop_infants_file.value)
 
     infants_isimip_sum = infants_worldpop.sum(dim=("latitude", "longitude")).sel(
         year=slice(1950, 1999)
@@ -107,7 +101,7 @@ def main(year_map_comparison=2019):
         year=slice(2000, 2020)
     )
 
-    demographics_totals = xr.open_dataarray(dir_file_population_before_2000)
+    demographics_totals = xr.open_dataarray(Dirs.dir_file_population_before_2000.value)
     population_infants_1950_1999 = demographics_totals.sel(age_band_lower_bound=0)
     population_infants_1950_1999 /= 5  # Divide by 5 to get the number of infants
 
@@ -144,7 +138,7 @@ def main(year_map_comparison=2019):
     # Over 65
     elderly_gpw = demographics_totals.sel(age_band_lower_bound=65)
 
-    elderly_worldpop = xr.open_dataset(dir_pop_elderly_file)
+    elderly_worldpop = xr.open_dataset(Dirs.dir_pop_elderly_file.value)
 
     elderly_isimip_sum = elderly_worldpop.sum(dim=("latitude", "longitude")).sel(
         year=slice(1950, 1999)

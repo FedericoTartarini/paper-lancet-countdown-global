@@ -4,21 +4,16 @@ import pandas as pd
 import xarray as xr
 
 from my_config import (
-    Vars,
-    dir_file_lancet_country_info,
-    dir_file_country_polygons,
-    dir_pop_infants_file,
-    dir_pop_elderly_file,
-    dir_pop_above_75_file,
+    Vars, Dirs
 )
 
 
 def get_lancet_country_data(hdi_column):
 
-    country_polygons = gpd.read_file(dir_file_country_polygons)
+    country_polygons = gpd.read_file(Dirs.dir_file_country_polygons)
 
     country_lc_grouping = pd.read_excel(
-        dir_file_lancet_country_info,
+        Dirs.dir_file_lancet_country_info,
         header=1,
     )
 
@@ -42,13 +37,13 @@ def get_lancet_country_data(hdi_column):
 
 
 def read_pop_data_processed(get_pop_75=False):
-    pop_inf = xr.open_dataset(dir_pop_infants_file).sel(
+    pop_inf = xr.open_dataset(Dirs.dir_pop_infants_file.value).sel(
         year=slice(Vars.year_min_analysis, Vars.year_max_analysis)
     )
-    pop_eld = xr.open_dataset(dir_pop_elderly_file).sel(
+    pop_eld = xr.open_dataset(Dirs.dir_pop_elderly_file.value).sel(
         year=slice(Vars.year_min_analysis, Vars.year_max_analysis)
     )
-    pop_75 = xr.open_dataset(dir_pop_above_75_file).sel(
+    pop_75 = xr.open_dataset(Dirs.dir_pop_above_75_file.value).sel(
         year=slice(Vars.year_min_analysis, Vars.year_max_analysis)
     )
 

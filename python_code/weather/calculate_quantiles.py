@@ -5,10 +5,8 @@ import xarray as xr
 from dask.diagnostics import ProgressBar
 
 from my_config import (
-    dir_era_daily,
     Vars,
-    dir_era_quantiles,
-    quantiles,
+    Dirs,
 )
 
 if __name__ == "__main__":
@@ -16,12 +14,12 @@ if __name__ == "__main__":
     for t_var in ["t_max", "t_min", "t_mean"]:
 
         file_list = []
-        for file in dir_era_daily.rglob("*.nc"):
+        for file in Dirs.dir_era_daily.value.rglob("*.nc"):
             file = Path(file)
 
             year = int(file.name.split("_")[0])
 
-            if Vars.year_reference_start <= year <= Vars.year_reference_end:
+            if Vars.year_reference_start.value <= year <= Vars.year_reference_end.value:
                 file_list.append(file)
 
         file_list = sorted(file_list)
@@ -33,11 +31,11 @@ if __name__ == "__main__":
         daily_temperatures = daily_temperatures.chunk({"time": -1})
 
         climatology_quantiles = (
-            dir_era_quantiles
-            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc'
+            Dirs.dir_era_quantiles.value
+            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in Vars.quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc'
         )
 
-        daily_quantiles = daily_temperatures.quantile(quantiles, dim="time")
+        daily_quantiles = daily_temperatures.quantile(Vars.quantiles, dim="time")
 
         with dask.config.set(scheduler="processes"), ProgressBar():
             daily_quantiles = daily_quantiles.compute()

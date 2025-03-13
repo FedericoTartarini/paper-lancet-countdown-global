@@ -22,13 +22,7 @@ change from previous year (e.g. https://fred.stlouisfed.org/graph/?g=eUmi)"""
 import pandas as pd
 import xarray as xr
 
-from my_config import (
-    dir_results_pop_exposure,
-    dir_results_heatwaves_days,
-    dir_file_elderly_exposure_abs,
-    dir_file_infants_exposure_abs,
-    dir_file_all_exposure_abs,
-)
+from my_config import Dirs
 from python_code.shared_functions import (
     read_pop_data_processed,
     calculate_exposure_population,
@@ -39,7 +33,7 @@ def main():
 
     pop_inf, pop_eld, _, pop_75 = read_pop_data_processed(get_pop_75=True)
 
-    heatwave_metrics_files = sorted(dir_results_heatwaves_days.glob("*.nc"))
+    heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves_days.value.glob("*.nc"))
     heatwave_metrics = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
 
     exposures_over65 = calculate_exposure_population(
@@ -57,34 +51,12 @@ def main():
         dim=pd.Index([0, 65, 75], name="age_band_lower_bound"),
     )
 
-    exposures_over65.to_netcdf(dir_file_elderly_exposure_abs)
+    exposures_over65.to_netcdf(Dirs.dir_file_elderly_exposure_abs)
 
-    exposures_infants.to_netcdf(dir_file_infants_exposure_abs)
+    exposures_infants.to_netcdf(Dirs.dir_file_infants_exposure_abs)
 
-    dir_file_all_exposure_abs.unlink(missing_ok=True)
-    exposures.to_netcdf(dir_file_all_exposure_abs)
-
-    total_exposures_over65 = exposures_over65.sum(
-        dim=["latitude", "longitude"]
-    ).to_dataframe()
-
-    total_exposures_over65.to_excel(
-        dir_results_pop_exposure / "heatwave_exposure_indicator_totals_elderly.xlsx"
-    )
-    total_exposures_over65.to_csv(
-        dir_results_pop_exposure / "heatwave_exposure_indicator_totals_elderly.csv"
-    )
-
-    total_exposures_infants = exposures_infants.sum(
-        dim=["latitude", "longitude"]
-    ).to_dataframe()
-
-    total_exposures_infants.to_excel(
-        dir_results_pop_exposure / "heatwave_exposure_indicator_totals_infants.xlsx"
-    )
-    total_exposures_infants.to_csv(
-        dir_results_pop_exposure / "heatwave_exposure_indicator_totals_infants.csv"
-    )
+    Dirs.dir_file_all_exposure_abs.value.unlink(missing_ok=True)
+    exposures.to_netcdf(Dirs.dir_file_all_exposure_abs.value)
 
 
 if __name__ == "__main__":

@@ -10,19 +10,16 @@ from shapely.geometry import box
 
 from my_config import (
     Vars,
-    dir_pop_era_grid,
     VarsWorldPop,
-    dir_file_population_before_2000,
-    dir_figures_interim,
-    dir_pop_infants_file,
-    dir_pop_elderly_file,
-    dir_pop_above_75_file,
+    Dirs,
 )
 
 
 def load_population_data(age_group, sex, years, suffix="era5_compatible.nc"):
     return {
-        year: xr.open_dataset(dir_pop_era_grid / f"{sex}_{age_group}_{year}_{suffix}")
+        year: xr.open_dataset(
+            Dirs.dir_pop_era_grid.value / f"{sex}_{age_group}_{year}_{suffix}"
+        )
         for year in years
     }
 
@@ -86,7 +83,7 @@ def plot_population_data(data, label, year=2001, bounds=(0, 35, 20, 47), v_max=2
 
     plt.title(f"{label.capitalize()} population in {year}")
     # Show the plot
-    plt.savefig(dir_figures_interim / f"pop_data_{label}_{year}.png")
+    plt.savefig(Dirs.dir_figures_interim.value / f"pop_data_{label}_{year}.png")
     plt.show()
 
 
@@ -111,7 +108,7 @@ def plot_population_trends(inf_worldpop, eld_worldpop, eld_75, totals_lancet):
     axs[0].set(xlabel="Year", ylabel="Population (millions)")
     axs[0].legend()
     plt.tight_layout()
-    plt.savefig(dir_figures_interim / "pop_data_trends.png")
+    plt.savefig(Dirs.dir_figures_interim.value / "pop_data_trends.png")
     plt.show()
 
 
@@ -123,9 +120,7 @@ def load_and_combine_population_data(age_group, years_range):
 
 def main(plot=True):
     # Load and combine infant and elderly population data for 2000-2020
-    years_range = np.arange(
-        VarsWorldPop.year_worldpop_start, VarsWorldPop.year_worldpop_end + 1
-    )
+    years_range = VarsWorldPop.get_years_range()
     infants_worldpop = load_and_combine_population_data(
         age_group="0", years_range=years_range
     )
@@ -134,18 +129,20 @@ def main(plot=True):
     )
 
     # Load and combine infant and elderly population data for 1950-1999
-    demographics_totals = xr.open_dataarray(dir_file_population_before_2000)
+    demographics_totals = xr.open_dataarray(Dirs.dir_file_population_before_2000.value)
     infants_lancet = demographics_totals.sel(age_band_lower_bound=0).sel(
-        year=slice(1950, VarsWorldPop.year_worldpop_start - 1)
+        year=VarsWorldPop.get_slice_years(period="before")
     )
     infants_lancet /= 5  # Divide by 5 to get the number of infants
 
     elderly_lancet = demographics_totals.sel(age_band_lower_bound=65).sel(
-        year=slice(1950, VarsWorldPop.year_worldpop_start - 1)
+        year=VarsWorldPop.get_slice_years(period="before")
     )
 
     # Combine data for all years (1950-2020) and extrapolate
-    extrapolated_years = np.arange(VarsWorldPop.year_worldpop_end + 1, Vars.year_report)
+    extrapolated_years = np.arange(
+        VarsWorldPop.year_worldpop_end.value + 1, Vars.year_report
+    )
 
     infants_lancet = infants_lancet.to_dataset().rename({"demographic_totals": "pop"})
     infants_pop_analysis = concatenate_and_extrapolate(
@@ -168,13 +165,13 @@ def main(plot=True):
     infants_pop_analysis = infants_pop_analysis.rename({"pop": "infants"})
     elderly_pop_analysis = elderly_pop_analysis.rename({"pop": "elderly"})
 
-    if dir_pop_infants_file.exists():
-        os.remove(dir_pop_infants_file)
-    infants_pop_analysis.to_netcdf(dir_pop_infants_file)
+    if Dirs.dir_pop_infants_file.value.exists():
+        os.remove(Dirs.dir_pop_infants_file.value)
+    infants_pop_analysis.to_netcdf(Dirs.dir_pop_infants_file.value)
 
-    if dir_pop_elderly_file.exists():
-        os.remove(dir_pop_elderly_file)
-    elderly_pop_analysis.to_netcdf(dir_pop_elderly_file)
+    if Dirs.dir_pop_elderly_file.value.exists():
+        os.remove(Dirs.dir_pop_elderly_file.value)
+    elderly_pop_analysis.to_netcdf(Dirs.dir_pop_elderly_file.value)
 
     # elderly above 75
     elderly_worldpop_75 = load_and_combine_population_data(
@@ -189,7 +186,7 @@ def main(plot=True):
         ],
         "year",
     ).load()
-    elderly_worldpop_75.to_netcdf(dir_pop_above_75_file)
+    elderly_worldpop_75.to_netcdf(Dirs.dir_pop_above_75_file.value)
 
     if not plot:
         return

@@ -6,13 +6,11 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import xarray as xr
 
 from my_config import (
     Vars,
-    dir_results_pop_exposure,
-    dir_results_heatwaves_days,
+    Dirs,
 )
 from python_code.shared_functions import read_pop_data_processed
 
@@ -23,7 +21,7 @@ def main():
         read_pop_data_processed()
     )
 
-    heatwave_metrics_files = sorted(dir_results_heatwaves_days.glob("*.nc"))
+    heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves_days.value.glob("*.nc"))
     heatwave_metrics = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
 
     heatwaves_metrics_reference = heatwave_metrics.sel(
@@ -103,23 +101,9 @@ def main():
         .to_dataframe()
         .drop("age_band_lower_bound", axis=1)
     )
-    weighted_mean_over65.to_csv(
-        dir_results_pop_exposure / "heatwave_days_change_weighted_over65_worldpop.csv"
-    )
-    weighted_mean_infants.to_csv(
-        dir_results_pop_exposure / "heatwave_days_change_weighted_infants_worldpop.csv"
-    )
 
     # Get the grid weighting factor from the latitude
     cos_lat = np.cos(np.radians(heatwave_metrics.latitude))
-
-    heatwave_metrics_delta_mean = (
-        (heatwave_metrics_delta * cos_lat)
-        .where(~np.isnan(population_elderly_worldpop.max(dim="year")))
-        .mean(dim=["latitude", "longitude"], skipna=True)
-        .to_dataframe()
-        .drop("age_band_lower_bound", axis=1)
-    )
 
     heatwave_metrics_delta_mean = (
         (heatwave_metrics_delta["heatwaves_days"] * cos_lat)
@@ -163,24 +147,6 @@ def main():
 
     print(heatwave_metrics_delta_mean.rolling(n).mean())
 
-    n = 10
-    rolling_stats = pd.DataFrame(
-        {
-            "heatwave_days_change_land": heatwave_metrics_delta_mean.rolling(n).mean()[
-                "elderly"
-            ],
-            "heatwave_days_change_infants": weighted_mean_infants.rolling(n).mean()[
-                "infants"
-            ],
-            "heatwave_days_change_over65": weighted_mean_over65.rolling(n).mean()[
-                "elderly"
-            ],
-        }
-    ).dropna()
-    rolling_stats.to_csv(
-        dir_results_pop_exposure
-        / "heatwave_days_change_10_year_rolling_mean_worldpop.csv"
-    )
     (weighted_mean_infants - heatwave_metrics_delta_mean).rolling(n).mean()[
         "infants"
     ].plot()

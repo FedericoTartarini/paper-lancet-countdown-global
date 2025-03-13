@@ -10,11 +10,8 @@ import numpy as np
 import xarray as xr
 
 from my_config import (
-    dir_results_pop_exposure,
     Vars,
-    dir_results_heatwaves_days,
-    dir_file_elderly_exposure_change,
-    dir_file_infants_exposure_change,
+    Dirs,
 )
 from python_code.shared_functions import (
     read_pop_data_processed,
@@ -28,7 +25,7 @@ def main():
         read_pop_data_processed()
     )
 
-    heatwave_metrics_files = sorted(dir_results_heatwaves_days.glob("*.nc"))
+    heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves_days.value.glob("*.nc"))
     heatwave_metrics = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
 
     """
@@ -58,23 +55,9 @@ def main():
         data=population_infants_worldpop, heatwave_metrics=heatwave_metrics_delta
     )
 
-    exposures_over65.to_netcdf(dir_file_elderly_exposure_change)
+    exposures_over65.to_netcdf(Dirs.dir_file_elderly_exposure_change.value)
 
-    exposures_infants.to_netcdf(dir_file_infants_exposure_change)
-
-    total_exposures_over65 = exposures_over65.sum(
-        dim=["latitude", "longitude"]
-    ).to_dataframe()
-    total_exposures_infants = exposures_infants.sum(
-        dim=["latitude", "longitude"]
-    ).to_dataframe()
-
-    total_exposures_over65.to_csv(
-        dir_results_pop_exposure / "heatwave_exposure_change_totals_over65.csv"
-    )
-    total_exposures_infants.to_csv(
-        dir_results_pop_exposure / "heatwave_exposure_change_totals_infants.csv"
-    )
+    exposures_infants.to_netcdf(Dirs.dir_file_infants_exposure_change.value)
 
     weighted_mean_over65 = (
         (
@@ -95,13 +78,6 @@ def main():
         .sum(dim=["latitude", "longitude"], skipna=True)
         .to_dataframe()
         .drop("age_band_lower_bound", axis=1)
-    )
-
-    weighted_mean_over65.to_csv(
-        dir_results_pop_exposure / "heatwave_days_change_weighted_over65.csv"
-    )
-    weighted_mean_infants.to_csv(
-        dir_results_pop_exposure / "heatwave_days_change_weighted_infants.csv"
     )
 
     # Get the grid weighting factor from the latitude
@@ -127,33 +103,6 @@ def main():
         .to_dataframe()
         .drop("age_band_lower_bound", axis=1)
     )
-
-    # n = 10
-    # rolling_stats = pd.DataFrame(
-    #     {
-    #         "heatwave_days_change_land": heatwave_metrics_delta_mean.rolling(n)
-    #         .mean()
-    #         .heatwaves_days,
-    #         "heatwave_days_change_infants": weighted_mean_infants.rolling(n)
-    #         .mean()
-    #         .heatwaves_days,
-    #         "heatwave_days_change_over65": weighted_mean_over65.rolling(n)
-    #         .mean()
-    #         .heatwaves_days,
-    #     }
-    # ).dropna()
-    #
-    # rolling_stats.to_csv(
-    #     dir_results_pop_exposure / "heatwave_days_change_10_year_rolling_mean.csv"
-    # )
-    #
-    # (weighted_mean_infants - heatwave_metrics_delta_mean).rolling(
-    #     n
-    # ).mean().heatwaves_days.plot()
-    #
-    # (weighted_mean_over65 - heatwave_metrics_delta_mean).rolling(
-    #     n
-    # ).mean().heatwaves_days.plot()
 
 
 if __name__ == "__main__":

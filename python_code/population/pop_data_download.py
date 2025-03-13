@@ -4,26 +4,19 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import numpy as np
 import requests
 from icecream import ic
 from tqdm import tqdm
 
-from my_config import dir_population_tmp, dir_pop_raw, dir_population, VarsWorldPop
+from my_config import Dirs, VarsWorldPop
 
 # this is needed to avoid the error in the download in MaxOS
 os.environ["no_proxy"] = "*"
 
 
-base_worldpop_url = "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020/"
-years_range = np.arange(
-    VarsWorldPop.year_worldpop_start, VarsWorldPop.year_worldpop_end + 1
-)
-
-
 def download_file(url, filepath):
     filepath = Path(filepath)
-    tmp_filepath = dir_population_tmp / filepath.name
+    tmp_filepath = Dirs.dir_population_tmp.value / filepath.name
     ic(f"Downloading {filepath}")
     if not filepath.is_file() and not tmp_filepath.is_file():
         response = requests.get(url, stream=True)
@@ -61,13 +54,17 @@ def download_file(url, filepath):
 def create_urls_sex_age_years() -> list[tuple[str, str]]:
     _urls = []
 
-    for year in years_range:
+    for year in VarsWorldPop.get_years_range():
         for sex in VarsWorldPop.worldpop_sex:
             for age in VarsWorldPop.worldpop_ages:
-                download_url = f"{base_worldpop_url}{year}/0_Mosaicked/global_mosaic_1km/global_{sex}_{age}_{year}_1km.tif"
-                filepath = dir_population / f"global_{sex}_{age}_{year}_1km.tif"
-                tmp_filepath = dir_population_tmp / filepath.name
-                hd_filepath = dir_pop_raw / filepath.name
+                download_url = VarsWorldPop.get_url_download(
+                    year=year, sex=sex, age=age
+                )
+                filepath = (
+                    Dirs.dir_population.value / f"global_{sex}_{age}_{year}_1km.tif"
+                )
+                tmp_filepath = Dirs.dir_population_tmp.value / filepath.name
+                hd_filepath = Dirs.dir_pop_raw.value / filepath.name
                 if (
                     not filepath.is_file()
                     and not tmp_filepath.is_file()

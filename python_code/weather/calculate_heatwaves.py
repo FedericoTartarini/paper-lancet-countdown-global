@@ -11,24 +11,26 @@ For more than 2 consecutive days (i.e. total of 3 or more days).
 
 This replaces the definition of only Tmin > 99percentile for more than 3 consecutive days (total of 4 or more days).
 
-This is what is requested from the Lancet. To be honest it's not clear whether this produces a substantially 'better' indicator since all heatwave indicators are arbitrary in absence of covariate data (i.e. impact data). Furthermore we know that the health impacts are mediated by many other things, so in any case we are truely interested just in the trends i.e. demonstrating that there is a) more heatwaves and b) more exposure to heatwaves - this can be followed by local studies but (as always) the point is to present a general risk factor trend.
+This is what is requested from the Lancet. To be honest it's not clear whether this produces a substantially 'better'
+indicator since all heatwave indicators are arbitrary in absence of covariate data (i.e. impact data). Furthermore we
+know that the health impacts are mediated by many other things, so in any case we are truely interested just in the
+trends i.e. demonstrating that there is a) more heatwaves and b) more exposure to heatwaves - this can be followed by
+local studies but (as always) the point is to present a general risk factor trend.
 
-> NOTE: considered just adding the newest year each time instead of re-calculating the whole thing. HOWEVER in reality, the input data is still changing year to year, so far have needed to re-calculate anyway (e.g. change in resolution, change from ERAI to ERA5, in the future probably use ERA5-Land, etc). Although it seems like a cool idea to have a reproducible method where each year you just add one thing, in practice its better to have one 'frozen' output corresponding to each publication, so that it's easy to go back later to find data corresponding to specific results. Additionally, generating one file per year means you have a folder full of files that are harder to share, and the outputs are in the end pretty small (<50MB in Float32)}.
-"""
+> NOTE: considered just adding the newest year each time instead of re-calculating the whole thing. HOWEVER in
+reality, the input data is still changing year to year, so far have needed to re-calculate anyway (e.g. change in
+resolution, change from ERAI to ERA5, in the future probably use ERA5-Land, etc). Although it seems like a cool idea
+to have a reproducible method where each year you just add one thing, in practice its better to have one 'frozen'
+output corresponding to each publication, so that it's easy to go back later to find data corresponding to specific
+results. Additionally, generating one file per year means you have a folder full of files that are harder to share,
+and the outputs are in the end pretty small (<50MB in Float32)}."""
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 from joblib import Parallel, delayed
 
-from my_config import (
-    Vars,
-    dir_era_daily,
-    dir_era_quantiles,
-    quantiles,
-    dir_results_heatwaves_days,
-    dir_results_heatwaves_count,
-)
+from my_config import Vars, Dirs
 
 xr.set_options(keep_attrs=True)
 
@@ -55,7 +57,7 @@ def heatwaves_counts_multi_threshold(datasets_year, thresholds, days_threshold=2
     # Init arrays, pre allocate to (hopefully) improve performance.
     out_shape: tuple = threshold_exceeded.shape[1:]
 
-    last_slice: bool[:, :] = threshold_exceeded[0, :, :]
+    # last_slice: bool[:, :] = threshold_exceeded[0, :, :]
     curr_slice: bool[:, :] = threshold_exceeded[0, :, :]
     hw_ends: bool[:, :] = np.zeros(out_shape, dtype=bool)
     mask: bool[:, :] = np.zeros(out_shape, dtype=bool)
@@ -129,7 +131,7 @@ def heatwaves_days_multi_threshold(datasets_year, thresholds, days_threshold: in
     # pre allocate arrays
     out_shape: tuple = threshold_exceeded.shape[1:]
 
-    last_slice: bool[:, :] = threshold_exceeded[0, :, :]
+    # last_slice: bool[:, :] = threshold_exceeded[0, :, :]
     curr_slice: bool[:, :] = threshold_exceeded[0, :, :]
     hw_ends: bool[:, :] = np.zeros(out_shape, dtype=bool)
     mask: bool[:, :] = np.zeros(out_shape, dtype=bool)
@@ -179,7 +181,7 @@ def heatwaves_days_multi_threshold(datasets_year, thresholds, days_threshold: in
 
 
 def ds_for_year(year):
-    ds = xr.open_dataset(dir_era_daily / f"{year}_temperature_summary.nc")
+    ds = xr.open_dataset(Dirs.dir_era_daily.value / f"{year}_temperature_summary.nc")
     ds = ds.transpose("time", "latitude", "longitude")
     return ds
 
@@ -200,11 +202,13 @@ def apply_func_and_save(
     year,
     output_folder,
     t_thresholds,
-    t_var_names=["tmin", "tmax"],
+    t_var_names=None,
     days_threshold=2,
     overwrite=False,
     filename_pattern="indicator_{year}.nc",
 ):
+    if t_var_names is None:
+        t_var_names = ["tmin", "tmax"]
     output_file = output_folder / filename_pattern.format(year=year)
     if output_file.exists() is False and overwrite is False:
         year, result = apply_func_for_file(
@@ -260,19 +264,19 @@ def apply_func_and_save_yearly(
         return f"Skipped {output_file}, already exists"
 
 
-if __name__ == "__main__":
+def main():
     temperature_files = [
-        (year, dir_era_daily / f"{year}_temperature_summary.nc")
-        for year in range(Vars.year_min_analysis, Vars.year_report)
+        (year, Dirs.dir_era_daily.value / f"{year}_temperature_summary.nc")
+        for year in Vars.get_analysis_years()
     ]
 
-    quantile = quantiles[0]
+    quantile = Vars.quantiles.value[0]
 
     t_thresholds = []
     for var in ["t_min", "t_max"]:
         climatology_quantiles = (
-            dir_era_quantiles
-            / f'daily_{var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc'
+            Dirs.dir_era_quantiles.value
+            / f'daily_{var}_quantiles_{"_".join([str(int(100*q)) for q in Vars.quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc'
         )
         quantiles_ds = xr.open_dataset(climatology_quantiles)
         threshold = quantiles_ds.sel(
@@ -292,24 +296,28 @@ if __name__ == "__main__":
     #     for year, _ in temperature_files
     # )
 
-    res = Parallel(n_jobs=6, verbose=3)(
+    _ = Parallel(n_jobs=6, verbose=3)(
         delayed(apply_func_and_save)(
             heatwaves_days_multi_threshold,
             year,
-            dir_results_heatwaves_days,
+            Dirs.dir_results_heatwaves_days,
             t_thresholds,
             ["t_min", "t_max"],
         )
         for year, _ in temperature_files
     )
 
-    res = Parallel(n_jobs=5, verbose=2)(
+    _ = Parallel(n_jobs=5, verbose=2)(
         delayed(apply_func_and_save)(
             heatwaves_counts_multi_threshold,
             year,
-            dir_results_heatwaves_count,
+            Dirs.dir_results_heatwaves_count,
             t_thresholds,
             ["t_min", "t_max"],
         )
         for year, _ in temperature_files
     )
+
+
+if __name__ == "__main__":
+    main()

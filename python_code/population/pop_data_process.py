@@ -8,14 +8,7 @@ from icecream import ic
 from shapely.geometry import Point
 from tqdm import tqdm
 
-from my_config import (
-    dir_local,
-    dir_pop_era_grid,
-    dir_era_daily,
-    VarsWorldPop,
-    dir_pop_raw,
-    dir_file_detailed_boundaries,
-)
+from my_config import VarsWorldPop, Dirs, Vars
 
 
 def process_and_combine_ages(ages, sex, year, directory, era5_grid):
@@ -103,9 +96,11 @@ def sum_files(files, directory=""):
     return total_sum
 
 
-def get_era5_grid(year=1980):
+def get_era5_grid(year):
     # open on year of era5 to put population data on the same grid
-    era5_data = xr.open_dataset(dir_era_daily / f"{year}_temperature_summary.nc")
+    era5_data = xr.open_dataset(
+        Dirs.dir_era_daily.value / f"{year}_temperature_summary.nc"
+    )
     era5_data = era5_data.assign_coords(
         longitude=(((era5_data.longitude + 180) % 360) - 180)
     )
@@ -117,7 +112,7 @@ def get_era5_grid(year=1980):
     era_grid.set_crs("EPSG:4326", inplace=True)
     era_grid = era_grid[["longitude", "latitude", "geometry"]]
 
-    gdf_countries = gpd.read_file(dir_file_detailed_boundaries)
+    gdf_countries = gpd.read_file(Dirs.dir_file_detailed_boundaries)
     era_grid = gpd.sjoin(
         era_grid,
         gdf_countries[["ISO_3_CODE", "geometry"]],
@@ -133,7 +128,8 @@ def get_era5_grid(year=1980):
 def process_and_save_population_data(ages, year, sex, era5_grid_3395):
 
     out_path = (
-        dir_pop_era_grid / f'{sex}_{"_".join(map(str, ages))}_{year}_era5_compatible.nc'
+        Dirs.dir_pop_era_grid.value
+        / f'{sex}_{"_".join(map(str, ages))}_{year}_era5_compatible.nc'
     )
 
     if out_path.exists():
@@ -145,7 +141,7 @@ def process_and_save_population_data(ages, year, sex, era5_grid_3395):
         ages=ages,
         sex=sex,
         year=year,
-        directory=dir_pop_raw,
+        directory=Dirs.dir_pop_raw,
         era5_grid=era5_grid_3395,
     )
     pop_gridded = pop_gridded.rename(
@@ -176,14 +172,12 @@ def process_and_save_population_data(ages, year, sex, era5_grid_3395):
 
 def main():
     ages_array = [[0], [65, 70, 75, 80], [75, 80]]
-    years_array = np.arange(
-        VarsWorldPop.year_worldpop_start, VarsWorldPop.year_worldpop_end + 1
-    )
+    years_array = VarsWorldPop.get_years_range()
     total_iterations = (
         len(ages_array) * len(VarsWorldPop.worldpop_sex) * len(years_array)
     )
 
-    era5_grid_3395, era5_grid = get_era5_grid()
+    era5_grid_3395, era5_grid = get_era5_grid(year=Vars.year_min_analysis)
 
     with tqdm(total=total_iterations) as pbar:
         for age in ages_array:

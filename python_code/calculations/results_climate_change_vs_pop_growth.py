@@ -1,26 +1,17 @@
 # from climada.entity import Exposures
+import warnings
+
+import cartopy
 import cartopy.crs as ccrs
+import geopandas as gpd
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray as xr
 from shapely.geometry import Point
-import cartopy
-import geopandas as gpd
-from icecream import ic
-import warnings
 
-from my_config import (
-    map_projection,
-    dir_figures,
-    dir_pop_elderly_file,
-    dir_pop_infants_file,
-    dir_results_heatwaves_days,
-    Vars,
-    dir_file_country_raster_report,
-    dir_file_detailed_boundaries,
-)
+from my_config import Vars, Dirs
 from python_code.calculations.region_raster import plot_world_map
 
 # Suppress the specific RuntimeWarning from icecream
@@ -32,11 +23,11 @@ warnings.filterwarnings(
 def calculate_effect_climate_change_compared_to_pop_change(
     year_max: int = Vars.year_max_analysis,
 ):
-    heatwave_metrics_files = sorted(dir_results_heatwaves_days.glob("*.nc"))
+    heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves_days.value.glob("*.nc"))
     hw = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
-    elderly = xr.open_dataset(dir_pop_elderly_file)
+    elderly = xr.open_dataset(Dirs.dir_pop_elderly_file.value)
     elderly = elderly.sel(year=slice(Vars.year_min_analysis, year_max))
-    infants = xr.open_dataset(dir_pop_infants_file)
+    infants = xr.open_dataset(Dirs.dir_pop_infants_file.value)
     infants = infants.sel(year=slice(Vars.year_min_analysis, year_max))
 
     """
@@ -61,10 +52,10 @@ def calculate_effect_climate_change_compared_to_pop_change(
         .sel(year=slice(Vars.year_reference_start, Vars.year_reference_end))
         .mean(dim="year")
     )
-    print("Current period is from", Vars.year_reference_end + 1, "to", year_max)
+    print("Current period is from", Vars.year_reference_end.value + 1, "to", year_max)
     climate_recent = (
         hw.transpose("latitude", "longitude", "year")["heatwaves_days"]
-        .sel(year=slice(Vars.year_reference_end + 1, year_max))
+        .sel(year=slice(Vars.year_reference_end.value + 1, year_max))
         .mean(dim="year")
     )
     # mean number of people per grid point for each period
@@ -72,13 +63,13 @@ def calculate_effect_climate_change_compared_to_pop_change(
         year=slice(Vars.year_reference_start, Vars.year_reference_end)
     ).mean(dim="year")
     elderly_recent = elderly.sel(
-        year=slice(Vars.year_reference_end + 1, year_max)
+        year=slice(Vars.year_reference_end.value + 1, year_max)
     ).mean(dim="year")
     infants_past = infants.sel(
         year=slice(Vars.year_reference_start, Vars.year_reference_end)
     ).mean(dim="year")
     infants_recent = infants.sel(
-        year=slice(Vars.year_reference_end + 1, year_max)
+        year=slice(Vars.year_reference_end.value + 1, year_max)
     ).mean(dim="year")
 
     def adjust_longitude(data):
@@ -273,7 +264,7 @@ def calculate_effect_climate_change_compared_to_pop_change(
         rect=[0, 0.03, 1, 0.95]
     )  # Adjust the rect to make room for the suptitle
 
-    plt.savefig(dir_figures / "barplots_dominant_effect_change.pdf")
+    plt.savefig(Dirs.dir_figures.value / "barplots_dominant_effect_change.pdf")
     plt.show()
 
     return (
@@ -301,7 +292,7 @@ def plots(year_max: int = Vars.year_max_analysis):
         combined_increase_infants,
     ) = calculate_effect_climate_change_compared_to_pop_change(year_max=year_max)
 
-    countries_raster = xr.open_dataset(dir_file_country_raster_report)
+    countries_raster = xr.open_dataset(Dirs.dir_file_country_raster_report.value)
     land_mask = countries_raster["OBJECTID"] < 2000
 
     diff = climate_recent - climate_past
@@ -348,7 +339,7 @@ def plots(year_max: int = Vars.year_max_analysis):
         increase_elderly_climate_gdf, crs="EPSG:4326", geometry=geometry
     )
 
-    gdf_countries = gpd.read_file(dir_file_detailed_boundaries)
+    gdf_countries = gpd.read_file(Dirs.dir_file_detailed_boundaries)
 
     increase_elderly_population_country = gpd.sjoin(
         increase_elderly_population_gdf, gdf_countries, how="inner", predicate="within"
@@ -418,7 +409,7 @@ def plots(year_max: int = Vars.year_max_analysis):
         1,
         1,
         figsize=(8, 6),
-        subplot_kw=dict(projection=map_projection),
+        subplot_kw=dict(projection=Vars.map_projection),
         constrained_layout=True,
     )
     # merged_gdf.plot(column='dominant_effect', ax=ax, legend=True)
@@ -440,7 +431,7 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Optional: Set additional options for the plot
     ax.set_title("Over 65")
     # ax.set_axis_off()
-    plt.savefig(dir_figures / "dominant_effect_change_countries_elderly.pdf")
+    plt.savefig(Dirs.dir_figures.value / "dominant_effect_change_countries_elderly.pdf")
     plt.show()
 
     geometry = [
@@ -536,7 +527,7 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Plot the map
 
     # fig, ax = plt.subplots(
-    #     1, 1, figsize=(8, 6), subplot_kw=dict(projection=map_projection)
+    #     1, 1, figsize=(8, 6), subplot_kw=dict(projection=Vars.map_projection)
     # )
     # # merged_gdf.plot(column='dominant_effect', ax=ax, legend=True)
     # patches = []
@@ -613,7 +604,7 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Create the plot with Cartopy
     fig, ax = plt.subplots(
         figsize=(8, 6),
-        subplot_kw={"projection": map_projection},
+        subplot_kw={"projection": Vars.map_projection},
         constrained_layout=True,
     )
     ax.coastlines()  # Add coastlines
@@ -647,7 +638,9 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Increase the size of the points in the legend
     plt.legend(markerscale=30)  # Increase marker scale in legend for better visibility
 
-    plt.savefig(dir_figures / "dominant_effect_change_grid_infants.jpeg", dpi=1200)
+    plt.savefig(
+        Dirs.dir_figures.value / "dominant_effect_change_grid_infants.jpeg", dpi=1200
+    )
     plt.show()
 
     # Step 1: Rename columns for clarity
@@ -708,7 +701,7 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Create the plot with Cartopy
     fig, ax = plt.subplots(
         figsize=(8, 6),
-        subplot_kw={"projection": map_projection},
+        subplot_kw={"projection": Vars.map_projection},
         constrained_layout=True,
     )
     ax.coastlines()  # Add coastlines
@@ -743,7 +736,9 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Increase the size of the points in the legend
     plt.legend(markerscale=30)  # Increase marker scale in legend for better visibility
 
-    plt.savefig(dir_figures / "dominant_effect_change_grid_elderly.jpeg", dpi=1200)
+    plt.savefig(
+        Dirs.dir_figures.value / "dominant_effect_change_grid_elderly.jpeg", dpi=1200
+    )
     plt.show()
 
     # Assuming dominant_effect_gdf_infants and dominant_effect_gdf_elderly are your GeoDataFrames
@@ -770,7 +765,7 @@ def plots(year_max: int = Vars.year_max_analysis):
         nrows=1,
         ncols=2,
         figsize=(16, 6),
-        subplot_kw={"projection": map_projection},
+        subplot_kw={"projection": Vars.map_projection},
         constrained_layout=True,
     )
 
@@ -831,14 +826,16 @@ def plots(year_max: int = Vars.year_max_analysis):
     # axs[1].set_global()
 
     plt.tight_layout()  # Adjust the layout to make sure everything fits without overlapping
-    plt.savefig(dir_figures / "combined_dominant_effect_change_grid.jpeg", dpi=1200)
+    plt.savefig(
+        Dirs.dir_figures.value / "combined_dominant_effect_change_grid.jpeg", dpi=1200
+    )
     plt.show()
 
     fig, axs = plt.subplots(
         nrows=1,
         ncols=2,
         figsize=(16, 6),
-        subplot_kw={"projection": map_projection},
+        subplot_kw={"projection": Vars.map_projection},
         constrained_layout=True,
     )
     increase_infants_climate_gdf.dropna().plot(
@@ -883,7 +880,10 @@ def plots(year_max: int = Vars.year_max_analysis):
     plt.show()
 
     fig, axs = plt.subplots(
-        nrows=1, ncols=2, figsize=(16, 6), subplot_kw={"projection": map_projection}
+        nrows=1,
+        ncols=2,
+        figsize=(16, 6),
+        subplot_kw={"projection": Vars.map_projection},
     )
     combined_increase_infants_gdf.dropna().plot(
         "rel_diff",
@@ -914,7 +914,9 @@ def plots(year_max: int = Vars.year_max_analysis):
         climate_recent_gdf, crs="EPSG:4326", geometry=geometry
     )
 
-    fig, ax = plt.subplots(figsize=(8, 6), subplot_kw={"projection": map_projection})
+    fig, ax = plt.subplots(
+        figsize=(8, 6), subplot_kw={"projection": Vars.map_projection}
+    )
 
     climate_recent_gdf.plot("", cmap="Reds", vmin=0, vmax=20, ax=ax)
 
@@ -924,7 +926,7 @@ def plots(year_max: int = Vars.year_max_analysis):
 
 if __name__ == "__main__":
     _ = calculate_effect_climate_change_compared_to_pop_change(
-        year_max=Vars.year_max_analysis
+        year_max=Vars.year_max_analysis.value
     )
     # plots(year_max=Vars.year_max_analysis)
     pass
