@@ -4,8 +4,7 @@ from icecream import ic
 from my_config import (
     dir_era_hourly,
     dir_era_daily,
-    year_max_analysis,
-    year_min_analysis,
+    Vars,
 )
 from python_code.secrets import copernicus_api_key
 
@@ -110,7 +109,7 @@ def download_year_era5(year: int = 2022):
 
 
 if __name__ == "__main__":
-    for y in range(year_min_analysis, year_max_analysis):
+    for y in range(Vars.year_min_analysis, Vars.year_max_analysis):
         out_file = dir_era_hourly / f"{y}_temperature.grib"
         summary_file = dir_era_daily / f"{y}_temperature_summary.nc"
 

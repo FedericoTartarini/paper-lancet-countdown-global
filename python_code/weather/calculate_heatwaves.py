@@ -22,13 +22,10 @@ import xarray as xr
 from joblib import Parallel, delayed
 
 from my_config import (
+    Vars,
     dir_era_daily,
     dir_era_quantiles,
-    year_min_analysis,
-    year_report,
     quantiles,
-    year_reference_start,
-    year_reference_end,
     dir_results_heatwaves_days,
     dir_results_heatwaves_count,
 )
@@ -266,7 +263,7 @@ def apply_func_and_save_yearly(
 if __name__ == "__main__":
     temperature_files = [
         (year, dir_era_daily / f"{year}_temperature_summary.nc")
-        for year in range(year_min_analysis, year_report)
+        for year in range(Vars.year_min_analysis, Vars.year_report)
     ]
 
     quantile = quantiles[0]
@@ -275,7 +272,7 @@ if __name__ == "__main__":
     for var in ["t_min", "t_max"]:
         climatology_quantiles = (
             dir_era_quantiles
-            / f'daily_{var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_{year_reference_start}-{year_reference_end}.nc'
+            / f'daily_{var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc'
         )
         quantiles_ds = xr.open_dataset(climatology_quantiles)
         threshold = quantiles_ds.sel(

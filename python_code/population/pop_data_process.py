@@ -12,9 +12,7 @@ from my_config import (
     dir_local,
     dir_pop_era_grid,
     dir_era_daily,
-    year_worldpop_start,
-    year_worldpop_end,
-    worldpop_sex,
+    VarsWorldPop,
     dir_pop_raw,
     dir_file_detailed_boundaries,
 )
@@ -178,15 +176,19 @@ def process_and_save_population_data(ages, year, sex, era5_grid_3395):
 
 def main():
     ages_array = [[0], [65, 70, 75, 80], [75, 80]]
-    years_array = np.arange(year_worldpop_start, year_worldpop_end + 1)
-    total_iterations = len(ages_array) * len(worldpop_sex) * len(years_array)
+    years_array = np.arange(
+        VarsWorldPop.year_worldpop_start, VarsWorldPop.year_worldpop_end + 1
+    )
+    total_iterations = (
+        len(ages_array) * len(VarsWorldPop.worldpop_sex) * len(years_array)
+    )
 
     era5_grid_3395, era5_grid = get_era5_grid()
 
     with tqdm(total=total_iterations) as pbar:
         for age in ages_array:
             for year in years_array:
-                for sex in worldpop_sex:
+                for sex in VarsWorldPop.worldpop_sex:
                     process_and_save_population_data(
                         ages=age, year=year, sex=sex, era5_grid_3395=era5_grid_3395
                     )

@@ -11,8 +11,7 @@ import xarray as xr
 
 from my_config import (
     dir_results_pop_exposure,
-    year_reference_end,
-    year_reference_start,
+    Vars,
     dir_results_heatwaves_days,
     dir_file_elderly_exposure_change,
     dir_file_infants_exposure_change,
@@ -42,7 +41,7 @@ def main():
     maybe it's a benefit??) is that you also mix in changes in total population and demographics"""
 
     heatwaves_metrics_reference = heatwave_metrics.sel(
-        year=slice(year_reference_start, year_reference_end)
+        year=slice(Vars.year_reference_start, Vars.year_reference_end)
     ).mean(dim="year")
     heatwave_metrics_delta = heatwave_metrics - heatwaves_metrics_reference
 

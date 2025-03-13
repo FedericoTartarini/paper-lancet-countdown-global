@@ -6,8 +6,7 @@ from dask.diagnostics import ProgressBar
 
 from my_config import (
     dir_era_daily,
-    year_reference_start,
-    year_reference_end,
+    Vars,
     dir_era_quantiles,
     quantiles,
 )
@@ -22,7 +21,7 @@ if __name__ == "__main__":
 
             year = int(file.name.split("_")[0])
 
-            if year_reference_start <= year <= year_reference_end:
+            if Vars.year_reference_start <= year <= Vars.year_reference_end:
                 file_list.append(file)
 
         file_list = sorted(file_list)
@@ -35,7 +34,7 @@ if __name__ == "__main__":
 
         climatology_quantiles = (
             dir_era_quantiles
-            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_{year_reference_start}-{year_reference_end}.nc'
+            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc'
         )
 
         daily_quantiles = daily_temperatures.quantile(quantiles, dim="time")

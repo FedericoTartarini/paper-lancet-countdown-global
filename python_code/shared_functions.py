@@ -4,11 +4,10 @@ import pandas as pd
 import xarray as xr
 
 from my_config import (
+    Vars,
     dir_file_lancet_country_info,
     dir_file_country_polygons,
     dir_pop_infants_file,
-    year_max_analysis,
-    year_min_analysis,
     dir_pop_elderly_file,
     dir_pop_above_75_file,
 )
@@ -44,13 +43,13 @@ def get_lancet_country_data(hdi_column):
 
 def read_pop_data_processed(get_pop_75=False):
     pop_inf = xr.open_dataset(dir_pop_infants_file).sel(
-        year=slice(year_min_analysis, year_max_analysis)
+        year=slice(Vars.year_min_analysis, Vars.year_max_analysis)
     )
     pop_eld = xr.open_dataset(dir_pop_elderly_file).sel(
-        year=slice(year_min_analysis, year_max_analysis)
+        year=slice(Vars.year_min_analysis, Vars.year_max_analysis)
     )
     pop_75 = xr.open_dataset(dir_pop_above_75_file).sel(
-        year=slice(year_min_analysis, year_max_analysis)
+        year=slice(Vars.year_min_analysis, Vars.year_max_analysis)
     )
 
     # I should save this file rather than two separate ones for infants and elderly

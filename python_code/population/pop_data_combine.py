@@ -9,16 +9,14 @@ import xarray as xr
 from shapely.geometry import box
 
 from my_config import (
+    Vars,
     dir_pop_era_grid,
-    year_worldpop_end,
-    year_worldpop_start,
+    VarsWorldPop,
     dir_file_population_before_2000,
     dir_figures_interim,
     dir_pop_infants_file,
     dir_pop_elderly_file,
     dir_pop_above_75_file,
-    year_report,
-    year_max_analysis,
 )
 
 
@@ -125,7 +123,9 @@ def load_and_combine_population_data(age_group, years_range):
 
 def main(plot=True):
     # Load and combine infant and elderly population data for 2000-2020
-    years_range = np.arange(year_worldpop_start, year_worldpop_end + 1)
+    years_range = np.arange(
+        VarsWorldPop.year_worldpop_start, VarsWorldPop.year_worldpop_end + 1
+    )
     infants_worldpop = load_and_combine_population_data(
         age_group="0", years_range=years_range
     )
@@ -136,16 +136,16 @@ def main(plot=True):
     # Load and combine infant and elderly population data for 1950-1999
     demographics_totals = xr.open_dataarray(dir_file_population_before_2000)
     infants_lancet = demographics_totals.sel(age_band_lower_bound=0).sel(
-        year=slice(1950, year_worldpop_start - 1)
+        year=slice(1950, VarsWorldPop.year_worldpop_start - 1)
     )
     infants_lancet /= 5  # Divide by 5 to get the number of infants
 
     elderly_lancet = demographics_totals.sel(age_band_lower_bound=65).sel(
-        year=slice(1950, year_worldpop_start - 1)
+        year=slice(1950, VarsWorldPop.year_worldpop_start - 1)
     )
 
     # Combine data for all years (1950-2020) and extrapolate
-    extrapolated_years = np.arange(year_worldpop_end + 1, year_report)
+    extrapolated_years = np.arange(VarsWorldPop.year_worldpop_end + 1, Vars.year_report)
 
     infants_lancet = infants_lancet.to_dataset().rename({"demographic_totals": "pop"})
     infants_pop_analysis = concatenate_and_extrapolate(
@@ -196,10 +196,10 @@ def main(plot=True):
 
     plot_population_trends(
         inf_worldpop=infants_pop_analysis.sel(
-            year=slice(2000, year_max_analysis)
+            year=slice(2000, Vars.year_max_analysis)
         ).rename({"infants": "pop"}),
         eld_worldpop=elderly_pop_analysis.sel(
-            year=slice(2000, year_max_analysis)
+            year=slice(2000, Vars.year_max_analysis)
         ).rename({"elderly": "pop"}),
         eld_75=elderly_worldpop_75,
         totals_lancet=demographics_totals,

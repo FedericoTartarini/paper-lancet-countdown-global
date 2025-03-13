@@ -5,9 +5,8 @@ import xarray as xr
 from tqdm import tqdm
 
 from my_config import (
-    year_max_analysis,
+    Vars,
     dir_results_pop_exposure,
-    year_min_analysis,
     dir_pop_infants_file,
     dir_pop_elderly_file,
     dir_file_elderly_exposure_change,
@@ -57,7 +56,7 @@ exposures_change = exposures_change.assign_coords(
 
 exposures_abs = xr.open_dataset(
     dir_results_pop_exposure
-    / f"heatwave_exposure_multi_threshold_{year_min_analysis}-{year_max_analysis}_worldpop.nc",
+    / f"heatwave_exposure_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc",
     chunks=dict(age_band_lower_bound=1, year=20),
 )
 exposures_abs = exposures_abs.assign_coords(

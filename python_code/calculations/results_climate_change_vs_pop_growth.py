@@ -17,10 +17,7 @@ from my_config import (
     dir_pop_elderly_file,
     dir_pop_infants_file,
     dir_results_heatwaves_days,
-    year_max_analysis,
-    year_min_analysis,
-    year_reference_start,
-    year_reference_end,
+    Vars,
     dir_file_country_raster_report,
     dir_file_detailed_boundaries,
 )
@@ -33,14 +30,14 @@ warnings.filterwarnings(
 
 
 def calculate_effect_climate_change_compared_to_pop_change(
-    year_max: int = year_max_analysis,
+    year_max: int = Vars.year_max_analysis,
 ):
     heatwave_metrics_files = sorted(dir_results_heatwaves_days.glob("*.nc"))
     hw = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
     elderly = xr.open_dataset(dir_pop_elderly_file)
-    elderly = elderly.sel(year=slice(year_min_analysis, year_max))
+    elderly = elderly.sel(year=slice(Vars.year_min_analysis, year_max))
     infants = xr.open_dataset(dir_pop_infants_file)
-    infants = infants.sel(year=slice(year_min_analysis, year_max))
+    infants = infants.sel(year=slice(Vars.year_min_analysis, year_max))
 
     """
     1. select two periods
@@ -55,34 +52,34 @@ def calculate_effect_climate_change_compared_to_pop_change(
     # mean number of heatwave days per grid point for each period
     print(
         "Comparison period in the past is from",
-        year_reference_start,
+        Vars.year_reference_start,
         "to",
-        year_reference_end,
+        Vars.year_reference_end,
     )
     climate_past = (
         hw.transpose("latitude", "longitude", "year")["heatwaves_days"]
-        .sel(year=slice(year_reference_start, year_reference_end))
+        .sel(year=slice(Vars.year_reference_start, Vars.year_reference_end))
         .mean(dim="year")
     )
-    print("Current period is from", year_reference_end + 1, "to", year_max)
+    print("Current period is from", Vars.year_reference_end + 1, "to", year_max)
     climate_recent = (
         hw.transpose("latitude", "longitude", "year")["heatwaves_days"]
-        .sel(year=slice(year_reference_end + 1, year_max))
+        .sel(year=slice(Vars.year_reference_end + 1, year_max))
         .mean(dim="year")
     )
     # mean number of people per grid point for each period
     elderly_past = elderly.sel(
-        year=slice(year_reference_start, year_reference_end)
+        year=slice(Vars.year_reference_start, Vars.year_reference_end)
     ).mean(dim="year")
-    elderly_recent = elderly.sel(year=slice(year_reference_end + 1, year_max)).mean(
-        dim="year"
-    )
+    elderly_recent = elderly.sel(
+        year=slice(Vars.year_reference_end + 1, year_max)
+    ).mean(dim="year")
     infants_past = infants.sel(
-        year=slice(year_reference_start, year_reference_end)
+        year=slice(Vars.year_reference_start, Vars.year_reference_end)
     ).mean(dim="year")
-    infants_recent = infants.sel(year=slice(year_reference_end + 1, year_max)).mean(
-        dim="year"
-    )
+    infants_recent = infants.sel(
+        year=slice(Vars.year_reference_end + 1, year_max)
+    ).mean(dim="year")
 
     def adjust_longitude(data):
         _data = data.assign_coords(
@@ -291,7 +288,7 @@ def calculate_effect_climate_change_compared_to_pop_change(
     )
 
 
-def plots(year_max: int = year_max_analysis):
+def plots(year_max: int = Vars.year_max_analysis):
 
     (
         climate_recent,
@@ -927,7 +924,7 @@ def plots(year_max: int = year_max_analysis):
 
 if __name__ == "__main__":
     _ = calculate_effect_climate_change_compared_to_pop_change(
-        year_max=year_max_analysis
+        year_max=Vars.year_max_analysis
     )
-    # plots(year_max=year_max_analysis)
+    # plots(year_max=Vars.year_max_analysis)
     pass
