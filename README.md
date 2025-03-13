@@ -9,7 +9,7 @@ This code allows you to:
 ## How to run the code
 
 1. Clone the repository
-2. Install the required packages using conda
+2. Install the required packages using conda, the dependencies are listed in [requirements_conda.txt](requirements_conda.txt). To create a conda environment use `conda create --name <env> --file requirements.txt`
 3. Get your Personal Access Token from your profile on the CDS portal at the address: https://cds.climate.copernicus.eu/profile
 4. Update [my_config.py](my_config.py), change the paths and the dates if needed.
 
@@ -46,3 +46,10 @@ To download the data you need to:
 ## Other calculations
 1. Calculate the change in exposure to heatwaves using [heatwave_exposure_pop_change.py](python_code/calculations/heatwave_exposure_pop_change.py). These data are not used in the report.
 2. Calculate the worldpop exposure to heatwaves using [heatwave_exposure_worldpop_change.py](python_code/calculations/heatwave_exposure_worldpop_change.py). These data are not used in the report.
+
+# Other info
+To update the list of dependencies use:
+```bash
+conda list -e > requirements.txt
+pip list --format=freeze > requirements.txt
+```
