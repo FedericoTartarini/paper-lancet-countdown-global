@@ -50,6 +50,6 @@ To download the data you need to:
 # Other info
 To update the list of dependencies use:
 ```bash
-conda list -e > requirements.txt
+conda list -e > requirements_conda.txt
 pip list --format=freeze > requirements.txt
 ```
