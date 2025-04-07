@@ -82,7 +82,7 @@ def _summary(data, yrs):
 
 
 country_lc_grouping = pd.read_excel(
-    Dirs.dir_file_lancet_country_info,
+    Dirs.dir_file_lancet_country_info.value,
     header=1,
 )
 
@@ -185,7 +185,7 @@ cos_lat = np.cos(np.radians(heatwave_metrics.latitude))
 
 hw_ref = _summary_weight(heatwave_metrics.heatwaves_days, slice(1986, 2005))
 hw_dec = _summary_weight(
-    heatwave_metrics.heatwaves_days, slice(2013, Vars.year_max_analysis)
+    heatwave_metrics.heatwaves_days, slice(2013, Vars.year_max_analysis.value)
 )
 
 
@@ -243,7 +243,7 @@ def plot_heatwaves_days(plot_data, slice_range=slice(1986, 2005)):
     # plot_data = plot_data.where(population.sel(age_band_lower_bound=65) > 10)
     plot_data = plot_data.sel(year=slice_range).mean(dim="year")
     f, ax = plt.subplots(
-        figsize=(6, 3), subplot_kw=dict(projection=Vars.map_projection)
+        figsize=(6, 3), subplot_kw=dict(projection=Vars.map_projection.value)
     )
 
     plot_data.heatwaves_days.plot(vmax=15, transform=ccrs.PlateCarree(), ax=ax)
@@ -252,7 +252,7 @@ def plot_heatwaves_days(plot_data, slice_range=slice(1986, 2005)):
 
 def plot_change_in_heatwaves(year=Vars.year_max_analysis):
     plot_data = heatwave_metrics.sel(year=year) - heatwave_metrics.sel(
-        year=slice(Vars.year_reference_start, Vars.year_reference_end)
+        year=slice(Vars.year_reference_start.value, Vars.year_reference_end.value)
     ).mean(dim="year")
     plot_data = plot_data.assign_coords(
         longitude=(((plot_data.longitude + 180) % 360) - 180)
@@ -264,7 +264,7 @@ def plot_change_in_heatwaves(year=Vars.year_max_analysis):
         1,
         1,
         figsize=(7, 5),
-        subplot_kw=dict(projection=Vars.map_projection),
+        subplot_kw=dict(projection=Vars.map_projection.value),
         constrained_layout=True,
     )
 
@@ -309,7 +309,7 @@ def plot_average_number_heatwaves_experienced():
     )
     population.name = "population"
     exposures_abs_ts = exposures_abs.sum(["latitude", "longitude"]) / population.sel(
-        year=slice(1980, Vars.year_max_analysis)
+        year=slice(1980, Vars.year_max_analysis.value)
     ).sum(["latitude", "longitude"])
     exposures_abs_ts_df = exposures_abs_ts.to_dataframe().unstack(1)
     # exposures_abs_ts_df = exposures_abs_ts_df.transpose()
@@ -330,7 +330,7 @@ def plot_average_number_heatwaves_experienced():
         clear_sheet=True,
         data=exposures_abs_ts_df.reset_index(),
         sheet_name=SheetsFinalSubmission.global_average.value,
-        file_name=Dirs.dir_file_excel_submission,
+        file_name=Dirs.dir_file_excel_submission.value,
         message="Average number of heatwaves days experienced per year by older adults (over 65 and over 75)  and infants",
     )
 
@@ -376,7 +376,7 @@ def plot_total_number_heatwaves_experienced():
         clear_sheet=True,
         data=plot_data,
         sheet_name=SheetsFinalSubmission.global_total.value,
-        file_name=Dirs.dir_file_excel_submission,
+        file_name=Dirs.dir_file_excel_submission.value,
         message="Total number of heatwaves days experienced per year by older adults (over 65 and over 75)  and infants",
     )
 
@@ -389,7 +389,7 @@ def plot_total_number_heatwaves_experienced():
     update_excel_results(
         data=percentage_increment,
         sheet_name=SheetsFinalSubmission.global_total.value,
-        file_name=Dirs.dir_file_excel_submission,
+        file_name=Dirs.dir_file_excel_submission.value,
         message="Percentage change (current year compared to year before) in total number of heatwaves days experienced per year by older adults (over 65 and over 75) and infants",
         col_offset=col_max + 1,
     )
@@ -428,13 +428,13 @@ def plot_country_exposure(slice_range=slice(1986, 2005)):
 def plot_country_change():
     ref = (
         country_exposure_abs.exposures_weighted.sel(age_band_lower_bound=65, drop=True)
-        .sel(year=slice(1986, 2005))
+        .sel(year=slice(Vars.year_reference_start.value, Vars.year_reference_end.value))
         .mean(dim="year")
         .to_dataframe()
     )
     yr = (
         country_exposure_abs.exposures_weighted.sel(age_band_lower_bound=65, drop=True)
-        .sel(year=slice(2013, Vars.year_max_analysis))
+        .sel(year=slice(2013, Vars.year_max_analysis.value))
         .mean(dim="year")
         .to_dataframe()
     )
@@ -477,7 +477,7 @@ def plot_absolute_and_change_exposure_range_years_lc_group():
     yr = (
         exposures_abs_lc_groups.exposures_weighted
         # .sel(age_band_lower_bound=65, drop=True)
-        .sel(year=slice(2013, Vars.year_max_analysis))
+        .sel(year=slice(2013, Vars.year_max_analysis.value))
         .mean(dim="year")
         .to_dataframe()
     )
@@ -507,7 +507,7 @@ def plot_absolute_and_change_exposure_range_years_lc_group():
     ref = (
         exposures_abs_lc_groups.exposures_weighted
         # .sel(age_band_lower_bound=65, drop=True)
-        .sel(year=slice(1986, 2005))
+        .sel(year=slice(Vars.year_reference_start.value, Vars.year_reference_end.value))
         .mean(dim="year")
         .to_dataframe()
     )
@@ -521,7 +521,9 @@ def plot_absolute_and_change_exposure_range_years_lc_group():
         e.rename(index={"South and Central America": "South and \nCentral America"})
         .plot.bar(
             ylabel="days/year",
-            title=f"Mean change in heatwave days per vulnerable person by region\n from 1986-2005 to 2013-{Vars.year_max_analysis} ",
+            title=f"Mean change in heatwave days per vulnerable person by region\n "
+            f"from {Vars.year_reference_start.value}-{Vars.year_reference_end.value} "
+            f"to 2013-{Vars.year_max_analysis} ",
         )
         .legend(
             bbox_to_anchor=(1.04, 0.5),
@@ -559,7 +561,7 @@ def plot_absolute_and_change_exposure_range_years_lc_group():
     plt.tight_layout()
     ax.figure.savefig(
         Dirs.dir_figures.value
-        / f"heatwave_days_pct_to_baseline_lc_group_2013-{Vars.year_max_analysis}.pdf"
+        / f"heatwave_days_pct_to_baseline_lc_group_2013-{Vars.year_max_analysis.value}.pdf"
     )
     plt.show()
 
@@ -620,9 +622,7 @@ def plot_exposure_vulnerable_absolute_heatwave():
 
 def plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=65):
     country_lc_grouping = pd.read_excel(
-        Dirs.dir_local.value
-        / "admin_boundaries"
-        / "2025 Global Report Country Names and Groupings.xlsx",
+        Dirs.dir_file_lancet_country_info.value,
         header=1,
     )
     list(country_lc_grouping[country_lc_grouping.ISO3 == "IDN"]["Country Name to use"])
@@ -631,7 +631,7 @@ def plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=65):
     top_codes = (
         country_exposure_change[var]
         .sel(
-            year=slice(2015, Vars.year_max_analysis),
+            year=slice(2015, Vars.year_max_analysis.value),
             age_band_lower_bound=age_band,
             drop=True,
         )
@@ -835,7 +835,7 @@ def plot_exposure_vulnerable_absolute_by_country_heatwave(age_band=0, max_year=2
         clear_sheet=True,
         data=data_export,
         sheet_name=sheet,
-        file_name=Dirs.dir_file_excel_submission,
+        file_name=Dirs.dir_file_excel_submission.value,
         message="Total heatwave person-days experienced by country",
     )
 
@@ -844,7 +844,8 @@ def plot_exposure_by_hdi():
     # Load aggregated by hdi and WHO region data
     hdi_exposure = xr.open_dataset(
         Dirs.dir_worldpop_exposure_by_region.value
-        / f"hdi_regions_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"hdi_regions_heatwaves_exposure_{Vars.year_min_analysis.value}"
+        f"-{Vars.year_max_analysis.value}_worldpop.nc"
     )
 
     # hdi_exposure_change = xr.open_dataset(
@@ -875,7 +876,7 @@ def plot_exposure_by_hdi():
         clear_sheet=True,
         data=hdi_exposure_df,
         sheet_name=SheetsFinalSubmission.hdi_group.value,
-        file_name=Dirs.dir_file_excel_submission,
+        file_name=Dirs.dir_file_excel_submission.value,
         message="Average number of heatwaves days experienced per year by older adults (over 65) and infants combined",
     )
 
@@ -884,7 +885,7 @@ def plot_exposure_by_hdi():
     update_excel_results(
         data=(df_combined_ages.pct_change().round(3) * 100).reset_index(),
         sheet_name=SheetsFinalSubmission.hdi_group.value,
-        file_name=Dirs.dir_file_excel_submission,
+        file_name=Dirs.dir_file_excel_submission.value,
         message="Percentage change from previous year (current year compared to year before) in average number of heatwaves days experienced per year by older adults (over 65) and infants combined",
         col_offset=col_max + 1,
     )
@@ -1000,7 +1001,7 @@ def save_lc_data_to_excel():
         clear_sheet=True,
         data=lc_exposures_abs_lc_groups_df,
         sheet_name=SheetsFinalSubmission.lc_region.value,
-        file_name=Dirs.dir_file_excel_submission,
+        file_name=Dirs.dir_file_excel_submission.value,
         message="Results by LC region",
     )
 
@@ -1009,17 +1010,18 @@ if __name__ == "__plot__":
     # world plot, slow to generate
     plot_heatwaves_days(plot_data=heatwave_metrics, slice_range=slice(1986, 2005))
     plot_heatwaves_days(
-        plot_data=heatwave_metrics, slice_range=slice(2013, Vars.year_max_analysis)
+        plot_data=heatwave_metrics,
+        slice_range=slice(2013, Vars.year_max_analysis.value),
     )
-    plot_change_in_heatwaves(year=Vars.year_max_analysis)
+    plot_change_in_heatwaves(year=Vars.year_max_analysis.value)
 
     # plot trends
     plot_total_number_heatwaves_experienced()
     plot_average_number_heatwaves_experienced()
-    plot_country_exposure(slice_range=slice(2013, Vars.year_max_analysis))
+    plot_country_exposure(slice_range=slice(2013, Vars.year_max_analysis.value))
     plot_country_change()
 
-    plot_absolute_exposure_lc_group(year=Vars.year_max_analysis)
+    plot_absolute_exposure_lc_group(year=Vars.year_max_analysis.value)
 
     plot_absolute_and_change_exposure_range_years_lc_group()
     plot_exposure_vulnerable_to_change_heatwave()
