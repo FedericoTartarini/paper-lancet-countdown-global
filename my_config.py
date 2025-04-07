@@ -99,7 +99,8 @@ weather_resolution: str = "0.25deg"
 class Dirs(AutoEnum):
     # Paths to local folders, SSD and HD
     dir_local: Path = (
-        Path.home() / "Documents" / "lancet_countdown"
+        Path.home()
+        / "Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/Academia/Datasets/lancet_countdown_global"
     )  # used to store data for analysis
     dir_ssd: Path = Path("/Volumes/T7/lancet_countdown")  # used to store large datasets
     dir_one_drive: Path = Path(
