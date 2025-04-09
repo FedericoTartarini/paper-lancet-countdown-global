@@ -2,45 +2,16 @@ import os
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import List, Iterator
+from typing import List
 
 from cartopy import crs as ccrs
 from matplotlib import pyplot as plt
-
 
 plt.rcParams["figure.figsize"] = [7, 3]
 plt.rcParams["savefig.dpi"] = 300
 
 
-class AutoEnum(Enum):
-    def __str__(self) -> str:
-        return str(self.value)
-
-    def __repr__(self) -> str:
-        return str(self.value)
-
-    # Allow direct comparison with the value
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self is other
-        return self.value == other
-
-    def __iter__(self) -> Iterator:
-        """Make list values iterable directly through the enum member."""
-        if isinstance(self.value, (list, tuple, set)):
-            return iter(self.value)
-        raise TypeError(f"{self.__class__.__name__}.{self.name} is not iterable")
-
-    def __len__(self) -> int:
-        """Support len() for iterable values."""
-        if isinstance(self.value, (list, tuple, set)):
-            return len(self.value)
-        raise TypeError(
-            f"object of type '{self.__class__.__name__}.{self.name}' has no len()"
-        )
-
-
-class Vars(AutoEnum):
+class Vars(Enum):
     year_report: int = datetime.now().year
     year_max_analysis: int = year_report - 1
     year_min_analysis: int = 1980
@@ -62,7 +33,7 @@ class Vars(AutoEnum):
         return list(range(cls.year_min_analysis.value, cls.year_max_analysis.value + 1))
 
 
-class VarsWorldPop(AutoEnum):
+class VarsWorldPop(Enum):
     year_worldpop_start: int = 2000
     year_worldpop_end: int = 2020
     worldpop_sex: List[str] = ["f", "m"]
@@ -96,7 +67,7 @@ weather_data: str = "era5"
 weather_resolution: str = "0.25deg"
 
 
-class Dirs(AutoEnum):
+class Dirs(Enum):
     # Paths to local folders, SSD and HD
     dir_local: Path = (
         Path.home()
