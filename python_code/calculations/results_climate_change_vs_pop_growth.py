@@ -21,14 +21,14 @@ warnings.filterwarnings(
 
 
 def calculate_effect_climate_change_compared_to_pop_change(
-    year_max: int = Vars.year_max_analysis,
+    year_max: int = Vars.year_max_analysis.value,
 ):
     heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves_days.value.glob("*.nc"))
     hw = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
     elderly = xr.open_dataset(Dirs.dir_pop_elderly_file.value)
-    elderly = elderly.sel(year=slice(Vars.year_min_analysis, year_max))
+    elderly = elderly.sel(year=slice(Vars.year_min_analysis.value, year_max))
     infants = xr.open_dataset(Dirs.dir_pop_infants_file.value)
-    infants = infants.sel(year=slice(Vars.year_min_analysis, year_max))
+    infants = infants.sel(year=slice(Vars.year_min_analysis.value, year_max))
 
     """
     1. select two periods
@@ -43,13 +43,13 @@ def calculate_effect_climate_change_compared_to_pop_change(
     # mean number of heatwave days per grid point for each period
     print(
         "Comparison period in the past is from",
-        Vars.year_reference_start,
+        Vars.year_reference_start.value,
         "to",
-        Vars.year_reference_end,
+        Vars.year_reference_end.value,
     )
     climate_past = (
         hw.transpose("latitude", "longitude", "year")["heatwaves_days"]
-        .sel(year=slice(Vars.year_reference_start, Vars.year_reference_end))
+        .sel(year=slice(Vars.year_reference_start.value, Vars.year_reference_end.value))
         .mean(dim="year")
     )
     print("Current period is from", Vars.year_reference_end.value + 1, "to", year_max)
@@ -60,13 +60,13 @@ def calculate_effect_climate_change_compared_to_pop_change(
     )
     # mean number of people per grid point for each period
     elderly_past = elderly.sel(
-        year=slice(Vars.year_reference_start, Vars.year_reference_end)
+        year=slice(Vars.year_reference_start.value, Vars.year_reference_end.value)
     ).mean(dim="year")
     elderly_recent = elderly.sel(
         year=slice(Vars.year_reference_end.value + 1, year_max)
     ).mean(dim="year")
     infants_past = infants.sel(
-        year=slice(Vars.year_reference_start, Vars.year_reference_end)
+        year=slice(Vars.year_reference_start.value, Vars.year_reference_end.value)
     ).mean(dim="year")
     infants_recent = infants.sel(
         year=slice(Vars.year_reference_end.value + 1, year_max)
@@ -195,7 +195,13 @@ def calculate_effect_climate_change_compared_to_pop_change(
     print(f"vulm_hw_cc_recent={vulm_hw_cc_recent:.1f}")
 
     print(
-        f"percentage decrease no climate change {((vulm_hw_cc_recent - vulm_hw_no_cc_recent) / vulm_hw_cc_recent):.2f}",
+        f"percentage decrease no climate change "
+        f"{((vulm_hw_cc_recent - vulm_hw_no_cc_recent) / vulm_hw_cc_recent *100):.1f}%",
+    )
+
+    print(
+        f"percentage increase with climate change "
+        f"{((vulm_hw_cc_recent - vulm_hw_no_cc_recent) / vulm_hw_no_cc_recent*100):.1f}%",
     )
 
     infants_hw_cc_recent = (

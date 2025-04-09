@@ -308,34 +308,48 @@ def plot_average_number_heatwaves_experienced():
         dim="age_band_lower_bound",
     )
     population.name = "population"
-    exposures_abs_ts = exposures_abs.sum(["latitude", "longitude"]) / population.sel(
+    norm_pop_exposure = exposures_abs.sum(["latitude", "longitude"]) / population.sel(
         year=slice(1980, Vars.year_max_analysis.value)
     ).sum(["latitude", "longitude"])
-    exposures_abs_ts_df = exposures_abs_ts.to_dataframe().unstack(1)
-    # exposures_abs_ts_df = exposures_abs_ts_df.transpose()
-    exposures_abs_ts_df.to_csv(
+    norm_pop_exposure_df = norm_pop_exposure.to_dataframe().unstack(1)
+    norm_pop_exposure_df.to_csv(
         Dirs.dir_results_pop_exposure.value / "heatwave_days_experienced.csv"
     )
-    exposures_abs_ts_df = exposures_abs_ts_df.reset_index()
-    exposures_abs_ts_df = exposures_abs_ts_df.set_index("year")
-    exposures_abs_ts_df.columns = exposures_abs_ts_df.columns.droplevel(0)
-    exposures_abs_ts_df.columns.name = "Age group"
-    print(exposures_abs_ts_df.iloc[-1].round(1))
+    norm_pop_exposure_df = norm_pop_exposure_df.reset_index()
+    norm_pop_exposure_df = norm_pop_exposure_df.set_index("year")
+    norm_pop_exposure_df.columns = norm_pop_exposure_df.columns.droplevel(0)
+    norm_pop_exposure_df.columns.name = "Age group"
+    print("Average exposure per age group\n", norm_pop_exposure_df.tail(5).round(1))
 
-    exposures_abs_ts_df = exposures_abs_ts_df.rename(
+    # I am excluding the over 75 since I do not have data for the whole period
+    mean_reference_period = norm_pop_exposure_df.loc[
+        (norm_pop_exposure_df.index >= Vars.year_reference_start.value)
+        & (norm_pop_exposure_df.index <= Vars.year_reference_end.value),
+        [0, 65],
+    ].mean()
+    print(
+        "Percentage increment from reference period\n",
+        round(
+            (norm_pop_exposure_df[[0, 65]].tail(5) - mean_reference_period)
+            / mean_reference_period
+            * 100
+        ),
+    )
+
+    norm_pop_exposure_df = norm_pop_exposure_df.rename(
         columns={0: "Infants", 65: "Over 65", 75: "Over 75"}
     )
 
     update_excel_results(
         clear_sheet=True,
-        data=exposures_abs_ts_df.reset_index(),
+        data=norm_pop_exposure_df.reset_index(),
         sheet_name=SheetsFinalSubmission.global_average.value,
         file_name=Dirs.dir_file_excel_submission.value,
         message="Average number of heatwaves days experienced per year by older adults (over 65 and over 75)  and infants",
     )
 
     f, ax = plt.subplots(figsize=(7, 4))
-    exposures_abs_ts_df.plot(ax=ax)
+    norm_pop_exposure_df.plot(ax=ax)
 
     ylim = ax.get_ylim()
     ax.set(
@@ -354,7 +368,7 @@ def plot_average_number_heatwaves_experienced():
     # - Don't really do it (according to Xiang isn't that obvious), just report % changes in HW, Persons,
     # and person-days between two reference periods - Choose a 'recent' period, could do ten-years to date so
     # 2013-2022, bit random. Otherwise 2010-2020
-    exposures_abs_rolling = exposures_abs_ts_df.rolling(10).mean().dropna()
+    exposures_abs_rolling = norm_pop_exposure_df.rolling(10).mean().dropna()
     exposures_abs_rolling.unstack().to_csv(
         Dirs.dir_results_pop_exposure.value
         / "heatwave_days_experienced_10_year_rolling_mean.csv"
@@ -380,11 +394,27 @@ def plot_total_number_heatwaves_experienced():
         message="Total number of heatwaves days experienced per year by older adults (over 65 and over 75)  and infants",
     )
 
-    # Calculate the percentage increment
-    percentage_increment = plot_data.pct_change() * 100
-    percentage_increment = percentage_increment.drop(columns="year")
-    # Display the result
-    print("Percentage increment", round(percentage_increment.iloc[-1]))
+    # total values, I am combining over 65 and under 1 since over 75 is subset of over 65
+    summary_ages = plot_data.set_index("year")
+    summary_ages["total"] = (
+        summary_ages["Over 65"] + summary_ages["Infants"]
+    )  # Calculate the percentage increment
+    # increase compared to the previous year
+    percentage_increment = summary_ages.pct_change() * 100
+    print(
+        "Percentage increment by year - all groups\n",
+        round(percentage_increment.tail(5)),
+    )
+    mean_reference_period = summary_ages.loc[
+        (summary_ages.index >= Vars.year_reference_start.value)
+        & (summary_ages.index <= Vars.year_reference_end.value)
+    ].mean()
+    print(
+        "Percentage increment from reference period\n",
+        round(
+            (summary_ages.tail(5) - mean_reference_period) / mean_reference_period * 100
+        ),
+    )
 
     update_excel_results(
         data=percentage_increment,

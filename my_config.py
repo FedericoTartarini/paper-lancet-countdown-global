@@ -96,7 +96,7 @@ class Dirs(Enum):
     dir_pop_era_grid = dir_results / f"worldpop_{weather_data}_grid"
     dir_results_pop_exposure = (
         dir_results
-        / f"results_{Vars.year_report}"
+        / f"results_{Vars.year_report.value}"
         / "pop_exposure"
         / "worldpop_hw_exposure"
     )
@@ -113,7 +113,9 @@ class Dirs(Enum):
     )
 
     dir_results_heatwaves = dir_results / "heatwaves"
-    dir_results_heatwaves_tmp = dir_results_heatwaves / f"results_{Vars.year_report}"
+    dir_results_heatwaves_tmp = (
+        dir_results_heatwaves / f"results_{Vars.year_report.value}"
+    )
     dir_results_heatwaves_monthly = dir_results_heatwaves_tmp / "heatwaves_monthly_era5"
     dir_results_heatwaves_days = dir_results_heatwaves_tmp / "heatwaves_days_era5"
     dir_results_heatwaves_count = dir_results_heatwaves_tmp / "heatwaves_count_era5"
@@ -126,71 +128,71 @@ class Dirs(Enum):
     dir_pop_raw = dir_ssd / "population"  # paths to important files
     dir_pop_infants_file = (
         dir_population_hybrid
-        / f"worldpop_infants_1950_{Vars.year_max_analysis}_era5_compatible.nc"
+        / f"worldpop_infants_1950_{Vars.year_max_analysis.value}_era5_compatible.nc"
     )
     dir_pop_elderly_file = (
         dir_population_hybrid
-        / f"worldpop_elderly_1950_{Vars.year_max_analysis}_era5_compatible.nc"
+        / f"worldpop_elderly_1950_{Vars.year_max_analysis.value}_era5_compatible.nc"
     )
     dir_pop_above_75_file = (
         dir_population_hybrid
-        / f"worldpop_75_80_1950_{Vars.year_max_analysis}_era5_compatible.nc"
+        / f"worldpop_75_80_1950_{Vars.year_max_analysis.value}_era5_compatible.nc"
     )
     dir_file_elderly_exposure_abs = (
         dir_results_pop_exposure
-        / f"heatwave_exposure_over65_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"heatwave_exposure_over65_multi_threshold_{Vars.year_min_analysis.value}-{Vars.year_max_analysis.value}_worldpop.nc"
     )
     dir_file_elderly_exposure_change = (
         dir_results_pop_exposure
-        / f"heatwave_exposure_change_over65_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"heatwave_exposure_change_over65_multi_threshold_{Vars.year_min_analysis.value}-{Vars.year_max_analysis.value}_worldpop.nc"
     )
     dir_file_infants_exposure_abs = (
         dir_results_pop_exposure
-        / f"heatwave_exposure_infants_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"heatwave_exposure_infants_multi_threshold_{Vars.year_min_analysis.value}-{Vars.year_max_analysis.value}_worldpop.nc"
     )
     dir_file_infants_exposure_change = (
         dir_results_pop_exposure
-        / f"heatwave_exposure_change_infants_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"heatwave_exposure_change_infants_multi_threshold_{Vars.year_min_analysis.value}-{Vars.year_max_analysis.value}_worldpop.nc"
     )
     dir_file_all_exposure_abs = (
         dir_results_pop_exposure
-        / f"heatwave_exposure_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"heatwave_exposure_multi_threshold_{Vars.year_min_analysis.value}-{Vars.year_max_analysis.value}_worldpop.nc"
     )
     dir_file_countries_heatwave_exposure = (
         dir_worldpop_exposure_by_region
-        / f"countries_heatwaves_exposure_weighted_change_1980-{Vars.year_max_analysis}_worldpop.nc"
+        / f"countries_heatwaves_exposure_weighted_change_1980-{Vars.year_max_analysis.value}_worldpop.nc"
     )
     dir_file_exposures_abs_by_lc_group_worldpop = (
         dir_worldpop_exposure_by_region / f"exposures_abs_by_lc_group_worldpop.nc"
     )
     dir_file_countries_heatwaves_exposure_change = (
         dir_worldpop_exposure_by_region
-        / f"countries_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"countries_heatwaves_exposure_change_{Vars.year_min_analysis.value}-{Vars.year_max_analysis.value}_worldpop.nc"
     )
     dir_file_countries_heatwaves_exposure = (
         dir_worldpop_exposure_by_region
-        / f"countries_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"countries_heatwaves_exposure_{Vars.year_min_analysis.value}-{Vars.year_max_analysis.value}_worldpop.nc"
     )
     dir_file_who_regions_heatwaves_exposure = (
         dir_worldpop_exposure_by_region
-        / f"who_regions_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"who_regions_heatwaves_exposure_{Vars.year_min_analysis.value}-{Vars.year_max_analysis.value}_worldpop.nc"
     )
     dir_file_who_regions_heatwaves_exposure_change = (
         dir_worldpop_exposure_by_region
-        / f"who_regions_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"who_regions_heatwaves_exposure_change_{Vars.year_min_analysis.value}-{Vars.year_max_analysis.value}_worldpop.nc"
     )
     dir_file_hdi_regions_heatwaves_exposure = (
         dir_worldpop_exposure_by_region
-        / f"hdi_regions_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"hdi_regions_heatwaves_exposure_{Vars.year_min_analysis.value}-{Vars.year_max_analysis.value}_worldpop.nc"
     )
     dir_file_hdi_regions_heatwaves_exposure_change = (
         dir_worldpop_exposure_by_region
-        / f"hdi_regions_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+        / f"hdi_regions_heatwaves_exposure_change_{Vars.year_min_analysis.value}-{Vars.year_max_analysis.value}_worldpop.nc"
     )
-    dir_manuscript_submission = Path("manuscript") / f"{Vars.year_report}"
+    dir_manuscript_submission = Path("manuscript") / f"{Vars.year_report.value}"
     dir_file_excel_submission = (
         dir_manuscript_submission
-        / f"1.1.1 - {Vars.year_report} Global Report - Data Submission - Tartarini.xlsx"
+        / f"1.1.1 - {Vars.year_report.value} Global Report - Data Submission - Tartarini.xlsx"
     )
     # boundaries and rasters
     dir_admin_boundaries = dir_local / "admin_boundaries"
@@ -225,7 +227,6 @@ try:
     Dirs.dir_population.value.mkdir(parents=True, exist_ok=True)
     Dirs.dir_population_tmp.value.mkdir(parents=True, exist_ok=True)
     Dirs.dir_pop_era_grid.value.mkdir(parents=True, exist_ok=True)
-    Dirs.dir_results_pop_exposure.value.mkdir(parents=True, exist_ok=True)
     Dirs.dir_era_hourly.value.mkdir(parents=True, exist_ok=True)
     Dirs.dir_era_quantiles.value.mkdir(parents=True, exist_ok=True)
     Dirs.dir_results_heatwaves.value.mkdir(parents=True, exist_ok=True)
