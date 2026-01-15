@@ -1,4 +1,4 @@
-# Lancet Countdown 2025 Heatwave Indicator
+# Lancet Countdown - 1.1.1 Indicator - Global
 
 This repository contains the code needed to generate the heatwave indicator for the Lancet Countdown Global report.
 This code allows you to:
@@ -28,7 +28,7 @@ To download the data you need to:
 ## Population data
 
 1. Download the WorldPop using [pop_data_download.py](python_code/population/pop_data_download.py)
-2. Regrid the data to the ERA5 grid using [pop_data_process.py](python_code/population/pop_data_process.py)
+2. Re-grid the data to the ERA5 grid using [pop_data_process.py](python_code/population/pop_data_process.py)
 3. Combine the age groups using [pop_data_combine.py](python_code/population/pop_data_combine.py)
 4. The file [compare_worldpop_gpw.py](python_code/population/compare_worldpop_gpw.py) compares the WorldPop and GPW data for the infant and elderly population. Not essential for the new report.
 
