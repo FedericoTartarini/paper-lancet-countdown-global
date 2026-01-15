@@ -126,10 +126,9 @@ def get_era5_grid(year):
 
 
 def process_and_save_population_data(ages, year, sex, era5_grid_3395):
-
     out_path = (
         Dirs.dir_pop_era_grid.value
-        / f'{sex}_{"_".join(map(str, ages))}_{year}_era5_compatible.nc'
+        / f"{sex}_{'_'.join(map(str, ages))}_{year}_era5_compatible.nc"
     )
 
     if out_path.exists():

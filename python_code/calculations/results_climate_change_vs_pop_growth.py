@@ -196,12 +196,12 @@ def calculate_effect_climate_change_compared_to_pop_change(
 
     print(
         f"percentage decrease no climate change "
-        f"{((vulm_hw_cc_recent - vulm_hw_no_cc_recent) / vulm_hw_cc_recent *100):.1f}%",
+        f"{((vulm_hw_cc_recent - vulm_hw_no_cc_recent) / vulm_hw_cc_recent * 100):.1f}%",
     )
 
     print(
         f"percentage increase with climate change "
-        f"{((vulm_hw_cc_recent - vulm_hw_no_cc_recent) / vulm_hw_no_cc_recent*100):.1f}%",
+        f"{((vulm_hw_cc_recent - vulm_hw_no_cc_recent) / vulm_hw_no_cc_recent * 100):.1f}%",
     )
 
     infants_hw_cc_recent = (
@@ -286,7 +286,6 @@ def calculate_effect_climate_change_compared_to_pop_change(
 
 
 def plots(year_max: int = Vars.year_max_analysis):
-
     (
         climate_recent,
         climate_past,

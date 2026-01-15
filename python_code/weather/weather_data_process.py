@@ -9,7 +9,6 @@ from my_config import Dirs
 
 
 def generate_daily_summary(source_file, move_source: bool = True) -> None:
-
     summary_file = source_file.replace("_temperature.grib", "_temperature_summary.nc")
     summary_file = summary_file.replace(
         str(Dirs.dir_era_hourly), str(Dirs.dir_era_daily)

@@ -11,7 +11,6 @@ from python_code.shared_functions import get_lancet_country_data
 
 
 def get_era5_data():
-
     # Open one year of ERA5 data to put population data on the same grid
     era5_data = xr.open_dataset(
         Dirs.dir_era_daily.value / "1980_temperature_summary.nc"
@@ -94,7 +93,6 @@ def create_who_raster(country_polygons, era5_data):
 
 
 def create_hdi_raster(country_polygons, era5_data, hdi_column):
-
     # Create rasterized data using make_geocube
     rasterized_data = make_geocube(
         vector_data=country_polygons, like=era5_data, measurements=["HDI_ID"]
@@ -144,7 +142,6 @@ def create_lancet_raster(country_polygons, era5_data, hdi_column):
 
 
 def create_admin1_raster(era5_data):
-
     admin1_polygons = gpd.read_file(Dirs.dir_file_admin1_polygons)
 
     # Create rasterized data using make_geocube
@@ -175,7 +172,6 @@ def plot_world_map(data, v_min_max=False):
 
 
 def main():
-
     hdi_column = "HDI Group (2023-24)"
     country_polygons = get_lancet_country_data(hdi_column)
 

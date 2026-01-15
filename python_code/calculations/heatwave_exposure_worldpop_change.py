@@ -16,7 +16,6 @@ from python_code.shared_functions import read_pop_data_processed
 
 
 def main():
-
     population_infants_worldpop, population_elderly_worldpop, population_worldpop = (
         read_pop_data_processed()
     )

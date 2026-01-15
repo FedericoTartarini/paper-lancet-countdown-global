@@ -3,13 +3,10 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from my_config import (
-    Vars, Dirs
-)
+from my_config import Vars, Dirs
 
 
 def get_lancet_country_data(hdi_column):
-
     country_polygons = gpd.read_file(Dirs.dir_file_country_polygons)
 
     country_lc_grouping = pd.read_excel(

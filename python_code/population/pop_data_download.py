@@ -27,13 +27,16 @@ def download_file(url, filepath):
         start_time = time.time()
         downloaded_size = 0
 
-        with open(tmp_filepath, "wb") as f, tqdm(
-            desc=filepath.name,
-            total=total_size,
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-        ) as pbar:
+        with (
+            open(tmp_filepath, "wb") as f,
+            tqdm(
+                desc=filepath.name,
+                total=total_size,
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+            ) as pbar,
+        ):
             for chunk in response.iter_content(chunk_size=block_size):
                 f.write(chunk)
                 downloaded_size += len(chunk)

@@ -30,7 +30,6 @@ from python_code.shared_functions import (
 
 
 def main():
-
     pop_inf, pop_eld, _, pop_75 = read_pop_data_processed(get_pop_75=True)
 
     heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves_days.value.glob("*.nc"))

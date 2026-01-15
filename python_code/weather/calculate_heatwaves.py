@@ -276,7 +276,7 @@ def main():
     for var in ["t_min", "t_max"]:
         climatology_quantiles = (
             Dirs.dir_era_quantiles.value
-            / f'daily_{var}_quantiles_{"_".join([str(int(100*q)) for q in Vars.quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc'
+            / f"daily_{var}_quantiles_{'_'.join([str(int(100 * q)) for q in Vars.quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc"
         )
         quantiles_ds = xr.open_dataset(climatology_quantiles)
         threshold = quantiles_ds.sel(

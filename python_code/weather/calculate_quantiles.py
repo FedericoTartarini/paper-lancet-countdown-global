@@ -10,9 +10,7 @@ from my_config import (
 )
 
 if __name__ == "__main__":
-
     for t_var in ["t_max", "t_min", "t_mean"]:
-
         file_list = []
         for file in Dirs.dir_era_daily.value.rglob("*.nc"):
             file = Path(file)
@@ -32,7 +30,7 @@ if __name__ == "__main__":
 
         climatology_quantiles = (
             Dirs.dir_era_quantiles.value
-            / f'daily_{t_var}_quantiles_{"_".join([str(int(100*q)) for q in Vars.quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc'
+            / f"daily_{t_var}_quantiles_{'_'.join([str(int(100 * q)) for q in Vars.quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc"
         )
 
         daily_quantiles = daily_temperatures.quantile(Vars.quantiles, dim="time")

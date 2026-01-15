@@ -51,7 +51,6 @@ countries_raster = xr.open_dataset(Dirs.dir_file_country_raster_report.value)
 
 
 def exposure_weighted_change_by_country():
-
     country_polygons = gpd.read_file(Dirs.dir_file_country_polygons)
     # Calculate Exposure weighted change by country (population normalised)
     with dask.config.set(**{"array.slicing.split_large_chunks": False}):
@@ -254,7 +253,6 @@ def exposure_absolute_by_hdi():
 
     hdi = hdi[hdi["HDI_ID"] > 1]
     with dask.config.set(**{"array.slicing.split_large_chunks": False}):
-
         for _, row in tqdm(hdi.iterrows(), total=len(hdi[hdi_col_name])):
             mask = hdi_raster["HDI_ID"] == row.HDI_ID
 
@@ -306,7 +304,6 @@ def exposure_absolute_by_hdi():
 
     results = []
     with dask.config.set(**{"array.slicing.split_large_chunks": False}):
-
         for _, row in tqdm(hdi.iterrows(), total=len(hdi[hdi_col_name])):
             mask = hdi_raster["HDI_ID"] == row.HDI_ID
 
@@ -351,7 +348,6 @@ def exposure_absolute_by_lc_grouping():
     results_weight = []
 
     with dask.config.set(**{"array.slicing.split_large_chunks": False}):
-
         for _, row in tqdm(
             lc_grouping.iterrows(), total=len(lc_grouping["LC Grouping"])
         ):

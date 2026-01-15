@@ -60,7 +60,6 @@ def process_and_combine_data(data, year, population="infants"):
 
 
 def plot_map_comparison(data, population, year):
-
     # Reset index of diff_gdf if needed and merge it with gdf_countries
     diff_gdf = pd.merge(gdf_countries[["geometry", "ISO_3_CODE"]], data.reset_index())
     diff_gdf = gpd.GeoDataFrame(diff_gdf, geometry=diff_gdf.geometry)
