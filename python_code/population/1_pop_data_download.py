@@ -16,7 +16,7 @@ os.environ["no_proxy"] = "*"
 
 def download_file(url, filepath):
     filepath = Path(filepath)
-    tmp_filepath = Dirs.dir_population_tmp.value / filepath.name
+    tmp_filepath = Dirs.dir_population_tmp / filepath.name
     ic(f"Downloading {filepath}")
     if not filepath.is_file() and not tmp_filepath.is_file():
         response = requests.get(url, stream=True)
@@ -54,20 +54,28 @@ def download_file(url, filepath):
         ic(f"File {filepath} already exists")
 
 
-def create_urls_sex_age_years() -> list[tuple[str, str]]:
+def create_urls_sex_age_years(
+    years=None,
+    sexes=None,
+    ages=None,
+) -> list[tuple[str, str]]:
+    if ages is None:
+        ages = VarsWorldPop.worldpop_ages
+    if sexes is None:
+        sexes = VarsWorldPop.worldpop_sex
+    if years is None:
+        years = VarsWorldPop.get_years_range()
     _urls = []
 
-    for year in VarsWorldPop.get_years_range():
-        for sex in VarsWorldPop.worldpop_sex:
-            for age in VarsWorldPop.worldpop_ages:
+    for year in years:
+        for sex in sexes:
+            for age in ages:
                 download_url = VarsWorldPop.get_url_download(
                     year=year, sex=sex, age=age
                 )
-                filepath = (
-                    Dirs.dir_population.value / f"global_{sex}_{age}_{year}_1km.tif"
-                )
-                tmp_filepath = Dirs.dir_population_tmp.value / filepath.name
-                hd_filepath = Dirs.dir_pop_raw.value / filepath.name
+                filepath = Dirs.dir_population / f"global_{sex}_{age}_{year}_1km.tif"
+                tmp_filepath = Dirs.dir_population_tmp / filepath.name
+                hd_filepath = Dirs.dir_pop_raw / filepath.name
                 if (
                     not filepath.is_file()
                     and not tmp_filepath.is_file()
@@ -78,7 +86,9 @@ def create_urls_sex_age_years() -> list[tuple[str, str]]:
 
 
 if __name__ == "__main__":
-    urls = create_urls_sex_age_years()
+    urls = create_urls_sex_age_years(
+        years=range(2021, 2026), sexes=["t"], ages=VarsWorldPop.worldpop_ages
+    )
     ic(len(urls))
 
     # download multiple files at the same time
