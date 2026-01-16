@@ -109,8 +109,8 @@ def download_year_era5(year: int = 2022):
 
 if __name__ == "__main__":
     for y in Vars.get_analysis_years():
-        out_file = Dirs.dir_era_hourly.value / f"{y}_temperature.grib"
-        summary_file = Dirs.dir_era_daily.value / f"{y}_temperature_summary.nc"
+        out_file = Dirs.dir_era_hourly / f"{y}_temperature.grib"
+        summary_file = Dirs.dir_era_daily / f"{y}_temperature_summary.nc"
 
         if not out_file.exists() and not summary_file.exists():
             ic(f"Downloading ERA5 data for year: {y}")
