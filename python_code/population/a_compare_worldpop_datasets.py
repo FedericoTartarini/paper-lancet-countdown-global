@@ -1,3 +1,30 @@
+"""
+Compare WorldPop population raster datasets (OneDrive vs local raw) and plot regional density.
+
+This module contains utilities to:
+- load and clean population GeoTIFF rasters using rioxarray
+- compute population density (people per km²) from per-cell counts
+- plot population density for a specified region (example: Europe)
+- compare total population sums between files in two directories and print a summary
+
+Quick usage examples
+- From the command line (run comparisons):
+    python python_code/population/a_compare_worldpop_datasets.py
+
+- From another script (import functions):
+    from python_code.population.a_compare_worldpop_datasets import plot_population, compare_data
+    plot_population(file_path=path, vmin=1, vmax=100, coarsen_factor=20, extent_eu=(-25,40,34,72))
+
+Requirements / notes
+- Expects `my_config.Dirs` to provide Path-like attributes `dir_population` and `dir_pop_raw`.
+- Requires rioxarray (and its GDAL/native backends), xarray, numpy, matplotlib, cartopy, pandas, tqdm.
+- Large rasters may be processed with dask (chunks=True) to avoid memory issues.
+
+Common failure modes
+- Missing native GDAL/netCDF libraries (pyogrio/fiona import errors) will break raster I/O.
+- Very large rasters: plotting without coarsening can be very slow or memory-heavy.
+"""
+
 import rioxarray
 import numpy as np
 import matplotlib.pyplot as plt
@@ -57,6 +84,15 @@ def compute_density(da_counts):
 def plot_population(file_path, vmin, vmax, coarsen_factor, extent_eu):
     """
     Orchestrates the loading, processing, and plotting for a single file.
+
+    Parameters
+    - file_path: Path-like to a GeoTIFF population raster
+    - vmin, vmax: numeric limits for the log color scale (people/km²)
+    - coarsen_factor: integer factor to aggregate the raster for faster plotting
+    - extent_eu: tuple (west, east, south, north) bounding box in degrees
+
+    This function displays a matplotlib/Cartopy plot and prints the total population
+    inside the requested bounding box. It does not return a value.
     """
     # 1. Load
     pop = load_and_clean_raster(file_path)
@@ -111,6 +147,12 @@ def plot_population(file_path, vmin, vmax, coarsen_factor, extent_eu):
 
 
 def plot_data():
+    """
+    Simple driver function to demonstrate `plot_population`.
+
+    Edit the inputs inside this function to point to the correct files and region. By
+    default it will attempt to plot two files (OneDrive and local raw) for Europe.
+    """
     # --- USER INPUTS ---
     files = [
         Dirs.dir_pop_raw / "global_f_0_2015_1km.tif",
@@ -165,6 +207,14 @@ def get_total_population(file_path):
 
 
 def compare_data():
+    """
+    Compare total populations for matching files in OneDrive vs local HD.
+
+    The function looks for .tif files in `Dirs.dir_population` (OneDrive) and tries to
+    find files with the same name in `Dirs.dir_pop_raw`. For each matching pair it
+    computes the total population and prints a small summary table showing counts and
+    percent differences.
+    """
     # 1. Get list of .tif files in the OneDrive folder
     # Change pattern to "*.tif" if they are standard tiffs
     files_onedrive = list(Dirs.dir_population.glob("*.tif"))
