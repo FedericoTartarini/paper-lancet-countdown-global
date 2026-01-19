@@ -12,12 +12,12 @@ from my_config import (
 if __name__ == "__main__":
     for t_var in ["t_max", "t_min", "t_mean"]:
         file_list = []
-        for file in Dirs.dir_era_daily.value.rglob("*.nc"):
+        for file in Dirs.dir_era_daily.rglob("*.nc"):
             file = Path(file)
 
             year = int(file.name.split("_")[0])
 
-            if Vars.year_reference_start.value <= year <= Vars.year_reference_end.value:
+            if Vars.year_reference_start <= year <= Vars.year_reference_end:
                 file_list.append(file)
 
         file_list = sorted(file_list)
@@ -29,7 +29,7 @@ if __name__ == "__main__":
         daily_temperatures = daily_temperatures.chunk({"time": -1})
 
         climatology_quantiles = (
-            Dirs.dir_era_quantiles.value
+            Dirs.dir_era_quantiles
             / f"daily_{t_var}_quantiles_{'_'.join([str(int(100 * q)) for q in Vars.quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc"
         )
 
