@@ -9,6 +9,33 @@ from tqdm import tqdm
 from my_config import VarsWorldPop, Dirs, Vars
 
 
+def _output_age_label(age_group):
+    """Return the desired output age label for a given age_group list.
+
+    Mapping rules:
+    - [0] -> 'under_1'
+    - startswith 65 and length > 1 -> '65_over'
+    - startswith 75 and length > 1 -> '75_over'
+    - otherwise fallback to the numeric joined string (e.g., '30_34')
+    """
+    # If it's a single-element list with 0
+    try:
+        if len(age_group) == 1 and age_group[0] == 0:
+            return "under_1"
+
+        if len(age_group) >= 1 and age_group[0] == 65:
+            return "65_over"
+
+        if len(age_group) >= 1 and age_group[0] == 75:
+            return "75_over"
+    except Exception:
+        # Fallback: if age_group isn't iterable as expected, fall back to string
+        return str(age_group)
+
+    # default
+    return "_".join(map(str, age_group))
+
+
 def plot_comparison(original_da, regridded_da, title_prefix=""):
     """
     Helper function to visualize the population data before and after regridding.
@@ -207,7 +234,7 @@ def process_and_combine_ages(ages, sex, year, directory, target_grid):
 def process_and_save_population_data(ages, year, sex, target_grid):
     out_path = (
         Dirs.dir_pop_era_grid
-        / f"{sex}_{'_'.join(map(str, ages))}_{year}_era5_compatible.nc"
+        / f"{sex}_{_output_age_label(ages)}_{year}_era5_compatible.nc"
     )
 
     if out_path.exists():
