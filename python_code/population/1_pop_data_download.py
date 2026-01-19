@@ -1,6 +1,5 @@
 import os
 import shutil
-import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -17,41 +16,30 @@ os.environ["no_proxy"] = "*"
 def download_file(url, filepath):
     filepath = Path(filepath)
     tmp_filepath = Dirs.dir_population_tmp / filepath.name
-    ic(f"Downloading {filepath}")
+
+    # ic(f"Downloading {filepath}") # Optional: Comment out to keep progress bar clean
+
     if not filepath.is_file() and not tmp_filepath.is_file():
-        response = requests.get(url, stream=True)
-        response.raise_for_status()
+        try:
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
 
-        total_size = int(response.headers.get("content-length", 0))
-        block_size = 8192
-        start_time = time.time()
-        downloaded_size = 0
+            block_size = 8192
 
-        with (
-            open(tmp_filepath, "wb") as f,
-            tqdm(
-                desc=filepath.name,
-                total=total_size,
-                unit="B",
-                unit_scale=True,
-                unit_divisor=1024,
-            ) as pbar,
-        ):
-            for chunk in response.iter_content(chunk_size=block_size):
-                f.write(chunk)
-                downloaded_size += len(chunk)
-                pbar.update(len(chunk))
+            # --- MODIFICATION: Removed internal tqdm to stop jumping ---
+            with open(tmp_filepath, "wb") as f:
+                for chunk in response.iter_content(chunk_size=block_size):
+                    f.write(chunk)
+            # -----------------------------------------------------------
 
-                # Calculate download speed
-                elapsed_time = time.time() - start_time
-                if elapsed_time > 0:
-                    speed = downloaded_size / elapsed_time  # bytes per second
-                    pbar.set_postfix(speed=f"{speed / 1024:.2f} KB/s")
+            shutil.move(tmp_filepath, filepath)
+            # ic(f"Downloaded {filepath}")
 
-        shutil.move(tmp_filepath, filepath)
-        ic(f"Downloaded {filepath}")
+        except Exception as e:
+            ic(f"Error downloading {filepath}: {e}")
     else:
-        ic(f"File {filepath} already exists")
+        # ic(f"File {filepath} already exists")
+        pass
 
 
 def create_urls_sex_age_years(
@@ -87,15 +75,16 @@ def create_urls_sex_age_years(
 
 if __name__ == "__main__":
     urls = create_urls_sex_age_years(
-        years=range(2021, 2026), sexes=["t"], ages=VarsWorldPop.worldpop_ages
+        years=range(2015, 2021), sexes=["t"], ages=VarsWorldPop.worldpop_ages
     )
     ic(len(urls))
 
-    # download multiple files at the same time
     with ThreadPoolExecutor() as executor:
-        executor.map(lambda p: download_file(*p), urls)
-
-    # # download one file at a time
-    # for url, filepath in urls:
-    #     print(url, filepath)
-    #     download_file(url, filepath)
+        list(
+            tqdm(
+                executor.map(lambda p: download_file(*p), urls),
+                total=len(urls),
+                unit="file",
+                desc="Total Progress",
+            )
+        )
