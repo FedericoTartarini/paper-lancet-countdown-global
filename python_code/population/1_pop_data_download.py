@@ -5,7 +5,6 @@ from pathlib import Path
 
 import requests
 from icecream import ic
-from tqdm import tqdm
 
 from my_config import Dirs, VarsWorldPop
 
@@ -17,7 +16,7 @@ def download_file(url, filepath):
     filepath = Path(filepath)
     tmp_filepath = Dirs.dir_population_tmp / filepath.name
 
-    # ic(f"Downloading {filepath}") # Optional: Comment out to keep progress bar clean
+    ic(f"Downloading {filepath.name}...")
 
     if not filepath.is_file() and not tmp_filepath.is_file():
         try:
@@ -33,7 +32,7 @@ def download_file(url, filepath):
             # -----------------------------------------------------------
 
             shutil.move(tmp_filepath, filepath)
-            # ic(f"Downloaded {filepath}")
+            ic(f"Downloaded {filepath}")
 
         except Exception as e:
             ic(f"Error downloading {filepath}: {e}")
@@ -75,16 +74,9 @@ def create_urls_sex_age_years(
 
 if __name__ == "__main__":
     urls = create_urls_sex_age_years(
-        years=range(2015, 2021), sexes=["t"], ages=VarsWorldPop.worldpop_ages
+        years=range(2025, 2031), sexes=["t"], ages=VarsWorldPop.worldpop_ages
     )
-    ic(len(urls))
+    ic("Total files to download:", len(urls))
 
     with ThreadPoolExecutor() as executor:
-        list(
-            tqdm(
-                executor.map(lambda p: download_file(*p), urls),
-                total=len(urls),
-                unit="file",
-                desc="Total Progress",
-            )
-        )
+        executor.map(lambda p: download_file(*p), urls)
