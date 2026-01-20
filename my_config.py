@@ -2,13 +2,16 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import List
 
 from cartopy import crs as ccrs
 from matplotlib import pyplot as plt
 
 plt.rcParams["figure.figsize"] = [7, 3]
 plt.rcParams["savefig.dpi"] = 300
+
+weather_data: str = "era5"
+weather_resolution: str = "0.25deg"
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +41,16 @@ class Vars:
 class VarsWorldPop:
     """WorldPop-specific config."""
 
-    year_worldpop_start: int = 2000
-    year_worldpop_end: int = 2020
+    # todo I need to fix the following
+    year_worldpop_start: int = 2015
+    year_worldpop_end: int = 2030
     worldpop_sex: List[str] = ["f", "m"]
-    worldpop_ages: List[int] = [0, 65, 70, 75, 80]
-    # todo I will need to change this base url
-    url_base_data: str = f"https://data.worldpop.org/GIS/AgeSex_structures/Global_{year_worldpop_start}_{year_worldpop_end}/"
+    worldpop_ages: List[int] = [0, 65, 70, 75, 80, 85, 90]
+    url_base_data: str = (
+        # todo I will need to change this base url
+        "https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030"
+    )
+
     @classmethod
     def get_years_range(cls) -> List[int]:
         """Return all years in the WorldPop range."""
@@ -51,7 +58,13 @@ class VarsWorldPop:
 
     @classmethod
     def get_url_download(cls, year: int, sex: str, age: int) -> str:
-        return f"{cls.url_base_data}{year}/0_Mosaicked/global_mosaic_1km/global_{sex}_{age}_{year}_1km.tif"
+        if age < 10:
+            age_str = f"0{age}"
+        else:
+            age_str = str(age)
+
+        # I am downloading the UN adjusted constrained data
+        return f"{cls.url_base_data}/R2025A/{year}/0_Mosaicked/v1/1km_ua/constrained/global_{sex}_{age_str}_{year}_CN_1km_R2025A_UA_v1.tif"
 
     @classmethod
     def get_slice_years(cls, period: str) -> slice:
@@ -63,10 +76,6 @@ class VarsWorldPop:
             return slice(cls.year_worldpop_start, cls.year_worldpop_end)
 
 
-weather_data: str = "era5"
-weather_resolution: str = "0.25deg"
-
-
 class Dirs:
     """
     Directory and file path configuration.
@@ -74,68 +83,57 @@ class Dirs:
     performing side effects at import time.
     """
 
+    dir_one_drive: Path = Path(
+        "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/data/lancet/countdown-global"
+    )
+
     # Paths to local folders, SSD and HD
     dir_local: Path = (
-        Path.home()
-        / "Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/Academia/Datasets/lancet_countdown_global"
-    )  # used to store data for analysis
-    dir_ssd: Path = Path("/Volumes/T7/lancet_countdown")  # used to store large datasets
-    dir_one_drive: Path = Path(
-        "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)"
+        Path.home() / "/Documents/github-projects/paper-lancet-countdown-global"
     )
-    dir_one_drive_era_hourly: Path = dir_one_drive / "Temporary" / "lancet"
 
-    dir_figures: Path = Path("python_code/figures")
+    dir_results: Path = dir_one_drive / "results"
+    dir_figures: Path = dir_results / f"results_{Vars.year_report}" / "figures"
     dir_figures_interim: Path = dir_figures / "interim"
-
-    # Paths to local data folders
-    dir_weather: Path = dir_local / "weather"
-    dir_results: Path = dir_local / "results"
-    dir_population: Path = dir_local / "population"
     dir_population_hybrid: Path = dir_results / "hybrid_pop"
     dir_file_population_before_2000: Path = (
         dir_population_hybrid / "Hybrid Demographics 1950-2020.nc"
     )
+    dir_ssd: Path = Path("/Volumes/T7/lancet_countdown")  # used to store large datasets
+
     # ======== no need to change below this line ========
-    dir_population_tmp: Path = dir_population / "tmp"
 
-    dir_pop_era_grid: Path = dir_results / f"worldpop_{weather_data}_grid"
-    dir_results_pop_exposure: Path = (
-        dir_results
-        / f"results_{Vars.year_report}"
-        / "pop_exposure"
-        / "worldpop_hw_exposure"
-    )
-    dir_pop_hybrid: Path = dir_results / "hybrid_pop"
-
+    # WEATHER DATA
+    dir_weather: Path = dir_one_drive / weather_data
     dir_era_hourly: Path = (
-        dir_local / weather_data / weather_resolution / "hourly_temperature_2m"
+        dir_weather / "hourly" / weather_resolution / "hourly_temperature_2m"
     )
-    dir_era_quantiles: Path = (
-        dir_weather
-        / weather_data
-        / f"{weather_data}_{weather_resolution}"
-        / "quantiles"
-    )
+    dir_era_daily: Path = dir_weather / "daily"
 
+    # POPULATION DATA
+    dir_population: Path = dir_one_drive / "population"
+    dir_population_tmp: Path = dir_population / "tmp"
+    dir_pop_raw: Path = (
+        dir_ssd / "population"
+    )  # todo I need to copy these files in OneDrive as well
+    #
+    dir_pop_era_grid: Path = dir_results / f"worldpop_{weather_data}_grid"
+    # dir_results_pop_exposure: Path = (
+    #     dir_results
+    #     / f"results_{Vars.year_report}"
+    #     / "pop_exposure"
+    #     / "worldpop_hw_exposure"
+    # )
+    # dir_pop_hybrid: Path = dir_results / "hybrid_pop"
+    dir_era_quantiles: Path = dir_weather / "quantiles"
+    #
     dir_results_heatwaves: Path = dir_results / "heatwaves"
-    dir_results_heatwaves_tmp: Path = (
-        dir_results_heatwaves / f"results_{Vars.year_report}"
-    )
-    dir_results_heatwaves_monthly: Path = (
-        dir_results_heatwaves_tmp / "heatwaves_monthly_era5"
-    )
-    dir_results_heatwaves_days: Path = dir_results_heatwaves_tmp / "heatwaves_days_era5"
-    dir_results_heatwaves_count: Path = (
-        dir_results_heatwaves_tmp / "heatwaves_count_era5"
-    )
-    dir_worldpop_exposure_by_region: Path = (
-        dir_results_pop_exposure / "exposure_by_region_or_grouping"
-    )
-
-    # Paths to SSD data folders
-    dir_era_daily: Path = dir_ssd / "daily_temperature_summary"
-    dir_pop_raw: Path = dir_ssd / "population"  # paths to important files
+    # dir_worldpop_exposure_by_region: Path = (
+    #     dir_results_pop_exposure / "exposure_by_region_or_grouping"
+    # )
+    #
+    # # Paths to SSD data folders
+    # dir_pop_raw: Path = dir_ssd / "population"  # paths to important files
     dir_pop_infants_file: Path = (
         dir_population_hybrid
         / f"worldpop_infants_1950_{Vars.year_max_analysis}_era5_compatible.nc"
@@ -148,143 +146,148 @@ class Dirs:
         dir_population_hybrid
         / f"worldpop_75_80_1950_{Vars.year_max_analysis}_era5_compatible.nc"
     )
-    dir_file_elderly_exposure_abs: Path = (
-        dir_results_pop_exposure
-        / f"heatwave_exposure_over65_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_file_elderly_exposure_change: Path = (
-        dir_results_pop_exposure
-        / f"heatwave_exposure_change_over65_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_file_infants_exposure_abs: Path = (
-        dir_results_pop_exposure
-        / f"heatwave_exposure_infants_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_file_infants_exposure_change: Path = (
-        dir_results_pop_exposure
-        / f"heatwave_exposure_change_infants_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_file_all_exposure_abs: Path = (
-        dir_results_pop_exposure
-        / f"heatwave_exposure_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_file_countries_heatwave_exposure: Path = (
-        dir_worldpop_exposure_by_region
-        / f"countries_heatwaves_exposure_weighted_change_1980-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_file_exposures_abs_by_lc_group_worldpop: Path = (
-        dir_worldpop_exposure_by_region / f"exposures_abs_by_lc_group_worldpop.nc"
-    )
-    dir_file_countries_heatwaves_exposure_change: Path = (
-        dir_worldpop_exposure_by_region
-        / f"countries_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_file_countries_heatwaves_exposure: Path = (
-        dir_worldpop_exposure_by_region
-        / f"countries_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_file_who_regions_heatwaves_exposure: Path = (
-        dir_worldpop_exposure_by_region
-        / f"who_regions_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_file_who_regions_heatwaves_exposure_change: Path = (
-        dir_worldpop_exposure_by_region
-        / f"who_regions_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_file_hdi_regions_heatwaves_exposure: Path = (
-        dir_worldpop_exposure_by_region
-        / f"hdi_regions_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_file_hdi_regions_heatwaves_exposure_change: Path = (
-        dir_worldpop_exposure_by_region
-        / f"hdi_regions_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    )
-    dir_manuscript_submission: Path = Path("manuscript") / f"{Vars.year_report}"
-    dir_file_excel_submission: Path = (
-        dir_manuscript_submission
-        / f"1.1.1 - {Vars.year_report} Global Report - Data Submission - Tartarini.xlsx"
-    )
-    # boundaries and rasters
-    dir_admin_boundaries: Path = dir_local / "admin_boundaries"
-    dir_file_detailed_boundaries: Path = dir_admin_boundaries / "Detailed_Boundary_ADM0"
-    dir_file_country_polygons: Path = dir_file_detailed_boundaries / "GLOBAL_ADM0.shp"
-    dir_file_admin1_polygons: Path = (
-        dir_admin_boundaries / "Detailed_Boundary_ADM1" / "Detailed_Boundary_ADM1.shp"
-    )
-    dir_file_country_raster_report: Path = (
-        dir_admin_boundaries / "admin0_raster_report_2024.nc"
-    )
-    dir_file_who_raster_report: Path = (
-        dir_admin_boundaries / "WHO_regions_raster_report_2024.nc"
-    )
-    dir_file_hdi_raster_report: Path = (
-        dir_admin_boundaries / "HDI_group_raster_report_2024.nc"
-    )
-    dir_file_lancet_raster_report: Path = (
-        dir_admin_boundaries / "LC_group_raster_report_2024.nc"
-    )
-    dir_file_admin1_raster_report: Path = (
-        dir_admin_boundaries / "admin1_raster_report_2024.nc"
-    )
-    dir_file_lancet_country_info: Path = (
-        dir_admin_boundaries / "2025 Global Report Country Names and Groupings.xlsx"
-    )
+    # dir_file_elderly_exposure_abs: Path = (
+    #     dir_results_pop_exposure
+    #     / f"heatwave_exposure_over65_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_file_elderly_exposure_change: Path = (
+    #     dir_results_pop_exposure
+    #     / f"heatwave_exposure_change_over65_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_file_infants_exposure_abs: Path = (
+    #     dir_results_pop_exposure
+    #     / f"heatwave_exposure_infants_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_file_infants_exposure_change: Path = (
+    #     dir_results_pop_exposure
+    #     / f"heatwave_exposure_change_infants_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_file_all_exposure_abs: Path = (
+    #     dir_results_pop_exposure
+    #     / f"heatwave_exposure_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_file_countries_heatwave_exposure: Path = (
+    #     dir_worldpop_exposure_by_region
+    #     / f"countries_heatwaves_exposure_weighted_change_1980-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_file_exposures_abs_by_lc_group_worldpop: Path = (
+    #     dir_worldpop_exposure_by_region / f"exposures_abs_by_lc_group_worldpop.nc"
+    # )
+    # dir_file_countries_heatwaves_exposure_change: Path = (
+    #     dir_worldpop_exposure_by_region
+    #     / f"countries_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_file_countries_heatwaves_exposure: Path = (
+    #     dir_worldpop_exposure_by_region
+    #     / f"countries_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_file_who_regions_heatwaves_exposure: Path = (
+    #     dir_worldpop_exposure_by_region
+    #     / f"who_regions_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_file_who_regions_heatwaves_exposure_change: Path = (
+    #     dir_worldpop_exposure_by_region
+    #     / f"who_regions_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_file_hdi_regions_heatwaves_exposure: Path = (
+    #     dir_worldpop_exposure_by_region
+    #     / f"hdi_regions_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_file_hdi_regions_heatwaves_exposure_change: Path = (
+    #     dir_worldpop_exposure_by_region
+    #     / f"hdi_regions_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    # )
+    # dir_manuscript_submission: Path = Path("manuscript") / f"{Vars.year_report}"
+    # dir_file_excel_submission: Path = (
+    #     dir_manuscript_submission
+    #     / f"1.1.1 - {Vars.year_report} Global Report - Data Submission - Tartarini.xlsx"
+    # )
+    # # boundaries and rasters
+    # dir_admin_boundaries: Path = dir_local / "admin_boundaries"
+    # dir_file_detailed_boundaries: Path = dir_admin_boundaries / "Detailed_Boundary_ADM0"
+    # dir_file_country_polygons: Path = dir_file_detailed_boundaries / "GLOBAL_ADM0.shp"
+    # dir_file_admin1_polygons: Path = (
+    #     dir_admin_boundaries / "Detailed_Boundary_ADM1" / "Detailed_Boundary_ADM1.shp"
+    # )
+    # dir_file_country_raster_report: Path = (
+    #     dir_admin_boundaries / "admin0_raster_report_2024.nc"
+    # )
+    # dir_file_who_raster_report: Path = (
+    #     dir_admin_boundaries / "WHO_regions_raster_report_2024.nc"
+    # )
+    # dir_file_hdi_raster_report: Path = (
+    #     dir_admin_boundaries / "HDI_group_raster_report_2024.nc"
+    # )
+    # dir_file_lancet_raster_report: Path = (
+    #     dir_admin_boundaries / "LC_group_raster_report_2024.nc"
+    # )
+    # dir_file_admin1_raster_report: Path = (
+    #     dir_admin_boundaries / "admin1_raster_report_2024.nc"
+    # )
+    # dir_file_lancet_country_info: Path = (
+    #     dir_admin_boundaries / "2025 Global Report Country Names and Groupings.xlsx"
+    # )
 
-    @classmethod
-    def ensure_dirs_exist(cls) -> None:
-        """
-        Create required directories. No-op on import; call explicitly at runtime.
 
-        Example:
-            Dirs.ensure_dirs_exist()
-        """
+def clean_pop_raw(path=Dirs.dir_pop_raw) -> None:
+    """
+    Remove hidden .tif files from the population raw directory (if mounted).
+    Call explicitly; does not run on import.
+    """
+    try:
+        for fname in os.listdir(path):
+            if fname.startswith(".") and fname.endswith(".tif"):
+                try:
+                    (path / fname).unlink()
+                except PermissionError:
+                    logger.warning("Permission denied removing %s", fname)
+    except FileNotFoundError:
+        logger.info(
+            "Population raw directory %s not found, skipping cleanup",
+            path,
+        )
+    except Exception:
+        logger.exception("Unexpected error cleaning %s", path)
 
-        # explicit list of directories we want to create when requested
-        dirs_to_create = [
-            # keep this list minimal and explicit to avoid creating directories for file paths
-            cls.dir_worldpop_exposure_by_region,
-            cls.dir_pop_raw,
-            cls.dir_population,
-            cls.dir_population_tmp,
-            cls.dir_pop_era_grid,
-            cls.dir_era_hourly,
-            cls.dir_era_quantiles,
-            cls.dir_results_heatwaves,
-            cls.dir_results_heatwaves_tmp,
-            cls.dir_results_heatwaves_monthly,
-            cls.dir_results_heatwaves_days,
-            cls.dir_results_heatwaves_count,
-            cls.dir_era_daily,
-        ]
 
-        for p in dirs_to_create:
-            try:
-                p.mkdir(parents=True, exist_ok=True)
-            except PermissionError:
-                logger.warning("Permission denied creating directory %s (skipping)", p)
-            except Exception:
-                logger.exception("Unexpected error creating directory %s", p)
+def ensure_dirs_exist(paths: list) -> None:
+    """
+    Create required directories. No-op on import; call explicitly at runtime.
 
-    @classmethod
-    def clean_pop_raw(cls) -> None:
-        """
-        Remove hidden .tif files from the population raw directory (if mounted).
-        Call explicitly; does not run on import.
-        """
+    Example:
+        ensure_dirs_exist()
+    """
+
+    for p in paths:
         try:
-            for fname in os.listdir(cls.dir_pop_raw):
-                if fname.startswith(".") and fname.endswith(".tif"):
-                    try:
-                        (cls.dir_pop_raw / fname).unlink()
-                    except PermissionError:
-                        logger.warning("Permission denied removing %s", fname)
-        except FileNotFoundError:
-            logger.info(
-                "Population raw directory %s not found, skipping cleanup",
-                cls.dir_pop_raw,
-            )
+            if not p.exists():
+                # ask the user whether to create the missing directory
+                try:
+                    resp = (
+                        input(f"Directory `{p}` does not exist. Create it? [y/N]: ")
+                        .strip()
+                        .lower()
+                    )
+                except EOFError:
+                    # non-interactive environment: skip creation
+                    logger.info(
+                        "Non-interactive environment, skipping creation of %s", p
+                    )
+                    continue
+
+                if resp in ("y", "yes"):
+                    logger.info("Creating directory: %s", p)
+                    p.mkdir(parents=True, exist_ok=True)
+                else:
+                    logger.info("Skipping creation of directory: %s", p)
+                    continue
+            else:
+                # ensure it exists (no-op if already present)
+                p.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            logger.warning("Permission denied creating directory %s (skipping)", p)
         except Exception:
-            logger.exception("Unexpected error cleaning %s", cls.dir_pop_raw)
+            logger.exception("Unexpected error creating directory %s", p)
 
 
 class SheetsFinalSubmission:
@@ -296,9 +299,3 @@ class SheetsFinalSubmission:
     hdi_group = "HDI Group"
     who_region = "WHO Region"
     lc_region = "LC Region"
-
-
-# Convenience initializer: call from your main script (not at import time)
-if __name__ == "__main__":
-    Dirs.ensure_dirs_exist()
-    Dirs.clean_pop_raw()

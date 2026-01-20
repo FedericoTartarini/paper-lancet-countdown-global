@@ -31,6 +31,10 @@ To download the data you need to:
    using [calculate_quantiles.py](python_code/weather/3_calculate_quantiles.py). Otherwise, you can skip it.
 5. Calculate the heatwaves occurrences using [calculate_heatwaves.py](python_code/weather/4_calculate_heatwaves.py)
 
+For the moment I am keeping the old heatwave data used in the previous report, but I should remove the
+`results/heatwave/results_2025` folder
+once the new report is finalised.
+
 ## Population data
 
 1. Download the WorldPop using [1_pop_data_download.py](python_code/population/1_pop_data_download.py)
