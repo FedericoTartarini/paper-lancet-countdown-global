@@ -7,6 +7,7 @@ Calculate Total Heatwave Exposures (Person-Days and Person-Events)
 If Person-Days are rising faster than Person-Events, it means heatwaves are getting longer (duration per event is increasing)
 """
 
+import pandas as pd
 import xarray as xr
 
 from my_config import Dirs
@@ -321,6 +322,18 @@ def main():
 
     print(f"Saving Person-Days to {Dirs.dir_file_infants_exposure_abs}...")
     exp_days_inf.to_netcdf(Dirs.dir_file_infants_exposure_abs)
+
+    print(f"Saving Person-Days to {Dirs.dir_file_above_75_exposure_abs}...")
+    exp_days_75.to_netcdf(Dirs.dir_file_above_75_exposure_abs)
+
+    exposures = xr.concat(
+        [exp_days_inf, exp_days_eld, exp_days_75],
+        dim=pd.Index([0, 65, 75], name="age_band_lower_bound"),
+    )
+
+    # This is the new file replacing the old one
+    print(f"Saving {Dirs.dir_file_all_exposure_abs}...")
+    exposures.to_netcdf(Dirs.dir_file_all_exposure_abs)
 
     # --- METRIC B: PERSON-EVENTS (New Count Exposure) ---
     print("\n--- Calculating Person-Events (Frequency Exposure) ---")
