@@ -56,20 +56,20 @@ once the new report is finalised.
 ## Heatwaves exposure
 
 1. Calculate the absolute exposure to heatwaves
-   using [heatwave_exposure_pop_abs.py](python_code/calculations/heatwave_exposure_pop_abs.py)
-2. Run the file [heatwaves_aggregates_worldpop.py](python_code/calculations/heatwaves_aggregates_worldpop.py)
+   using [heatwave_exposure_pop_abs.py](python_code/calculations/1_heatwave_exposure_pop_abs.py)
+2. Run the file [heatwaves_aggregates_worldpop.py](python_code/calculations/3_heatwaves_aggregates_worldpop.py)
 3. Generate most of the results
    using [results_heatwaves_worldpop.py](python_code/calculations/results_heatwaves_worldpop.py)
 4. Calculate the exposure due to climate change and pop growth
-   using [results_climate_change_vs_pop_growth.py](python_code/calculations/results_climate_change_vs_pop_growth.py)
+   using [results_climate_change_vs_pop_growth.py](python_code/calculations/5_results_climate_change_vs_pop_growth.py)
 
 ## Other calculations
 
 1. Calculate the change in exposure to heatwaves
-   using [heatwave_exposure_pop_change.py](python_code/calculations/heatwave_exposure_pop_change.py). These data are not
-   used in the report.
+   using [heatwave_exposure_pop_change.py](python_code/calculations/2_heatwave_exposure_pop_change.py). These data are
+   not used in the report.
 2. Calculate the worldpop exposure to heatwaves
-   using [heatwave_exposure_worldpop_change.py](python_code/calculations/heatwave_exposure_worldpop_change.py). These
+   using [heatwave_exposure_worldpop_change.py](python_code/calculations/6_heatwave_exposure_worldpop_change.py). These
    data are not used in the report.
 
 # Other info
