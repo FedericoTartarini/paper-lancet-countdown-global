@@ -2,6 +2,8 @@
 The old WorldPop data had separate files for male and female populations.
 This script combines those files into total population files.
 
+This code was only needed for the 2026 report, and it can be removed later.
+
 This version preserves the original source file naming convention (numeric age
 strings like '65_70_75_80') when reading male/female inputs, but writes the
 combined total files using the requested new labels:

@@ -37,17 +37,16 @@ once the new report is finalised.
 
 ## Population data
 
-1. Download the WorldPop using [1_pop_data_download.py](python_code/population/1_pop_data_download.py)
-    1. [2.1_pop_create_t_file.py](python_code/population/2_1_pop_create_t_file.py) creates total files for each age
+1. Download the WorldPop using [1_pop_data_download.py](python_code/population/a_pop_data_download.py)
+    1. [2.1_pop_create_t_file.py](python_code/population/ba_pop_create_t_file.py) creates total files for each age
        group and year for the old WorldPop data.
-    2. I am using the new WorldPop data from 2026 since they published a new
-       dataset [a_compare_worldpop_datasets.py](python_code/population/a_compare_worldpop_datasets.py) compares the two
-       datasets.
-    3. [b_compare_worldpop_gpw.py](python_code/population/b_compare_worldpop_gpw.py) compares the WorldPop and GPW data
+    2. I am using the new WorldPop data from 2015 since they published a new
+       dataset in 2020 with data from 2015 to 2030.
+    3. [b_compare_worldpop_gpw.py](python_code/population/cb_compare_worldpop_gpw.py) compares the WorldPop and GPW data
        for the infant
        and elderly population. Not essential for the new report.
-2. Re-grid the data to the ERA5 grid using [2_pop_data_process.py](python_code/population/2_pop_data_process.py)
-3. Combine the age groups using [pop_data_combine.py](python_code/population/3_pop_data_combine.py)
+2. Re-grid the data to the ERA5 grid using [2_pop_data_process.py](python_code/population/b_pop_data_process.py)
+3. Combine the age groups using [pop_data_combine.py](python_code/population/c_pop_data_combine.py)
 
 ## Other files to analyse
 

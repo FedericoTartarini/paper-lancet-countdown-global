@@ -6,7 +6,7 @@ import xarray as xr
 from tqdm import tqdm
 
 # Assuming these are your local config files
-from my_config import VarsWorldPop, Dirs, Vars
+from my_config import VarsWorldPop, Dirs, Vars, clean_pop_raw
 
 
 def _output_age_label(age_group):
@@ -238,7 +238,7 @@ def process_and_save_population_data(ages, year, sex, target_grid):
     )
 
     if out_path.exists():
-        # print(f"Skipping {out_path.name} (Exists)")
+        print(f"Skipping {out_path.name} (Exists)")
         return
 
     pop_regridded = process_and_combine_ages(
@@ -283,4 +283,6 @@ def main(
 
 
 if __name__ == "__main__":
+    clean_pop_raw()
+    # pass
     main()

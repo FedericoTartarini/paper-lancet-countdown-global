@@ -11,7 +11,7 @@ This module:
 
 Quick usage
 - From the command line:
-    python python_code/population/b_compare_worldpop_gpw.py
+    python python_code/population/cb_compare_worldpop_gpw.py
 
 - From another script:
     from python_code.population.b_compare_worldpop_gpw import main, plot_population_data

@@ -1,3 +1,11 @@
+"""
+This module combines population data from historical sources (before 2000)
+and WorldPop datasets (2000-2025) for infants and elderly age groups.
+
+It loads the data, processes it, concatenates the datasets,
+and saves the combined data to NetCDF files for further analysis.
+"""
+
 import os
 
 import xarray as xr
@@ -24,7 +32,7 @@ def load_population_data(age_group, years, suffix="era5_compatible.nc"):
     return xr.concat(datasets, dim="year")  # todo this is returning a warning
 
 
-def main(plot=True):
+def main():
     years_range = range(2000, 2026)  # todo this should not be hardcoded
 
     infants_worldpop = load_population_data(age_group="under_1", years=years_range)
@@ -75,4 +83,4 @@ def main(plot=True):
 
 
 if __name__ == "__main__":
-    main(plot=True)
+    main()

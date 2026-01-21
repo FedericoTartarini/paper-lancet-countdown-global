@@ -178,7 +178,7 @@ def analyze_population_time_series(directory, ages_array):
     plt.ylabel("Total People (millions)")
     plt.grid(True, which="both", linestyle="--", alpha=0.7)
     plt.axvline(
-        x=2020, color="r", linestyle=":", alpha=0.5, label="Potential Splice (2020)"
+        x=2015, color="r", linestyle=":", alpha=0.5, label="Potential Splice (2015)"
     )
     plt.legend()
     plt.show()
@@ -193,7 +193,7 @@ def analyze_population_time_series(directory, ages_array):
     plt.axhline(0, color="k", linewidth=0.8)
     # Highlight normal range (approx -0.5% to +2.0%)
     plt.axhspan(-0.5, 2.0, color="green", alpha=0.1, label="Expected Normal Growth")
-    plt.axvline(x=2020, color="r", linestyle=":", alpha=0.5)
+    plt.axvline(x=2015, color="r", linestyle=":", alpha=0.5)
     plt.legend()
     plt.show()
 
@@ -415,7 +415,7 @@ def plot_population_trends_from_combined(infants_da, elderly_da, elderly75_da):
     ax.set_title("Global Population Trend (millions)")
     ax.set_ylabel("Total People (millions)")
     ax.grid(True, which="both", linestyle="--", alpha=0.7)
-    ax.axvline(x=2020, color="r", linestyle=":", alpha=0.5)
+    ax.axvline(x=2015, color="r", linestyle=":", alpha=0.5)
     save_fig(fig, "global_population_trend_millions.png")
 
     # Plot 2: Growth rate
@@ -426,7 +426,7 @@ def plot_population_trends_from_combined(infants_da, elderly_da, elderly75_da):
     ax.set_ylabel("Growth Rate (%)")
     ax.axhline(0, color="k", linewidth=0.8)
     ax.axhspan(-0.5, 2.0, color="green", alpha=0.1)
-    ax.axvline(x=2020, color="r", linestyle=":", alpha=0.5)
+    ax.axvline(x=2015, color="r", linestyle=":", alpha=0.5)
     save_fig(fig, "global_population_growth_rate.png")
 
     # Plot 3: Absolute totals (raw counts)
@@ -437,7 +437,7 @@ def plot_population_trends_from_combined(infants_da, elderly_da, elderly75_da):
     ax.set_title("Global Population Trend — Absolute Counts")
     ax.set_ylabel("Total People")
     ax.grid(True, which="both", linestyle="--", alpha=0.7)
-    ax.axvline(x=2020, color="r", linestyle=":", alpha=0.5)
+    ax.axvline(x=2015, color="r", linestyle=":", alpha=0.5)
     save_fig(fig, "global_population_trend_absolute.png")
 
 
@@ -544,7 +544,7 @@ def plot_population_trends(infants_da, elderly_da, elderly75_da):
 
 def main():
     """Load combined files and produce all plots, saving them into the interim folder."""
-    # Paths (these should be created by 3_pop_data_combine.py)
+    # Paths (these should be created by c_pop_data_combine.py)
     path_inf = Path(Dirs.dir_pop_infants_file)
     path_eld = Path(Dirs.dir_pop_elderly_file)
     path_75 = Path(Dirs.dir_pop_above_75_file)
