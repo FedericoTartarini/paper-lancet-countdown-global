@@ -44,6 +44,159 @@ def calculate_pop_weighted_mean(da_metric, da_pop):
     return total_exposure_per_year / total_pop_per_year
 
 
+def plot_zonal_fingerprint(hw_delta, pop_data):
+    """
+    Plots the latitudinal profile of Heatwaves vs Population.
+    Explains WHY the population-weighted mean is higher.
+    """
+    print("Generating Zonal Fingerprint...")
+
+    # 1. Prepare Data (Average over the last 10 years for a 'Recent' snapshot)
+    # We take the mean over Year and Longitude, leaving just Latitude
+    recent_period_slice = slice(-10, None)  # Last 10 years
+
+    # Zonal Mean of Heatwave Change
+    zonal_hw = hw_delta.isel(year=recent_period_slice).mean(dim=["year", "longitude"])
+
+    # Zonal Sum of Population (Where do people live?)
+    # We use 'pop' variable from the dataset
+    zonal_pop = (
+        pop_data["pop"]
+        .isel(year=recent_period_slice)
+        .mean(dim="year")
+        .sum(dim="longitude")
+    )
+
+    # 2. Plotting
+    fig, ax1 = plt.subplots(figsize=(8, 8))
+
+    # Plot Population (Grey Filled Area) on top X-axis
+    color_pop = "lightgrey"
+    ax2 = ax1.twiny()
+    ax2.fill_betweenx(
+        zonal_pop.latitude,
+        0,
+        zonal_pop / 1e6,
+        color=color_pop,
+        alpha=0.6,
+        label="Population Density",
+    )
+    ax2.set_xlabel("Population (Millions)", color="grey")
+    ax2.tick_params(axis="x", colors="grey")
+    ax2.set_xlim(0, 12.5)  # Add 10% headroom
+
+    # Plot Heatwave Change (Red Line) on bottom X-axis
+    color_hw = "tab:red"
+    ax1.plot(
+        zonal_hw,
+        zonal_hw.latitude,
+        color=color_hw,
+        linewidth=2.5,
+        label="Heatwave Change",
+    )
+    ax1.set_xlabel("Change in Heatwave Days (days/year)", color=color_hw)
+    ax1.tick_params(axis="x", colors=color_hw)
+
+    ax1.set_ylabel("Latitude")
+    ax1.set_ylim(-60, 80)  # Cut off Antarctica as it distorts the scale
+    ax1.axhline(0, color="black", linestyle=":", linewidth=1)  # Equator
+    ax1.set(xlim=(0, 20))  # Start x-axis at 0
+
+    # make sure the grid lines are the same for the two x-axes
+    ax1.xaxis.set_major_locator(plt.MaxNLocator(5))
+    ax2.xaxis.set_major_locator(plt.MaxNLocator(5))
+
+    plt.title("The 'Demographic Trap':\nPopulation Peaks where Heatwaves Increase Most")
+    plt.tight_layout()
+    plt.savefig(Dirs.dir_figures / "zonal_fingerprint_heat_vs_pop.pdf")
+    plt.show()
+
+
+def plot_experience_distribution(hw_delta, pop_data):
+    """
+    Compares the distribution of heatwaves experienced by LAND vs PEOPLE.
+    Shows the shift in risk.
+    """
+    print("Generating Experience Distribution...")
+
+    # 1. Prepare Data (Last 10 years average)
+    # Flatten the maps into 1D arrays for histogramming
+    hw_map = hw_delta.isel(year=slice(-10, None)).mean(dim="year")
+    pop_map = pop_data["pop"].isel(year=slice(-10, None)).mean(dim="year")
+
+    # Create Area Weights (cosine lat) broadcasted to the full map shape
+    weights_area = np.cos(np.deg2rad(hw_map.latitude))
+    weights_area, _ = xr.broadcast(weights_area, hw_map)
+
+    # Mask NaNs (Oceans)
+    mask = hw_map.notnull() & pop_map.notnull()
+
+    values = hw_map.where(mask).values.flatten()
+    w_land = weights_area.where(mask).values.flatten()
+    w_people = pop_map.where(mask).values.flatten()
+
+    # Remove NaNs from flattened arrays to avoid plotting errors
+    valid_idx = ~np.isnan(values) & ~np.isnan(w_land) & ~np.isnan(w_people)
+
+    # 2. Plotting
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Plot Land Distribution
+    sns.kdeplot(
+        x=values[valid_idx],
+        weights=w_land[valid_idx],
+        fill=True,
+        color="black",
+        alpha=0.1,
+        label="Global Land Surface",
+        bw_adjust=1.5,
+    )
+
+    # Plot People Distribution
+    sns.kdeplot(
+        x=values[valid_idx],
+        weights=w_people[valid_idx],
+        fill=True,
+        color="coral",
+        alpha=0.4,
+        label="Elderly Population",
+        bw_adjust=1.5,
+    )
+
+    # Add mean lines
+    mean_land = np.average(values[valid_idx], weights=w_land[valid_idx])
+    mean_people = np.average(values[valid_idx], weights=w_people[valid_idx])
+
+    ax.axvline(mean_land, color="black", linestyle="--")
+    ax.axvline(mean_people, color="coral", linestyle="--")
+
+    ax.text(
+        mean_land,
+        ax.get_ylim()[1] * 0.9,
+        f" Land Mean:\n +{mean_land:.1f}",
+        color="black",
+        ha="right",
+    )
+    ax.text(
+        mean_people,
+        ax.get_ylim()[1] * 0.9,
+        f" People Mean:\n +{mean_people:.1f}",
+        color="coral",
+        ha="left",
+    )
+
+    ax.set_xlabel("Change in Heatwave Days (Last 10 Years)")
+    ax.set_title(
+        "Shift in Exposure:\nPeople live in the 'Hotter' tail of the climate distribution"
+    )
+    ax.legend()
+    ax.set_xlim(left=0)  # Assuming change is mostly positive
+
+    plt.tight_layout()
+    plt.savefig(Dirs.dir_figures / "distribution_shift_land_vs_people.pdf")
+    plt.show()
+
+
 def main():
     print("Loading Data...")
     # 1. Load Population (75+ is not needed for this plot)
@@ -196,6 +349,10 @@ def main():
     ax.axhline(0, color="black")
     plt.tight_layout()
     plt.show()
+
+    # --- ADDITIONAL ANALYSES ---
+    plot_zonal_fingerprint(hw_delta, pop_eld)
+    plot_experience_distribution(hw_delta, pop_eld)
 
 
 if __name__ == "__main__":
