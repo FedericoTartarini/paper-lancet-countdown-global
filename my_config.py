@@ -118,20 +118,17 @@ class Dirs:
     )  # todo I need to copy these files in OneDrive as well
     #
     dir_pop_era_grid: Path = dir_results / f"worldpop_{weather_data}_grid"
-    # dir_results_pop_exposure: Path = (
-    #     dir_results
-    #     / f"results_{Vars.year_report}"
-    #     / "pop_exposure"
-    #     / "worldpop_hw_exposure"
-    # )
+    dir_results_pop_exposure: Path = (
+        dir_results / f"results_{Vars.year_report}" / "pop_hw_exposure"
+    )
     # dir_pop_hybrid: Path = dir_results / "hybrid_pop"
     dir_era_quantiles: Path = dir_weather / "quantiles"
     #
     dir_results_heatwaves: Path = dir_results / "heatwaves"
-    # dir_worldpop_exposure_by_region: Path = (
-    #     dir_results_pop_exposure / "exposure_by_region_or_grouping"
-    # )
-    #
+    dir_worldpop_exposure_by_region: Path = (
+        dir_results_pop_exposure / "exposure_by_region_or_grouping"
+    )
+
     # # Paths to SSD data folders
     # dir_pop_raw: Path = dir_ssd / "population"  # paths to important files
     dir_pop_infants_file: Path = (
@@ -146,87 +143,91 @@ class Dirs:
         dir_population_hybrid
         / f"worldpop_75_80_1950_{Vars.year_max_analysis}_era5_compatible.nc"
     )
-    # dir_file_elderly_exposure_abs: Path = (
-    #     dir_results_pop_exposure
-    #     / f"heatwave_exposure_over65_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_file_elderly_exposure_change: Path = (
-    #     dir_results_pop_exposure
-    #     / f"heatwave_exposure_change_over65_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_file_infants_exposure_abs: Path = (
-    #     dir_results_pop_exposure
-    #     / f"heatwave_exposure_infants_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_file_infants_exposure_change: Path = (
-    #     dir_results_pop_exposure
-    #     / f"heatwave_exposure_change_infants_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_file_all_exposure_abs: Path = (
-    #     dir_results_pop_exposure
-    #     / f"heatwave_exposure_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_file_countries_heatwave_exposure: Path = (
-    #     dir_worldpop_exposure_by_region
-    #     / f"countries_heatwaves_exposure_weighted_change_1980-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_file_exposures_abs_by_lc_group_worldpop: Path = (
-    #     dir_worldpop_exposure_by_region / f"exposures_abs_by_lc_group_worldpop.nc"
-    # )
-    # dir_file_countries_heatwaves_exposure_change: Path = (
-    #     dir_worldpop_exposure_by_region
-    #     / f"countries_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_file_countries_heatwaves_exposure: Path = (
-    #     dir_worldpop_exposure_by_region
-    #     / f"countries_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_file_who_regions_heatwaves_exposure: Path = (
-    #     dir_worldpop_exposure_by_region
-    #     / f"who_regions_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_file_who_regions_heatwaves_exposure_change: Path = (
-    #     dir_worldpop_exposure_by_region
-    #     / f"who_regions_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_file_hdi_regions_heatwaves_exposure: Path = (
-    #     dir_worldpop_exposure_by_region
-    #     / f"hdi_regions_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_file_hdi_regions_heatwaves_exposure_change: Path = (
-    #     dir_worldpop_exposure_by_region
-    #     / f"hdi_regions_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
-    # )
-    # dir_manuscript_submission: Path = Path("manuscript") / f"{Vars.year_report}"
-    # dir_file_excel_submission: Path = (
-    #     dir_manuscript_submission
-    #     / f"1.1.1 - {Vars.year_report} Global Report - Data Submission - Tartarini.xlsx"
-    # )
+    dir_file_elderly_exposure_abs: Path = (
+        dir_results_pop_exposure
+        / f"heatwave_exposure_over65_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_above_75_exposure_abs: Path = (
+        dir_results_pop_exposure
+        / f"heatwave_exposure_75plus_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_elderly_exposure_change: Path = (
+        dir_results_pop_exposure
+        / f"heatwave_exposure_change_over65_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_infants_exposure_abs: Path = (
+        dir_results_pop_exposure
+        / f"heatwave_exposure_infants_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_infants_exposure_change: Path = (
+        dir_results_pop_exposure
+        / f"heatwave_exposure_change_infants_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_all_exposure_abs: Path = (
+        dir_results_pop_exposure
+        / f"heatwave_exposure_multi_threshold_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_countries_heatwave_exposure: Path = (
+        dir_worldpop_exposure_by_region
+        / f"countries_heatwaves_exposure_weighted_change_1980-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_exposures_abs_by_lc_group_worldpop: Path = (
+        dir_worldpop_exposure_by_region / "exposures_abs_by_lc_group_worldpop.nc"
+    )
+    dir_file_countries_heatwaves_exposure_change: Path = (
+        dir_worldpop_exposure_by_region
+        / f"countries_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_countries_heatwaves_exposure: Path = (
+        dir_worldpop_exposure_by_region
+        / f"countries_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_who_regions_heatwaves_exposure: Path = (
+        dir_worldpop_exposure_by_region
+        / f"who_regions_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_who_regions_heatwaves_exposure_change: Path = (
+        dir_worldpop_exposure_by_region
+        / f"who_regions_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_hdi_regions_heatwaves_exposure: Path = (
+        dir_worldpop_exposure_by_region
+        / f"hdi_regions_heatwaves_exposure_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_file_hdi_regions_heatwaves_exposure_change: Path = (
+        dir_worldpop_exposure_by_region
+        / f"hdi_regions_heatwaves_exposure_change_{Vars.year_min_analysis}-{Vars.year_max_analysis}_worldpop.nc"
+    )
+    dir_manuscript_submission: Path = Path("manuscript") / f"{Vars.year_report}"
+    dir_file_excel_submission: Path = (
+        dir_manuscript_submission
+        / f"1.1.1 - {Vars.year_report} Global Report - Data Submission - Tartarini.xlsx"
+    )
     # # boundaries and rasters
-    # dir_admin_boundaries: Path = dir_local / "admin_boundaries"
-    # dir_file_detailed_boundaries: Path = dir_admin_boundaries / "Detailed_Boundary_ADM0"
-    # dir_file_country_polygons: Path = dir_file_detailed_boundaries / "GLOBAL_ADM0.shp"
-    # dir_file_admin1_polygons: Path = (
-    #     dir_admin_boundaries / "Detailed_Boundary_ADM1" / "Detailed_Boundary_ADM1.shp"
-    # )
-    # dir_file_country_raster_report: Path = (
-    #     dir_admin_boundaries / "admin0_raster_report_2024.nc"
-    # )
-    # dir_file_who_raster_report: Path = (
-    #     dir_admin_boundaries / "WHO_regions_raster_report_2024.nc"
-    # )
-    # dir_file_hdi_raster_report: Path = (
-    #     dir_admin_boundaries / "HDI_group_raster_report_2024.nc"
-    # )
-    # dir_file_lancet_raster_report: Path = (
-    #     dir_admin_boundaries / "LC_group_raster_report_2024.nc"
-    # )
-    # dir_file_admin1_raster_report: Path = (
-    #     dir_admin_boundaries / "admin1_raster_report_2024.nc"
-    # )
-    # dir_file_lancet_country_info: Path = (
-    #     dir_admin_boundaries / "2025 Global Report Country Names and Groupings.xlsx"
-    # )
+    dir_admin_boundaries: Path = dir_one_drive / "admin_boundaries"
+    dir_file_detailed_boundaries: Path = dir_admin_boundaries / "Detailed_Boundary_ADM0"
+    dir_file_country_polygons: Path = dir_file_detailed_boundaries / "GLOBAL_ADM0.shp"
+    dir_file_admin1_polygons: Path = (
+        dir_admin_boundaries / "Detailed_Boundary_ADM1" / "Detailed_Boundary_ADM1.shp"
+    )
+    dir_file_country_raster_report: Path = (
+        dir_admin_boundaries / "admin0_raster_report_2024.nc"
+    )
+    dir_file_who_raster_report: Path = (
+        dir_admin_boundaries / "WHO_regions_raster_report_2024.nc"
+    )
+    dir_file_hdi_raster_report: Path = (
+        dir_admin_boundaries / "HDI_group_raster_report_2024.nc"
+    )
+    dir_file_lancet_raster_report: Path = (
+        dir_admin_boundaries / "LC_group_raster_report_2024.nc"
+    )
+    dir_file_admin1_raster_report: Path = (
+        dir_admin_boundaries / "admin1_raster_report_2024.nc"
+    )
+    dir_file_lancet_country_info: Path = (
+        dir_admin_boundaries / "2025 Global Report Country Names and Groupings.xlsx"
+    )
 
 
 def clean_pop_raw(path=Dirs.dir_pop_raw) -> None:
