@@ -21,14 +21,14 @@ warnings.filterwarnings(
 
 
 def calculate_effect_climate_change_compared_to_pop_change(
-    year_max: int = Vars.year_max_analysis.value,
+    year_max: int = Vars.year_max_analysis,
 ):
-    heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves_days.value.glob("*.nc"))
+    heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves.glob("*.nc"))
     hw = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
-    elderly = xr.open_dataset(Dirs.dir_pop_elderly_file.value)
-    elderly = elderly.sel(year=slice(Vars.year_min_analysis.value, year_max))
-    infants = xr.open_dataset(Dirs.dir_pop_infants_file.value)
-    infants = infants.sel(year=slice(Vars.year_min_analysis.value, year_max))
+    elderly = xr.open_dataset(Dirs.dir_pop_elderly_file)
+    elderly = elderly.sel(year=slice(Vars.year_min_analysis, year_max))
+    infants = xr.open_dataset(Dirs.dir_pop_infants_file)
+    infants = infants.sel(year=slice(Vars.year_min_analysis, year_max))
 
     """
     1. select two periods
@@ -43,39 +43,41 @@ def calculate_effect_climate_change_compared_to_pop_change(
     # mean number of heatwave days per grid point for each period
     print(
         "Comparison period in the past is from",
-        Vars.year_reference_start.value,
+        Vars.year_reference_start,
         "to",
-        Vars.year_reference_end.value,
+        Vars.year_reference_end,
     )
     climate_past = (
-        hw.transpose("latitude", "longitude", "year")["heatwaves_days"]
-        .sel(year=slice(Vars.year_reference_start.value, Vars.year_reference_end.value))
+        hw.transpose("latitude", "longitude", "year")["heatwave_days"]
+        .sel(year=slice(Vars.year_reference_start, Vars.year_reference_end))
         .mean(dim="year")
     )
-    print("Current period is from", Vars.year_reference_end.value + 1, "to", year_max)
+    print("Current period is from", Vars.year_reference_end + 1, "to", year_max)
     climate_recent = (
-        hw.transpose("latitude", "longitude", "year")["heatwaves_days"]
-        .sel(year=slice(Vars.year_reference_end.value + 1, year_max))
+        hw.transpose("latitude", "longitude", "year")["heatwave_days"]
+        .sel(year=slice(Vars.year_reference_end + 1, year_max))
         .mean(dim="year")
     )
     # mean number of people per grid point for each period
     elderly_past = elderly.sel(
-        year=slice(Vars.year_reference_start.value, Vars.year_reference_end.value)
+        year=slice(Vars.year_reference_start, Vars.year_reference_end)
     ).mean(dim="year")
     elderly_recent = elderly.sel(
-        year=slice(Vars.year_reference_end.value + 1, year_max)
+        year=slice(Vars.year_reference_end + 1, year_max)
     ).mean(dim="year")
     infants_past = infants.sel(
-        year=slice(Vars.year_reference_start.value, Vars.year_reference_end.value)
+        year=slice(Vars.year_reference_start, Vars.year_reference_end)
     ).mean(dim="year")
     infants_recent = infants.sel(
-        year=slice(Vars.year_reference_end.value + 1, year_max)
+        year=slice(Vars.year_reference_end + 1, year_max)
     ).mean(dim="year")
 
     def adjust_longitude(data):
         _data = data.assign_coords(
             longitude=(((data.longitude + 180) % 360) - 180)
         ).sortby("longitude")
+        if _data.indexes["longitude"].has_duplicates:
+            _data = _data.drop_duplicates(dim="longitude")
         # Set areas with a population of 0 to NaN for elderly
         return _data.where(_data > 1, np.nan)
 
@@ -129,32 +131,32 @@ def calculate_effect_climate_change_compared_to_pop_change(
     elderly_past_gdf = (
         elderly_past.to_dataframe()
         .reset_index()
-        .rename(columns={"elderly": "Over 65 mean past"})
+        .rename(columns={"pop": "Over 65 mean past"})
     )
     elderly_recent_gdf = (
         elderly_recent.to_dataframe()
         .reset_index()
-        .rename(columns={"elderly": "Over 65 mean recent"})
+        .rename(columns={"pop": "Over 65 mean recent"})
     )
     infants_past_gdf = (
         infants_past.to_dataframe()
         .reset_index()
-        .rename(columns={"infants": "Infants mean past"})
+        .rename(columns={"pop": "Infants mean past"})
     )
     infants_recent_gdf = (
         infants_recent.to_dataframe()
         .reset_index()
-        .rename(columns={"infants": "Infants mean recent"})
+        .rename(columns={"pop": "Infants mean recent"})
     )
     hw_past_gdf = (
         climate_past.to_dataframe()
         .reset_index()
-        .rename(columns={"heatwaves_days": "Mean heatwaves days/year past"})
+        .rename(columns={"heatwave_days": "Mean heatwaves days/year past"})
     )
     hw_recent_gdf = (
         climate_recent.to_dataframe()
         .reset_index()
-        .rename(columns={"heatwaves_days": "Mean heatwaves days/year recent"})
+        .rename(columns={"heatwave_days": "Mean heatwaves days/year recent"})
     )
 
     # Starting with the first merge between the elderly datasets
@@ -239,12 +241,12 @@ def calculate_effect_climate_change_compared_to_pop_change(
     # Data for plotting
     impact_factors = ["Only Climate Change", "Combined"]
     elderly_values = [
-        percentage_increase_elderly_climate["elderly"].data,
-        percentage_increase_elderly["elderly"].data,
+        percentage_increase_elderly_climate["pop"].data,
+        percentage_increase_elderly["pop"].data,
     ]
     infants_values = [
-        percentage_increase_infants_climate["infants"].data,
-        percentage_increase_infants["infants"].data,
+        percentage_increase_infants_climate["pop"].data,
+        percentage_increase_infants["pop"].data,
     ]
 
     x = np.arange(len(impact_factors))  # the label locations
@@ -270,7 +272,7 @@ def calculate_effect_climate_change_compared_to_pop_change(
         rect=[0, 0.03, 1, 0.95]
     )  # Adjust the rect to make room for the suptitle
 
-    plt.savefig(Dirs.dir_figures.value / "barplots_dominant_effect_change.pdf")
+    plt.savefig(Dirs.dir_figures / "barplots_dominant_effect_change.pdf")
     plt.show()
 
     return (
@@ -297,7 +299,7 @@ def plots(year_max: int = Vars.year_max_analysis):
         combined_increase_infants,
     ) = calculate_effect_climate_change_compared_to_pop_change(year_max=year_max)
 
-    countries_raster = xr.open_dataset(Dirs.dir_file_country_raster_report.value)
+    countries_raster = xr.open_dataset(Dirs.dir_file_country_raster_report)
     land_mask = countries_raster["OBJECTID"] < 2000
 
     diff = climate_recent - climate_past
@@ -309,8 +311,8 @@ def plots(year_max: int = Vars.year_max_analysis):
 
     plot_world_map(diff, v_min_max=[-5, 5])
 
-    plot_world_map(increase_infants_population["infants"], v_min_max=[-1000, 1000])
-    plot_world_map(increase_elderly_population["elderly"], v_min_max=[-1000, 1000])
+    plot_world_map(increase_infants_population["pop"], v_min_max=[-1000, 1000])
+    plot_world_map(increase_elderly_population["pop"], v_min_max=[-1000, 1000])
 
     increase_elderly_population_gdf = (
         increase_elderly_population.to_dataframe().reset_index()
@@ -350,7 +352,7 @@ def plots(year_max: int = Vars.year_max_analysis):
         increase_elderly_population_gdf, gdf_countries, how="inner", predicate="within"
     )
     increase_elderly_population_country = increase_elderly_population_country[
-        ["geometry", "elderly", "ISO_3_CODE"]
+        ["geometry", "pop", "ISO_3_CODE"]
     ]
 
     # Exclude the geometry column from the aggregation
@@ -376,14 +378,14 @@ def plots(year_max: int = Vars.year_max_analysis):
         increase_elderly_climate_gdf, gdf_countries, how="inner", predicate="within"
     )
     increase_elderly_climate_country = increase_elderly_climate_country[
-        ["geometry", "elderly", "ISO_3_CODE"]
+        ["geometry", "pop", "ISO_3_CODE"]
     ]
 
     increase_elderly_climate_country = increase_elderly_climate_country.rename(
-        columns={"elderly": "climate_change"}
+        columns={"pop": "climate_change"}
     )
     increase_elderly_population_country = increase_elderly_population_country.rename(
-        columns={"elderly": "population_change"}
+        columns={"pop": "population_change"}
     )
 
     dominant_effect_elderly = pd.merge(
@@ -436,7 +438,7 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Optional: Set additional options for the plot
     ax.set_title("Over 65")
     # ax.set_axis_off()
-    plt.savefig(Dirs.dir_figures.value / "dominant_effect_change_countries_elderly.pdf")
+    plt.savefig(Dirs.dir_figures / "dominant_effect_change_countries_elderly.pdf")
     plt.show()
 
     geometry = [
@@ -461,7 +463,7 @@ def plots(year_max: int = Vars.year_max_analysis):
         increase_infants_population_gdf, gdf_countries, how="inner", predicate="within"
     )
     increase_infants_population_country = increase_infants_population_country[
-        ["geometry", "infants", "ISO_3_CODE"]
+        ["geometry", "pop", "ISO_3_CODE"]
     ]
     # Exclude the geometry column from the aggregation
     increase_infants_population_country_agg = (
@@ -482,7 +484,7 @@ def plots(year_max: int = Vars.year_max_analysis):
         increase_infants_climate_gdf, gdf_countries, how="inner", predicate="within"
     )
     increase_infants_climate_country = increase_infants_climate_country[
-        ["geometry", "infants", "ISO_3_CODE"]
+        ["geometry", "pop", "ISO_3_CODE"]
     ]
     # Exclude the geometry column from the aggregation
     increase_infants_population_country_agg = (
@@ -501,10 +503,10 @@ def plots(year_max: int = Vars.year_max_analysis):
     )
 
     increase_infants_climate_country = increase_infants_climate_country.rename(
-        columns={"infants": "climate_change"}
+        columns={"pop": "climate_change"}
     )
     increase_infants_population_country = increase_infants_population_country.rename(
-        columns={"infants": "population_change"}
+        columns={"pop": "population_change"}
     )
 
     dominant_effect_infants = pd.merge(
@@ -553,10 +555,10 @@ def plots(year_max: int = Vars.year_max_analysis):
 
     # Step 1: Rename columns for clarity
     increase_infants_population_gdf.rename(
-        columns={"infants": "infants_population_growth"}, inplace=True
+        columns={"pop": "infants_population_growth"}, inplace=True
     )
     increase_infants_population_gdf.rename(
-        columns={"infants": "infants_climate_effect"}, inplace=True
+        columns={"pop": "infants_climate_effect"}, inplace=True
     )
 
     # Assuming the GeoDataFrames are spatially aligned, we directly combine the data.
@@ -566,9 +568,7 @@ def plots(year_max: int = Vars.year_max_analysis):
     combined_df = increase_infants_population_gdf[
         ["geometry", "infants_population_growth"]
     ].copy()
-    combined_df["infants_climate_effect"] = increase_infants_climate_gdf[
-        "infants"
-    ].values
+    combined_df["infants_climate_effect"] = increase_infants_climate_gdf["pop"].values
 
     # Drop rows where either effect is NaN to ensure we only compare complete data
     combined_df.dropna(
@@ -643,17 +643,15 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Increase the size of the points in the legend
     plt.legend(markerscale=30)  # Increase marker scale in legend for better visibility
 
-    plt.savefig(
-        Dirs.dir_figures.value / "dominant_effect_change_grid_infants.jpeg", dpi=1200
-    )
+    plt.savefig(Dirs.dir_figures / "dominant_effect_change_grid_infants.jpeg", dpi=1200)
     plt.show()
 
     # Step 1: Rename columns for clarity
     increase_elderly_population_gdf.rename(
-        columns={"elderly": "elderly_population_growth"}, inplace=True
+        columns={"pop": "elderly_population_growth"}, inplace=True
     )
     increase_elderly_climate_gdf.rename(
-        columns={"elderly": "elderly_climate_effect"}, inplace=True
+        columns={"pop": "elderly_climate_effect"}, inplace=True
     )
 
     # Assuming the GeoDataFrames are spatially aligned, we directly combine the data.
@@ -741,9 +739,7 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Increase the size of the points in the legend
     plt.legend(markerscale=30)  # Increase marker scale in legend for better visibility
 
-    plt.savefig(
-        Dirs.dir_figures.value / "dominant_effect_change_grid_elderly.jpeg", dpi=1200
-    )
+    plt.savefig(Dirs.dir_figures / "dominant_effect_change_grid_elderly.jpeg", dpi=1200)
     plt.show()
 
     # Assuming dominant_effect_gdf_infants and dominant_effect_gdf_elderly are your GeoDataFrames
@@ -832,7 +828,7 @@ def plots(year_max: int = Vars.year_max_analysis):
 
     plt.tight_layout()  # Adjust the layout to make sure everything fits without overlapping
     plt.savefig(
-        Dirs.dir_figures.value / "combined_dominant_effect_change_grid.jpeg", dpi=1200
+        Dirs.dir_figures / "combined_dominant_effect_change_grid.jpeg", dpi=1200
     )
     plt.show()
 
@@ -844,7 +840,7 @@ def plots(year_max: int = Vars.year_max_analysis):
         constrained_layout=True,
     )
     increase_infants_climate_gdf.dropna().plot(
-        "infants",
+        "pop",
         ax=axs[0],
         markersize=0.01,
         vmin=1e2,
@@ -858,7 +854,7 @@ def plots(year_max: int = Vars.year_max_analysis):
     axs[0].set_title("Change in Heatwaves Only")
 
     combined_increase_infants_gdf.dropna().plot(
-        "infants",
+        "pop",
         ax=axs[1],
         markersize=0.01,
         vmin=1e2,
@@ -876,11 +872,8 @@ def plots(year_max: int = Vars.year_max_analysis):
 
     combined_increase_infants_gdf["rel_diff"] = (
         100
-        * (
-            combined_increase_infants_gdf["infants"]
-            - increase_infants_climate_gdf["infants"]
-        )
-        / combined_increase_infants_gdf["infants"]
+        * (combined_increase_infants_gdf["pop"] - increase_infants_climate_gdf["pop"])
+        / combined_increase_infants_gdf["pop"]
     )
     plt.show()
 
@@ -931,7 +924,7 @@ def plots(year_max: int = Vars.year_max_analysis):
 
 if __name__ == "__main__":
     _ = calculate_effect_climate_change_compared_to_pop_change(
-        year_max=Vars.year_max_analysis.value
+        year_max=Vars.year_max_analysis
     )
-    # plots(year_max=Vars.year_max_analysis)
+    plots(year_max=Vars.year_max_analysis)
     pass
