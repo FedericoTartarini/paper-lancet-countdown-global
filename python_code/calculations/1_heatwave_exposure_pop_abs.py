@@ -113,9 +113,7 @@ def plot_global_trends(days, events, population=AgeBands.ELDERLY_65):
 
     plt.title(f"Global Heatwave Exposure: {population}\n(Burden vs. Frequency)")
     fig.tight_layout()
-    plt.savefig(
-        Dirs.dir_figures_interim / f"heatwave_exposure_global_trends_{population}.pdf"
-    )
+    plt.savefig(Dirs.dir_figures / f"heatwave_exposure_global_trends_{population}.pdf")
     plt.show()
 
 
@@ -198,7 +196,7 @@ def plot_severity_ratio(days, events, population=AgeBands.ELDERLY_65):
     )
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig(Dirs.dir_figures_interim / f"heatwave_severity_ratio_{population}.pdf")
+    plt.savefig(Dirs.dir_figures / f"heatwave_severity_ratio_{population}.pdf")
     plt.show()
 
 

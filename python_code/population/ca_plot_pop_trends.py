@@ -59,7 +59,7 @@ def robust_open_pop(path: Path):
 
 def save_fig(fig, name: str):
     """Save figure to the interim directory with a consistent name."""
-    out_dir = Path(Dirs.dir_figures_interim)
+    out_dir = Path(Dirs.dir_figures)
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / name
     fig.savefig(out_path, dpi=200, bbox_inches="tight")
@@ -101,7 +101,7 @@ def plot_population_map(data, label, year=2001, bounds=(0, 35, 20, 47), v_max=20
 
     plt.title(f"{label.capitalize()} population in {year}")
     # Show the plot
-    plt.savefig(Dirs.dir_figures_interim / f"pop_data_{label}_{year}.png")
+    plt.savefig(Dirs.dir_figures / f"pop_data_{label}_{year}.png")
     plt.show()
 
 
@@ -527,7 +527,7 @@ def plot_population_trends(infants_da, elderly_da, elderly75_da):
     axs.legend()
     axs.set(xlabel="Year", ylabel="Population (millions)")
     plt.tight_layout()
-    plt.savefig(Dirs.dir_figures_interim / "pop_data_trends.png")
+    plt.savefig(Dirs.dir_figures / "pop_data_trends.png")
     plt.show()
 
     for data, label in zip(
@@ -538,7 +538,7 @@ def plot_population_trends(infants_da, elderly_da, elderly75_da):
         axs.legend()
         axs.set(xlabel="Year", ylabel="Population (millions)")
         plt.tight_layout()
-        plt.savefig(Dirs.dir_figures_interim / f"pop_data_trends_{label}.png")
+        plt.savefig(Dirs.dir_figures / f"pop_data_trends_{label}.png")
         plt.show()
 
 

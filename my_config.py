@@ -93,8 +93,7 @@ class Dirs:
     )
 
     dir_results: Path = dir_one_drive / "results"
-    dir_figures: Path = dir_results / f"results_{Vars.year_report}" / "figures"
-    dir_figures_interim: Path = dir_figures / "interim"
+    dir_figures: Path = dir_local / "manuscript" / f"{Vars.year_report}" / "figures"
     dir_population_hybrid: Path = dir_results / "hybrid_pop"
     dir_file_population_before_2000: Path = (
         dir_population_hybrid / "Hybrid Demographics 1950-2020.nc"
@@ -124,7 +123,7 @@ class Dirs:
     # dir_pop_hybrid: Path = dir_results / "hybrid_pop"
     dir_era_quantiles: Path = dir_weather / "quantiles"
     #
-    dir_results_heatwaves: Path = dir_results / "heatwaves"
+    dir_results_heatwaves: Path = dir_weather / "heatwaves"
     dir_worldpop_exposure_by_region: Path = (
         dir_results_pop_exposure / "exposure_by_region_or_grouping"
     )
