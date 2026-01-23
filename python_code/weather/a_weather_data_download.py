@@ -22,6 +22,7 @@ def download_year_era5(year: int = 2022):
         key=copernicus_api_key,
         url="https://cds.climate.copernicus.eu/api",
     )
+    # todo we should be downloading the t-max and t-min ad the daily level not hourly
     c.retrieve(
         "reanalysis-era5-single-levels",
         {
