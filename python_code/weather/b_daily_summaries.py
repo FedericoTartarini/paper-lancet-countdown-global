@@ -20,7 +20,7 @@ sys.path.append(str(project_root))
 import xarray as xr
 from dask.distributed import Client
 
-from my_config import Dirs, ensure_directories
+from my_config import Dirs
 
 # Create a logs directory
 log_dir = project_root / "logs"
@@ -74,9 +74,9 @@ def process_and_save_data(ds, output_file, year_label):
     # Define compression encoding
     encoding_params = {
         "zlib": True,
-        "complevel": 5,
+        "complevel": 1,
         "dtype": "float32",
-        "least_significant_digit": 1,
+        # "least_significant_digit": 1,
     }
     encoding = {var: encoding_params for var in daily_ds.data_vars}
 
@@ -130,7 +130,7 @@ def process_year_in_months(year, year_dir, output_file):
 
         try:
             # Process this month specifically
-            ds = xr.open_mfdataset(
+            ds = xr.open_dataset(
                 input_files,
                 parallel=True,
                 chunks={"time": -1, "latitude": 500, "longitude": 500},
@@ -162,7 +162,7 @@ def process_year_in_months(year, year_dir, output_file):
         # No, simpler to just write here since data is already 'daily'
         encoding_params = {
             "zlib": True,
-            "complevel": 5,
+            "complevel": 1,
             "dtype": "float32",
             "least_significant_digit": 1,
         }
@@ -202,7 +202,10 @@ def main():
     args = parser.parse_args()
 
     # Initialize Dask Client for distributed computing
-    client = Client()
+    # Use n_workers based on PBS allocation if available, with 1 thread per worker
+    # to avoid GIL contention during heavy numpy operations.
+    n_workers = int(os.environ.get("PBS_NCPUS", 4))
+    client = Client(n_workers=n_workers, threads_per_worker=1)
     logger.info(f"Dask Dashboard link: {client.dashboard_link}")
 
     if args.local_file:
@@ -213,7 +216,7 @@ def main():
             return
 
         ds = xr.open_dataset(file_path, chunks={})
-        ds = ds.chunk({"time": 24 * 7, "latitude": 500, "longitude": 500})
+        ds = ds.chunk({"time": -1, "latitude": 500, "longitude": 500})
 
         output_file = Path("~/Downloads/local_daily_summary_test.nc").expanduser()
         try:
@@ -269,7 +272,7 @@ def main():
 
 if __name__ == "__main__":
     pass
-    ensure_directories([Dirs.dir_era_daily, Dirs.dir_results_heatwaves])
+    # ensure_directories([Dirs.dir_era_daily, Dirs.dir_results_heatwaves])
     main()
 
 
