@@ -1,91 +1,276 @@
+"""
+This file contains the code which calculates daily summaries of weather data using the ERA5-Land dataset.
+"""
+
 import logging
+import argparse
+import sys
 from pathlib import Path
-from typing import Union
+import os
+import warnings
+
+# Add project root to sys.path to allow importing my_config
+try:
+    project_root = Path(__file__).resolve().parents[2]
+except NameError:
+    project_root = Path.cwd()
+
+sys.path.append(str(project_root))
 
 import xarray as xr
+from dask.distributed import Client
 
-from my_config import Dirs, ensure_dirs_exist
+from my_config import Dirs, ensure_directories
 
-# Replace debugging print with logging
+# Create a logs directory
+log_dir = project_root / "logs"
+log_dir.mkdir(exist_ok=True)
+log_file = log_dir / "daily_summaries.log"
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(log_file),  # Write to file
+        logging.StreamHandler(),  # Keep printing to PBS/Console
+    ],
+)
 logger = logging.getLogger(__name__)
 
 
-def generate_daily_summary(source_file: Union[str, Path]) -> None:
+def process_and_save_data(ds, output_file, year_label):
     """
-    Read an hourly GRIB source, compute daily min/max/mean for t2m and write a NetCDF summary.
+    Helper function to process the dataset and save the result.
+    """
+    # ERA5-Land 2t variable is usually named 't2m' or '2t'
+    # We are identifying the variable name
+    var_name = list(ds.data_vars)[0]  # Assuming single variable files
 
-    - Accepts Path or str for source_file.
-    - Writes to Dirs.dir_era_daily with a temporary file then renames atomically.
-    - Ensures destination parents exist.
-    - Optionally moves the original file to OneDrive, ensuring that parent exists.
+    # Resample to daily frequency
+    # We want min, mean, and max for each day
+    # Using explicit aggregation instead of .agg() for compatibility
+    resampler = ds[var_name].resample(time="1D")
+
+    daily_ds = xr.Dataset()
+    daily_ds["t_min"] = resampler.min()
+    daily_ds["t_mean"] = resampler.mean()
+    daily_ds["t_max"] = resampler.max()
+
+    # Add metadata
+    daily_ds.attrs["description"] = (
+        f"Daily summaries of 2-meter temperature from ERA5-Land for {year_label}"
+    )
+    daily_ds.attrs["source"] = "NCI project zz93 ERA5-Land"
+
+    # Save to NetCDF
+    # We use compute() here to trigger the dask computation and write to disk
+    if isinstance(output_file, str):
+        output_file = Path(output_file)
+
+    # Ensure expansion if typically passed from user input like ~
+    output_file = Path(os.path.expanduser(str(output_file)))
+
+    # Define compression encoding
+    encoding_params = {
+        "zlib": True,
+        "complevel": 5,
+        "dtype": "float32",
+        "least_significant_digit": 1,
+    }
+    encoding = {var: encoding_params for var in daily_ds.data_vars}
+
+    # Suppress "All-NaN slice encountered" warnings
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="All-NaN slice encountered")
+        daily_ds.to_netcdf(output_file, encoding=encoding)
+
+    logger.info(f"Saved: {output_file.name}")
+
+
+def process_year_in_months(year, year_dir, output_file):
     """
-    src = Path(source_file)
-    if not src.exists():
-        logger.warning("Source file not found, skipping: %s", src)
+    Robustly processes a year by calculating each month individually,
+    saving to interim files, and then merging.
+    Checks points at:
+    1. If final file exists -> Skip
+    2. If interim file exists -> Skip (Resume capability)
+    """
+    if output_file.exists():
+        logger.info(f"File {output_file.name} already exists. Skipping.")
         return
 
-    # create output filename in daily folder
-    summary_name = src.name.replace("_temperature.grib", "_temperature_summary.nc")
-    summary_path = Dirs.dir_era_daily / summary_name
-    summary_tmp = summary_path.with_suffix(summary_path.suffix + ".tmp")
+    # Define intermediate directory
+    interim_dir = output_file.parent / "interim"
+    interim_dir.mkdir(parents=True, exist_ok=True)
 
-    ds = None
-    try:
-        ds = xr.open_dataset(src, engine="cfgrib")
-        # resample and compute summary
-        daily = ds.resample(time="1D")
-        t_min = daily.min().rename({"t2m": "t_min"})
-        t_max = daily.max().rename({"t2m": "t_max"})
-        t_mean = daily.mean().rename({"t2m": "t_mean"})
-        daily_summary = xr.merge([t_min, t_max, t_mean])
+    monthly_files = []
 
-        # write to a temporary file first, then rename for atomicity
-        daily_summary.to_netcdf(
-            summary_tmp,
-            encoding={
-                "t_min": {"dtype": "int16", "scale_factor": 0.01, "_FillValue": -9999},
-                "t_max": {"dtype": "int16", "scale_factor": 0.01, "_FillValue": -9999},
-                "t_mean": {"dtype": "int16", "scale_factor": 0.01, "_FillValue": -9999},
-            },
-        )
-        summary_tmp.replace(summary_path)
-        logger.info("Wrote daily summary: %s", summary_path)
+    # 1. Process each month
+    for month in range(1, 13):
+        month_str = f"{year}{month:02d}"  # e.g., 202001
+        interim_file = interim_dir / f"{year}_{month:02d}_daily.nc"
+        monthly_files.append(interim_file)
 
-    except Exception:
-        logger.exception("Failed to generate daily summary for %s", src)
-    finally:
-        # close dataset to free resources if opened
-        if ds is not None:
-            try:
-                ds.close()
-            except Exception:
-                pass
+        if interim_file.exists():
+            # Checkpoint recovery
+            logger.info(f"   Checkpoint found: {interim_file.name}")
+            continue
 
+        # Find input files for this month
+        # Pattern usually: 2t_era5-land_oper_sfc_YYYYMM01-YYYYMMDD.nc
+        # We match *YYYYMM* to capture specific month files
+        input_files = list(year_dir.glob(f"*{month_str}*.nc"))
 
-def process_all_files(
-    dir_hourly: Path = Dirs.dir_era_hourly,
-    min_size_gb: float = 18.0,
-) -> None:
-    """
-    Iterate over hourly GRIB files in dir_hourly and process files that appear fully downloaded.
+        if not input_files:
+            logger.warning(
+                f"   ⚠️ No input files found for {year}-{month:02d}. Skipping month."
+            )
+            continue
 
-    - min_size_gb: simple heuristic to avoid processing partial downloads (make configurable).
-    - Errors for individual files are caught and logged; processing continues.
-    """
-
-    for path in dir_hourly.glob("*.grib"):
         try:
-            size_gb = path.stat().st_size / 10**9
-            if size_gb >= min_size_gb:
-                logger.info("Processing %s (%.2f GB)", path, size_gb)
-                generate_daily_summary(source_file=path)
-            else:
-                logger.debug("Skipping (too small) %s (%.2f GB)", path, size_gb)
-        except Exception:
-            logger.exception("Error while inspecting/processing file %s", path)
+            # Process this month specifically
+            ds = xr.open_mfdataset(
+                input_files,
+                parallel=True,
+                chunks={"time": -1, "latitude": 500, "longitude": 500},
+            )
+            process_and_save_data(ds, interim_file, f"{year}-{month:02d}")
+            ds.close()
+        except Exception as e:
+            logger.error(f"Failed to process month {year}-{month:02d}: {e}")
+            # If a month fails, we stop this year to avoid creating a broken incomplete file
+            return
+
+    # 2. Merge all months
+    valid_months = [f for f in monthly_files if f.exists()]
+
+    if len(valid_months) != 12:
+        logger.warning(
+            f"Found {len(valid_months)}/12 interim files for {year}. Skipping merge."
+        )
+        return
+
+    logger.info(f"Merging {len(valid_months)} monthly files into {output_file.name}...")
+
+    try:
+        # Open all with dask
+        ds_year = xr.open_mfdataset(valid_months, parallel=True, chunks={"time": -1})
+
+        # Save final
+        # Logic matches process_and_save_data regarding encoding via reusing logic?
+        # No, simpler to just write here since data is already 'daily'
+        encoding_params = {
+            "zlib": True,
+            "complevel": 5,
+            "dtype": "float32",
+            "least_significant_digit": 1,
+        }
+        encoding = {var: encoding_params for var in ds_year.data_vars}
+
+        ds_year.to_netcdf(output_file, encoding=encoding)
+
+        logger.info(f"✅ Successfully created year file: {output_file}")
+
+        # 3. Cleanup
+        logger.info("Cleaning up interim files...")
+        for f in valid_months:
+            f.unlink()
+
+    except Exception as e:
+        logger.error(f"Failed during merge of {year}: {e}")
+        # Clean up partial output if it exists
+        if output_file.exists():
+            output_file.unlink()
+
+
+def main():
+    """
+    Main function to calculate daily summaries (min, mean, max) from hourly ERA5-Land data.
+    """
+    parser = argparse.ArgumentParser(description="Process ERA5-Land daily summaries.")
+    parser.add_argument(
+        "--trial",
+        action="store_true",
+        help="Run in trial mode: only process the first year (1980) to verify execution.",
+    )
+    parser.add_argument(
+        "--local_file",
+        type=str,
+        help="Path to a local file to process for checks (bypasses Gadi logic).",
+    )
+    args = parser.parse_args()
+
+    # Initialize Dask Client for distributed computing
+    client = Client()
+    logger.info(f"Dask Dashboard link: {client.dashboard_link}")
+
+    if args.local_file:
+        logger.info(f"Running in LOCAL FILE mode with: {args.local_file}")
+        file_path = Path(args.local_file).expanduser()
+        if not file_path.exists():
+            logger.error(f"File not found: {file_path}")
+            return
+
+        ds = xr.open_dataset(file_path, chunks={})
+        ds = ds.chunk({"time": 24 * 7, "latitude": 500, "longitude": 500})
+
+        output_file = Path("~/Downloads/local_daily_summary_test.nc").expanduser()
+        try:
+            process_and_save_data(ds, output_file, "Local Test File")
+        except Exception as e:
+            logger.error(f"Failed to process local file: {e}")
+            raise
+
+        ds.close()
+        return
+
+    # Define the output directory for daily summaries
+    output_dir = Dirs.dir_era_daily
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Input directory: {Dirs.dir_era_land}")
+    logger.info(f"Output directory: {output_dir}")
+
+    # Iterate over the years of interest
+    start_year = 1980
+    end_year = 2025
+
+    if args.trial:
+        logger.info("=== TRIAL MODE ACTIVE ===")
+        logger.info(f"Processing only start_year: {start_year}")
+        end_year = start_year
+
+    for year in range(start_year, end_year + 1):
+        logger.info(f"=== Processing Year: {year} ===")
+
+        output_file = output_dir / f"{year}_daily_summaries.nc"
+
+        try:
+            # Construct the path for the specific year in the zz93 structure
+            # Structure: /g/data/zz93/era5-land/reanalysis/surface/2t/{year}/*.nc
+            year_dir = Dirs.dir_era_land / str(year)
+
+            if not year_dir.exists():
+                logger.error(f"Directory not found: {year_dir}")
+                continue
+
+            # Check if this year folder has files
+            if not any(year_dir.iterdir()):
+                logger.error(f"Directory empty: {year_dir}")
+                continue
+
+            # Switch to Monthly Strategy
+            process_year_in_months(year, year_dir, output_file)
+
+        except Exception as e:
+            logger.error(f"Failed to process year {year}: {e}")
 
 
 if __name__ == "__main__":
-    # Ensure output/backup directories exist before processing. No import-time side effects.
-    ensure_dirs_exist(paths=[Dirs.dir_era_daily])
-    process_all_files()
+    pass
+    ensure_directories([Dirs.dir_era_daily, Dirs.dir_results_heatwaves])
+    main()
+
+
+# python3 python_code/weather/b_daily_summaries.py --local_file ~/Downloads/2t_era5-land_oper_sfc_19500101-19500131.nc
