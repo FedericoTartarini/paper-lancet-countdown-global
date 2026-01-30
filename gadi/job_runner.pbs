@@ -1,0 +1,47 @@
+#!/bin/bash
+#PBS -N job_runner
+#PBS -P mn51
+#PBS -q normal
+#PBS -l walltime=02:00:00
+#PBS -l ncpus=8
+#PBS -l mem=32GB
+#PBS -l storage=gdata/zz93+scratch/ua88+gdata/ua88
+#PBS -l wd
+#PBS -j oe
+
+# Load necessary modules
+module load python3/3.12.1
+
+# Activate the virtual environment
+source /g/data/ua88/lancet_global_env/bin/activate
+
+echo "Starting job at $(date)"
+echo "Running on host: $(hostname)"
+
+# Ensure PYTHONPATH includes the project root
+export PYTHONPATH=$PYTHONPATH:.
+export HDF5_USE_FILE_LOCKING=FALSE
+
+# Check if TARGET_SCRIPT is provided
+if [ -z "$TARGET_SCRIPT" ]; then
+    echo "Error: TARGET_SCRIPT environment variable is not set."
+    echo "This script expects to be called via qsub -v TARGET_SCRIPT=path/to/script.py"
+    exit 1
+fi
+
+if [ ! -f "$TARGET_SCRIPT" ]; then
+    echo "Error: Python script not found at $TARGET_SCRIPT"
+    exit 1
+fi
+
+# Use PYTHON_ARGS passed from qsub -v, or default to empty
+ARGS=${PYTHON_ARGS:-""}
+
+echo "----------------------------------------------------------------"
+echo "Target Script: $TARGET_SCRIPT"
+echo "Arguments:     $ARGS"
+echo "----------------------------------------------------------------"
+
+python3 "$TARGET_SCRIPT" $ARGS
+
+echo "Job finished at $(date)"
