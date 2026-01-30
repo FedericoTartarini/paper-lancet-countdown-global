@@ -12,13 +12,16 @@ Dr Federico Tartarini, Prof Ollie Jay, Dr Mitchell Black
 
 ==== Heatwave Occurrence and Duration
 
-We defined a heatwave as a period of three or more consecutive days in which both the daily minimum and maximum temperatures exceeded the 95th percentile of the local climatology @de2018global. // todo check that the period of 3 days is correct
+Heatwaves effects on human health is a growing concern worldwide, particularly for vulnerable populations such as the elderly, infants, and pregnant women.
+However, there is no universally accepted definition of a heatwave, with various studies employing different temperature thresholds, durations, and metrics to characterize these events @xu2016impact.
+For this analysis, we defined a heatwave as a period of three or more consecutive days in which both the daily minimum and maximum temperatures exceeded the 95th percentile of the local climatology.
+This definition is based on the approach used by the World Meteorological Organization (WMO) in the "Heatwaves and Health: Guidance on Warning-System Development" @wmo2015heatwaves.
 This dual-threshold definition captures both the direct heat stress caused by high daytime temperatures and the physiological strain associated with insufficient nighttime cooling @liu2024rising, @di2019verification
 Two climatological baselines were used:
 - 1986-2005 reference period.
 - 2007-2016 to align with the Paris Agreement.
 
-To determine these events, we utilized daily 2-meter temperature data from the European Centre for Medium-Range Weather Forecasts (ECMWF) ERA5 reanalysis dataset @hersbach2020era5, gridded at a 0.25° × 0.25° global resolution. 
+To determine these events, we utilized daily 2-meter temperature data from the European Centre for Medium-Range Weather Forecasts (ECMWF) ERA5-Land reanalysis dataset @munoz2021era5, gridded at a 0.1° × 0.1° global resolution. 
 For each grid cell and each year from 1980 to 2025, we calculated two primary metrics:
 
 - Heatwave Duration: The total number of days per year spent during a heatwave.
@@ -57,8 +60,8 @@ We focused on three demographic groups particularly susceptible to heat-related 
 ==== Population Data Integration
 
 To construct a continuous annual time series of global population distribution from 1980 to #max_year_analysis, we combined three distinct datasets:
-- *1980–1999:* We utilized the *Lancet Countdown 2023 dataset* @romanello20232023, derived from the ISIMIP Histsoc dataset. This data was resampled to a $0.25 degree times 0.25 degree$ resolution using 2D linear interpolation incorporating population densities and NASA GPWv4 land area data.
-- *2000–2014:* We used global gridded demographic data from the *WorldPop project* @worldpop2018global available at a $1 "km" times 1 "km"$ resolution based on the "top-down unconstrained approach." Aggregated age/sex groups were downscaled to match the ERA5 grid by summing values within each cell.
+- *1980–1999:* We utilized the *Lancet Countdown 2023 dataset* @romanello20232023, derived from the ISIMIP Histsoc dataset. This data was resampled to a $0.1 degree times 0.1 degree$ resolution using 2D linear interpolation incorporating population densities and NASA GPWv4 land area data.
+- *2000–2014:* We used global gridded demographic data from the *WorldPop project* @worldpop2018global available at a $1 "km" times 1 "km"$ resolution based on the "top-down unconstrained approach." Aggregated age/sex groups were downscaled to match the ERA5-Land grid by summing values within each cell.
 - *2015–#max_year_analysis:* We utilized the *updated WorldPop dataset* @bondarenko2025spatial, providing high-resolution annual estimates that account for recent migration and urbanization trends.
 
 For infants counts were derived by aggregating the age bands 0–1 from the respective datasets.
@@ -94,14 +97,29 @@ In this 2026 update, we have introduced:
 - given that the population data now extends to 2025, we did not need to project population estimates beyond 2020 as done in previous years.
 - we have included the analysis of heatwave exposure trends under the 2007–2016 baseline, to align with the Paris Agreement.
 
+We are also proposing to include Dr Mitchell Black as a co-author for this indicator.
+
 === Data
  
-- Climate Data: ECMWF ERA5 reanalysis dataset.
+- Climate Data: ECMWF ERA5-Land reanalysis dataset.
 - Demographic Data (1980–2000): Hybrid gridded demographic dataset from the Lancet Countdown 2023 (0.25° resolution) @romanello20232023.
 - Demographic Data (2000–2015): WorldPop Age and Sex Structure Unconstrained Global Mosaic @worldpop2018global.
 - Demographic Data (2015–#max_year_analysis): WorldPop Age and Sex Structure Unconstrained Global Mosaic @bondarenko2025spatial. // todo check and better describe this dataset
 
 === Caveats & Limitations
+
+==== Climate Data
+
+The ERA5-Land reanalysis dataset provides high-resolution temperature data suitable for heatwave analysis.
+However, reanalysis datasets may have biases compared to in-situ observations.
+These biases can affect the accuracy of heatwave detection and characterization.
+Additionally, the spatial resolution of ERA5-Land (0.1° × 0.1°) may not capture microclimatic variations in urban areas, where heatwaves can be more intense due to the urban heat island effect.
+
+==== Heatwave Definition
+
+The chosen heatwave definition (3 consecutive days with both minimum and maximum temperatures above the 95th percentile) may not capture all relevant heatwave events, and does not account for humidity or other environmental factors that influence heat stress.
+
+==== Demographic Data
 
 To ensure consistency over time, data from multiple sources were integrated to capture both spatial and temporal demographic trends. 
 However, validation of this integrated dataset is limited. 
