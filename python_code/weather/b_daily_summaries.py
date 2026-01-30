@@ -137,22 +137,30 @@ def process_year_in_months(year, year_dir, output_file):
 
         try:
             # Smart Opening
+            # Use chunks={} first to load with native chunks (avoids warning),
+            # then rechunk to our target size for processing.
+            target_chunks = {"time": -1, "latitude": 400, "longitude": 400}
+
             if len(input_files) == 1:
                 ds = xr.open_dataset(
                     input_files[0],
-                    chunks={"time": -1},
+                    chunks={},
                     engine="netcdf4",  # Force engine for safety
                 )
             else:
                 ds = xr.open_mfdataset(
                     input_files,
                     parallel=True,
-                    chunks={"time": -1},
+                    chunks={},
                     coords="minimal",
                     compat="override",
                     engine="netcdf4",
                 )
 
+            # Explicit rechunking
+            ds = ds.chunk(target_chunks)
+
+            logger.info(f"   Processing {year}-{month:02d}...")
             process_and_save_data(ds, interim_file, f"{year}-{month:02d}")
             ds.close()
 
@@ -172,9 +180,12 @@ def process_year_in_months(year, year_dir, output_file):
     logger.info(f"Merging {len(valid_months)} monthly files into {output_file.name}...")
 
     try:
+        # Chunk spatially during merge as well to keep memory low
+        # Load native chunks first, then rechunk.
         ds_year = xr.open_mfdataset(
-            valid_months, parallel=True, chunks={"time": -1}, engine="netcdf4"
+            valid_months, parallel=True, chunks={}, engine="netcdf4"
         )
+        ds_year = ds_year.chunk({"time": -1, "latitude": 400, "longitude": 400})
 
         encoding = {var: ENCODING_PARAMS for var in ds_year.data_vars}
         ds_year.to_netcdf(output_file, encoding=encoding)
@@ -210,7 +221,11 @@ def main():
                 logger.error(f"File not found: {file_path}")
                 return
 
-            ds = xr.open_dataset(file_path, chunks={"time": -1})
+            # Apply same chunking logic locally
+            # Open with native chunks first to avoid warning, then rechunk
+            ds = xr.open_dataset(file_path, chunks={})
+            ds = ds.chunk({"time": -1, "latitude": 400, "longitude": 400})
+
             output_file = Path("~/Downloads/local_daily_summary_test.nc").expanduser()
             try:
                 process_and_save_data(ds, output_file, "Local Test File")
@@ -248,5 +263,8 @@ def main():
 
 
 if __name__ == "__main__":
-    ensure_directories([Dirs.dir_era_daily, Dirs.dir_results_heatwaves])
+    try:
+        ensure_directories([Dirs.dir_era_daily, Dirs.dir_results_heatwaves])
+    except:
+        pass
     main()
