@@ -1,21 +1,12 @@
 """
 This file contains the code which calculates daily summaries of weather data using the ERA5-Land dataset.
-Structure: Monthly checkpoints (Robust) + Optimized Compression + Gadi Safety Fixes.
+Simplified for local processing only.
 """
 
-import os
-
-# --- GADI FIX 1: DISABLE FILE LOCKING ---
-# MUST be set before importing xarray/netCDF4
-os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
-# ----------------------------------------
-
-import logging
-import argparse
 import sys
 from pathlib import Path
 import warnings
-import dask
+import shutil
 
 # Add project root to sys.path
 try:
@@ -29,32 +20,10 @@ import xarray as xr
 from dask.distributed import Client
 
 from my_config import Dirs
+from python_code.log_config import setup_logging
 
-# --- GADI FIX 2: INCREASE TIMEOUTS ---
-# Prevents "Connection timed out" errors when the disk is busy
-dask.config.set(
-    {
-        "distributed.comm.timeouts.connect": "90s",
-        "distributed.comm.timeouts.tcp": "90s",
-    }
-)
-# -------------------------------------
-
-# Create a logs directory
-log_dir = project_root / "logs"
-log_dir.mkdir(exist_ok=True)
-log_file = log_dir / "daily_summaries.log"
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler(),
-    ],
-)
-logger = logging.getLogger(__name__)
+# Set up logging
+logger = setup_logging(project_root)
 
 # --- OPTIMIZATION SETTINGS ---
 ENCODING_PARAMS = {
@@ -74,7 +43,6 @@ def process_and_save_data(ds, output_file, year_label):
     var_name = list(ds.data_vars)[0]
 
     # Resample to daily frequency
-    # Note: If 'flox' is installed, this step is automatically optimized
     resampler = ds[var_name].resample(time="1D")
 
     daily_ds = xr.Dataset()
@@ -85,21 +53,14 @@ def process_and_save_data(ds, output_file, year_label):
     daily_ds.attrs["description"] = (
         f"Daily summaries of 2-meter temperature from ERA5-Land for {year_label}"
     )
-    daily_ds.attrs["source"] = "NCI project zz93 ERA5-Land"
+    daily_ds.attrs["source"] = "ERA5-Land"
 
-    if isinstance(output_file, str):
-        output_file = Path(output_file)
-    output_file = Path(os.path.expanduser(str(output_file)))
+    output_file = Path(output_file)
 
     encoding = {var: ENCODING_PARAMS for var in daily_ds.data_vars}
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="All-NaN slice encountered")
-
-        # --- GADI FIX 3: ROBUST WRITE ---
-        # compute=True triggers the calculation.
-        # We let the Dask Client handle the parallel compute, but the 'to_netcdf'
-        # write itself is handled safely.
         daily_ds.to_netcdf(output_file, encoding=encoding)
 
     logger.info(f"   Saved interim: {output_file.name}")
@@ -107,7 +68,8 @@ def process_and_save_data(ds, output_file, year_label):
 
 def process_year_in_months(year, year_dir, output_file, target_chunks):
     """
-    Robustly processes a year by calculating each month individually.
+    Process a year by calculating each month individually, then merge.
+    After successful processing, remove the input year directory to save space.
     """
     if output_file.exists():
         logger.info(f"File {output_file.name} already exists. Skipping.")
@@ -136,16 +98,8 @@ def process_year_in_months(year, year_dir, output_file, target_chunks):
             continue
 
         try:
-            # Smart Opening
-            # Use chunks={} first to load with native chunks (avoids warning),
-            # then rechunk to our target size for processing.
-
             if len(input_files) == 1:
-                ds = xr.open_dataset(
-                    input_files[0],
-                    chunks={},
-                    engine="netcdf4",  # Force engine for safety
-                )
+                ds = xr.open_dataset(input_files[0], chunks={})
             else:
                 ds = xr.open_mfdataset(
                     input_files,
@@ -153,10 +107,8 @@ def process_year_in_months(year, year_dir, output_file, target_chunks):
                     chunks={},
                     coords="minimal",
                     compat="override",
-                    engine="netcdf4",
                 )
 
-            # Explicit rechunking
             ds = ds.chunk(target_chunks)
 
             logger.info(f"   Processing {year}-{month:02d}...")
@@ -179,11 +131,7 @@ def process_year_in_months(year, year_dir, output_file, target_chunks):
     logger.info(f"Merging {len(valid_months)} monthly files into {output_file.name}...")
 
     try:
-        # Chunk spatially during merge as well to keep memory low
-        # Load native chunks first, then rechunk.
-        ds_year = xr.open_mfdataset(
-            valid_months, parallel=True, chunks={}, engine="netcdf4"
-        )
+        ds_year = xr.open_mfdataset(valid_months, parallel=True, chunks={})
         ds_year = ds_year.chunk(target_chunks)
 
         encoding = {var: ENCODING_PARAMS for var in ds_year.data_vars}
@@ -195,6 +143,10 @@ def process_year_in_months(year, year_dir, output_file, target_chunks):
         for f in valid_months:
             f.unlink()
 
+        # Remove the input hourly data to save space
+        logger.info(f"Removing input data for {year} to save space...")
+        shutil.rmtree(year_dir)
+
     except Exception as e:
         logger.error(f"Failed during merge of {year}: {e}")
         if output_file.exists():
@@ -202,48 +154,33 @@ def process_year_in_months(year, year_dir, output_file, target_chunks):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Process ERA5-Land daily summaries.")
-    parser.add_argument("--trial", action="store_true", help="Run trial mode.")
-    parser.add_argument(
-        "--local", action="store_true", help="Run on local files instead of Gadi."
-    )
-    args = parser.parse_args()
+    input_dir = Dirs.dir_era_land_hourly_local
+    output_dir = Dirs.dir_era_land_daily_local
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Determine input and output directories based on mode
-    if args.local:
-        input_dir = Dirs.dir_era_land_hourly_local
-        output_dir = Dirs.dir_era_land_daily_local
-        n_workers = 1  # Use single worker on local to avoid communication overhead
-        target_chunks = {
-            "time": -1,
-            "latitude": 800,
-            "longitude": 800,
-        }  # Larger chunks locally
-        logger.info("Running in LOCAL MODE")
-    else:
-        input_dir = Dirs.dir_era_land
-        output_dir = Dirs.dir_era_daily
-        n_workers = int(os.environ.get("PBS_NCPUS", 4))
-        target_chunks = {
-            "time": -1,
-            "latitude": 400,
-            "longitude": 400,
-        }  # Smaller chunks for Gadi
-        logger.info("Running in GADI MODE")
+    # Detect available years
+    available_years = []
+    for item in input_dir.iterdir():
+        if item.is_dir() and item.name.isdigit():
+            available_years.append(int(item.name))
 
-    # Context manager for clean shutdown
+    available_years.sort()
+
+    if not available_years:
+        logger.error("No year directories found in input directory.")
+        return
+
+    logger.info(f"Found years: {available_years}")
+    logger.info(f"Input: {input_dir}")
+    logger.info(f"Output: {output_dir}")
+
+    n_workers = 1
+    target_chunks = {"time": -1, "latitude": 800, "longitude": 800}
+
     with Client(n_workers=n_workers, threads_per_worker=1) as client:
         logger.info(f"Dask Dashboard: {client.dashboard_link}")
 
-        logger.info(f"Input: {input_dir}")
-        logger.info(f"Output: {output_dir}")
-
-        start_year = 1980
-        end_year = 2025
-        if args.trial:
-            end_year = start_year
-
-        for year in range(start_year, end_year + 1):
+        for year in available_years:
             logger.info(f"=== Processing Year: {year} ===")
             output_file = output_dir / f"{year}_daily_summaries.nc"
 
@@ -261,10 +198,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-"""
-Local trial: python3 python_code/weather/b_daily_summaries.py --local --trial
-Local full: python3 python_code/weather/b_daily_summaries.py --local
-Gadi trial: python3 python_code/weather/b_daily_summaries.py --trial
-Gadi full: python3 python_code/weather/b_daily_summaries.py
-"""
