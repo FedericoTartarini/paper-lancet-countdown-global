@@ -28,7 +28,7 @@ sys.path.append(str(project_root))
 import xarray as xr
 from dask.distributed import Client
 
-from my_config import Dirs, ensure_directories
+from my_config import Dirs
 
 # --- GADI FIX 2: INCREASE TIMEOUTS ---
 # Prevents "Connection timed out" errors when the disk is busy
@@ -105,7 +105,7 @@ def process_and_save_data(ds, output_file, year_label):
     logger.info(f"   Saved interim: {output_file.name}")
 
 
-def process_year_in_months(year, year_dir, output_file):
+def process_year_in_months(year, year_dir, output_file, target_chunks):
     """
     Robustly processes a year by calculating each month individually.
     """
@@ -139,7 +139,6 @@ def process_year_in_months(year, year_dir, output_file):
             # Smart Opening
             # Use chunks={} first to load with native chunks (avoids warning),
             # then rechunk to our target size for processing.
-            target_chunks = {"time": -1, "latitude": 400, "longitude": 400}
 
             if len(input_files) == 1:
                 ds = xr.open_dataset(
@@ -185,7 +184,7 @@ def process_year_in_months(year, year_dir, output_file):
         ds_year = xr.open_mfdataset(
             valid_months, parallel=True, chunks={}, engine="netcdf4"
         )
-        ds_year = ds_year.chunk({"time": -1, "latitude": 400, "longitude": 400})
+        ds_year = ds_year.chunk(target_chunks)
 
         encoding = {var: ENCODING_PARAMS for var in ds_year.data_vars}
         ds_year.to_netcdf(output_file, encoding=encoding)
@@ -205,40 +204,38 @@ def process_year_in_months(year, year_dir, output_file):
 def main():
     parser = argparse.ArgumentParser(description="Process ERA5-Land daily summaries.")
     parser.add_argument("--trial", action="store_true", help="Run trial mode.")
-    parser.add_argument("--local_file", type=str, help="Path to local file.")
+    parser.add_argument(
+        "--local", action="store_true", help="Run on local files instead of Gadi."
+    )
     args = parser.parse_args()
 
-    n_workers = int(os.environ.get("PBS_NCPUS", 4))
+    # Determine input and output directories based on mode
+    if args.local:
+        input_dir = Dirs.dir_era_land_hourly_local
+        output_dir = Dirs.dir_era_land_daily_local
+        n_workers = 1  # Use single worker on local to avoid communication overhead
+        target_chunks = {
+            "time": -1,
+            "latitude": 800,
+            "longitude": 800,
+        }  # Larger chunks locally
+        logger.info("Running in LOCAL MODE")
+    else:
+        input_dir = Dirs.dir_era_land
+        output_dir = Dirs.dir_era_daily
+        n_workers = int(os.environ.get("PBS_NCPUS", 4))
+        target_chunks = {
+            "time": -1,
+            "latitude": 400,
+            "longitude": 400,
+        }  # Smaller chunks for Gadi
+        logger.info("Running in GADI MODE")
 
     # Context manager for clean shutdown
     with Client(n_workers=n_workers, threads_per_worker=1) as client:
         logger.info(f"Dask Dashboard: {client.dashboard_link}")
 
-        if args.local_file:
-            logger.info(f"Running LOCAL TEST on: {args.local_file}")
-            file_path = Path(args.local_file).expanduser()
-            if not file_path.exists():
-                logger.error(f"File not found: {file_path}")
-                return
-
-            # Apply same chunking logic locally
-            # Open with native chunks first to avoid warning, then rechunk
-            ds = xr.open_dataset(file_path, chunks={})
-            ds = ds.chunk({"time": -1, "latitude": 400, "longitude": 400})
-
-            output_file = Path("~/Downloads/local_daily_summary_test.nc").expanduser()
-            try:
-                process_and_save_data(ds, output_file, "Local Test File")
-            except Exception as e:
-                logger.error(f"Failed to process local file: {e}")
-                raise
-            ds.close()
-            return
-
-        output_dir = Dirs.dir_era_daily
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        logger.info(f"Input: {Dirs.dir_era_land}")
+        logger.info(f"Input: {input_dir}")
         logger.info(f"Output: {output_dir}")
 
         start_year = 1980
@@ -251,20 +248,23 @@ def main():
             output_file = output_dir / f"{year}_daily_summaries.nc"
 
             try:
-                year_dir = Dirs.dir_era_land / str(year)
+                year_dir = input_dir / str(year)
                 if not year_dir.exists() or not any(year_dir.iterdir()):
                     logger.error(f"Directory missing/empty: {year_dir}")
                     continue
 
-                process_year_in_months(year, year_dir, output_file)
+                process_year_in_months(year, year_dir, output_file, target_chunks)
 
             except Exception as e:
                 logger.error(f"Failed to process year {year}: {e}")
 
 
 if __name__ == "__main__":
-    try:
-        ensure_directories([Dirs.dir_era_daily, Dirs.dir_results_heatwaves])
-    except:
-        pass
     main()
+
+"""
+Local trial: python3 python_code/weather/b_daily_summaries.py --local --trial
+Local full: python3 python_code/weather/b_daily_summaries.py --local
+Gadi trial: python3 python_code/weather/b_daily_summaries.py --trial
+Gadi full: python3 python_code/weather/b_daily_summaries.py
+"""
