@@ -1,7 +1,51 @@
-import sys
 from pathlib import Path
 import xarray as xr
 import numpy as np
+import matplotlib.pyplot as plt
+
+
+def plot_global_mean_temperature(ds):
+    """
+    Plot the global mean temperature (average over time) on a map.
+    """
+    print("\n--- 4. Global Mean Temperature Map ---")
+    mean_temp = ds.t_mean.mean(dim="time") - 273.15  # Convert from K to °C
+
+    plt.figure(figsize=(12, 6))
+    mean_temp.plot(cmap="coolwarm", vmin=-50, vmax=50)
+    plt.title("Global Mean 2m Temperature (°C) - 1980")
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    plt.show()
+
+
+def plot_sydney_temperature(ds):
+    """
+    Extract Sydney data and plot monthly mean, min, max temperatures.
+    """
+    print("\n--- 5. Sydney Temperature Time Series ---")
+    # Sydney coordinates: approx -33.8688, 151.2093
+    sydney_lat = -33.8688
+    sydney_lon = 151.2093
+
+    # Find nearest point
+    sydney_data = ds.sel(latitude=sydney_lat, longitude=sydney_lon, method="nearest")
+
+    # Resample to monthly
+    monthly_min = sydney_data.t_min.resample(time="1D").mean() - 273.15  # °C
+    monthly_mean = sydney_data.t_mean.resample(time="1D").mean() - 273.15  # °C
+    monthly_max = sydney_data.t_max.resample(time="1D").mean() - 273.15  # °C
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(monthly_min.time, monthly_min.values, label="Min", color="blue")
+    plt.plot(monthly_mean.time, monthly_mean.values, label="Mean", color="green")
+    plt.plot(monthly_max.time, monthly_max.values, label="Max", color="red")
+    plt.title("Monthly Temperature in Sydney (1980)")
+    plt.xlabel("Time")
+    plt.ylabel("Temperature (°C)")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 
 def verify_file(file_path):
@@ -42,6 +86,7 @@ def verify_file(file_path):
             print(f"✅ All variables present: {expected_vars}")
         else:
             print(f"❌ Missing variables: {missing}")
+            ds.close()
             return
 
         # 3. Logic Check (min <= mean <= max)
@@ -108,6 +153,12 @@ def verify_file(file_path):
                     "✅ PASSED: t_min <= t_mean <= t_max holds true for checked sample."
                 )
 
+        # 4. Plot global mean
+        plot_global_mean_temperature(ds)
+
+        # 5. Plot Sydney
+        plot_sydney_temperature(ds)
+
         ds.close()
 
     except Exception as e:
@@ -115,10 +166,7 @@ def verify_file(file_path):
 
 
 if __name__ == "__main__":
-    # If a file is passed as argument, use it; otherwise default to the test file
-    if len(sys.argv) > 1:
-        target_file = sys.argv[1]
-    else:
-        target_file = "~/Downloads/local_daily_summary_test.nc"
+    # Default to the yearly file
+    target_file = "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/data/lancet/countdown-global/era5-land/daily/2t/interim/1981_01_daily.nc"
 
     verify_file(file_path=target_file)
