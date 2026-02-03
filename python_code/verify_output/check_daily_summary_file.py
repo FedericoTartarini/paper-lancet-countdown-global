@@ -168,5 +168,6 @@ def verify_file(file_path):
 if __name__ == "__main__":
     # Default to the yearly file
     target_file = "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/data/lancet/countdown-global/era5-land/daily/2t/interim/1981_01_daily.nc"
+    # target_file = "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/data/lancet/countdown-global/era5-land/daily/2t/1981_daily_summaries.nc"
 
     verify_file(file_path=target_file)
