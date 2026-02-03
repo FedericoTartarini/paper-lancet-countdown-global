@@ -1,7 +1,8 @@
 import subprocess
+from pathlib import Path
 
 
-def sync_with_rsync(source: str = None, dest: str = None):
+def sync_with_rsync(source: str = None, dest: Path = None):
     # Use 'sshpass' if you want to automate the password,
     # otherwise it will prompt you in the terminal.
     # On Mac: brew install sshpass

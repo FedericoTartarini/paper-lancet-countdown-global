@@ -6,9 +6,14 @@ gadi_project_code = "ua88"
 
 
 class Dirs:
+    dir_one_drive = Path(
+        "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/data/lancet/countdown-global"
+    )
     # 1. Input Data (Read-Only from NCI)
     # Note: '2t' is 2-metre temperature
     dir_era_land = Path("/g/data/zz93/era5-land/reanalysis/2t")
+    dir_era_land_hourly_local = Path(dir_one_drive / "era5-land" / "hourly" / "2t")
+    dir_era_land_daily_local = Path(dir_one_drive / "era5-land" / "daily" / "2t")
 
     # 2. Results (Write to Scratch - it is faster)
     dir_results_heatwaves = Path(
