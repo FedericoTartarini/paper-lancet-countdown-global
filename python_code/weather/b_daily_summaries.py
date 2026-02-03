@@ -18,6 +18,7 @@ sys.path.append(str(project_root))
 
 import xarray as xr
 from dask.distributed import Client
+import concurrent.futures
 
 from my_config import Dirs
 from python_code.log_config import setup_logging
@@ -153,6 +154,35 @@ def process_year_in_months(year, year_dir, output_file, target_chunks):
             output_file.unlink()
 
 
+def process_single_year(year, input_dir, output_dir, target_chunks):
+    """
+    Process a single year, including setting up its own Dask client.
+    """
+    # Set up logging for this process
+    from python_code.log_config import setup_logging
+
+    try:
+        project_root = Path(__file__).resolve().parents[2]
+    except NameError:
+        project_root = Path.cwd()
+    logger = setup_logging(project_root)
+
+    output_file = output_dir / f"{year}_daily_summaries.nc"
+    year_dir = input_dir / str(year)
+
+    if not year_dir.exists() or not any(year_dir.iterdir()):
+        logger.error(f"Directory missing/empty: {year_dir}")
+        return
+
+    # Set up Dask client for this process
+    with Client(n_workers=1, threads_per_worker=1, silence_logs=False) as client:
+        logger.info(f"Processing year {year} with Dask client")
+        try:
+            process_year_in_months(year, year_dir, output_file, target_chunks)
+        except Exception as e:
+            logger.error(f"Failed to process year {year}: {e}")
+
+
 def main():
     input_dir = Dirs.dir_era_land_hourly_local
     output_dir = Dirs.dir_era_land_daily_local
@@ -174,26 +204,24 @@ def main():
     logger.info(f"Input: {input_dir}")
     logger.info(f"Output: {output_dir}")
 
-    n_workers = 1
     target_chunks = {"time": -1, "latitude": 800, "longitude": 800}
 
-    with Client(n_workers=n_workers, threads_per_worker=1) as client:
-        logger.info(f"Dask Dashboard: {client.dashboard_link}")
+    # Parallelize year processing with one process per year (limited to 4 max)
+    max_workers = min(4, len(available_years))
+    logger.info(f"Starting parallel processing with {max_workers} workers")
 
-        for year in available_years:
-            logger.info(f"=== Processing Year: {year} ===")
-            output_file = output_dir / f"{year}_daily_summaries.nc"
-
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            executor.submit(
+                process_single_year, year, input_dir, output_dir, target_chunks
+            )
+            for year in available_years
+        ]
+        for future in concurrent.futures.as_completed(futures):
             try:
-                year_dir = input_dir / str(year)
-                if not year_dir.exists() or not any(year_dir.iterdir()):
-                    logger.error(f"Directory missing/empty: {year_dir}")
-                    continue
-
-                process_year_in_months(year, year_dir, output_file, target_chunks)
-
+                future.result()  # Will raise exception if any
             except Exception as e:
-                logger.error(f"Failed to process year {year}: {e}")
+                logger.error(f"Year processing failed: {e}")
 
 
 if __name__ == "__main__":
