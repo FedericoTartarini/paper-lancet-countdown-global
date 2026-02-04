@@ -39,4 +39,10 @@ if __name__ == "__main__":
 
         with dask.config.set(scheduler="processes"), ProgressBar():
             daily_quantiles = daily_quantiles.compute()
+
+            # Filter out invalid temperature values
+            daily_quantiles = daily_quantiles.where(
+                (daily_quantiles >= 180) & (daily_quantiles <= 380)
+            )
+
             daily_quantiles.to_netcdf(climatology_quantiles)
