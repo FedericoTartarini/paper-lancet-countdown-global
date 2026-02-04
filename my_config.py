@@ -12,6 +12,7 @@ e5l_h = "hourly"
 e5l_d = "daily"
 heatwaves = "heatwaves"
 reanalysis = "reanalysis"
+scratch = Path(f"/scratch/{gadi_prj_compute}/{gadi_usr}/{project_name}")
 
 
 class Dirs:
@@ -34,12 +35,10 @@ class DirsGadi:
     dir_era_land_hourly = Path(f"/g/data/{gadi_prj_era}/{e5l}/{reanalysis}/{e5l_t}")
 
     # Output: Daily summaries on scratch (fast write access)
-    dir_era_daily = Path(
-        f"/scratch/{gadi_prj_compute}/{gadi_usr}/{e5l}/{e5l_d}/{e5l_t}"
-    )
+    dir_era_daily = scratch / e5l / e5l_d / e5l_t
 
     # Results: Heatwave calculations
-    dir_results_heatwaves = Path(f"/scratch/{gadi_prj_compute}/{gadi_usr}/{heatwaves}")
+    dir_results_heatwaves = scratch / heatwaves
 
 
 def ensure_directories(path_dirs: list[Path]):
