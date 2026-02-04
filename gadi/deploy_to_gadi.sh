@@ -35,4 +35,8 @@ ssh ${GADI_USER}@${GADI_HOST} "mkdir -p ${REMOTE_DIR}"
 # Run rsync
 rsync -avzP "${rsync_args[@]}" ./ ${GADI_USER}@${GADI_HOST}:${REMOTE_DIR}/
 
+# Clean up old log files on Gadi
+echo "Cleaning up old log files on Gadi..."
+ssh ${GADI_USER}@${GADI_HOST} "cd ${REMOTE_DIR} && rm -f *.o* *.e*"
+
 echo "Sync complete."

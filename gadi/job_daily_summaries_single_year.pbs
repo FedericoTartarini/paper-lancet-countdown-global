@@ -1,0 +1,74 @@
+#!/bin/bash
+#PBS -N daily_summaries_year
+#PBS -P mn51
+#PBS -q normal
+#PBS -l ncpus=8
+#PBS -l mem=192GB
+#PBS -l walltime=02:00:00
+#PBS -l storage=gdata/zz93+gdata/xp65+scratch/mn51
+#PBS -l wd
+#PBS -j oe
+#PBS -M federico.tartarini@sydney.edu.au
+#PBS -m a
+
+# PBS job script for processing a single year of ERA5-Land data to daily summaries
+# This script is called by submit_daily_summaries_gadi.sh with the YEAR variable set
+#
+# Usage (from Gadi):
+#   qsub -v YEAR=1980 job_daily_summaries_single_year.pbs
+#   qsub -v YEAR=1980,TRIAL=1 job_daily_summaries_single_year.pbs  # Trial mode
+
+# Load required modules
+#module purge
+#module load python3/3.12.1
+module use /g/data/xp65/public/modules
+module load conda/analysis3-25.10
+
+# Activate virtual environment if needed
+# source /path/to/venv/bin/activate
+
+# Check if YEAR variable is set
+if [ -z "$YEAR" ]; then
+    echo "ERROR: YEAR variable not set. Use: qsub -v YEAR=1980 job_daily_summaries_single_year.pbs"
+    exit 1
+fi
+
+# Calculate memory per worker (leave headroom for scheduler/overhead)
+TOTAL_MEM_GB=198
+NCPUS=8
+# Reserve 16GB for scheduler/overhead, distribute rest to workers
+WORKER_MEM_GB=$(( ($TOTAL_MEM_GB - 16) / $NCPUS ))
+
+# Build command
+CMD="python3 python_code/weather/b_daily_summaries_gadi.py --year $YEAR --n_workers $NCPUS --memory_limit ${WORKER_MEM_GB}GB"
+
+# Add trial flag if TRIAL variable is set
+if [ ! -z "$TRIAL" ]; then
+    CMD="$CMD --trial"
+    echo "Running in TRIAL mode for year $YEAR"
+else
+    echo "Processing year $YEAR"
+fi
+
+# Print job info
+echo "======================================================================"
+echo "Job started: $(date)"
+echo "Job ID: $PBS_JOBID"
+echo "Job Name: $PBS_JOBNAME"
+echo "Working Directory: $PBS_O_WORKDIR"
+echo "Year to process: $YEAR"
+echo "Workers: $NCPUS, Memory per worker: ${WORKER_MEM_GB}GB"
+echo "Command: $CMD"
+echo "======================================================================"
+
+# Run the Python script
+$CMD
+
+EXIT_CODE=$?
+
+echo "======================================================================"
+echo "Job finished: $(date)"
+echo "Exit code: $EXIT_CODE"
+echo "======================================================================"
+
+exit $EXIT_CODE
