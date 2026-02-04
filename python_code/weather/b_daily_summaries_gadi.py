@@ -265,6 +265,8 @@ def process_year(year: int, trial: bool = False) -> None:
 
         logger.info(f"✅ Successfully created: {output_file.name}")
         logger.info(f"File size: {output_file.stat().st_size / 1e9:.2f} GB")
+        logger.info("💡 To copy this file back to local repository, run:")
+        logger.info(f"   python python_code/copy_files_hpc.py --copy-daily {year}")
 
         # Clean up memory
         ds_year.close()

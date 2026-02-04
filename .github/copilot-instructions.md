@@ -62,6 +62,9 @@ It runs on the NCI Gadi supercomputer and processes large climate datasets (ERA5
   subset/local file before full HPC deployment.
 - **Verification**: Always verify output file structure (vars, dims, logic checks) after generation.
 - you can add script to verify outputs in `python_code/verify_output/`.
+- **File Transfer**: Use `python_code/copy_files_hpc.py` to transfer files between local machine and Gadi:
+    - `python python_code/copy_files_hpc.py --copy-daily 2024` - Copy specific year's daily summary
+    - `python python_code/copy_files_hpc.py --copy-all-daily` - Copy all daily summaries
 
 ## 6. Git/Deployment
 
