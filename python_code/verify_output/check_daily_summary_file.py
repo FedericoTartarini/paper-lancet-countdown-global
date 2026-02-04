@@ -3,6 +3,8 @@ import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
 
+from my_config import Dirs, e5l_d, e5l_t
+
 
 def plot_global_mean_temperature(ds):
     """
@@ -40,7 +42,8 @@ def plot_sydney_temperature(ds):
     plt.plot(monthly_min.time, monthly_min.values, label="Min", color="blue")
     plt.plot(monthly_mean.time, monthly_mean.values, label="Mean", color="green")
     plt.plot(monthly_max.time, monthly_max.values, label="Max", color="red")
-    plt.title("Monthly Temperature in Sydney (1980)")
+    plt.title("Monthly Temperature in Sydney (°C)")
+    plt.ylim(0, 42)
     plt.xlabel("Time")
     plt.ylabel("Temperature (°C)")
     plt.legend()
@@ -167,7 +170,9 @@ def verify_file(file_path):
 
 if __name__ == "__main__":
     # Default to the yearly file
-    target_file = "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/data/lancet/countdown-global/era5-land/daily/2t/interim/1981_01_daily.nc"
-    # target_file = "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/data/lancet/countdown-global/era5-land/daily/2t/1981_daily_summaries.nc"
+    target_file = (
+        Dirs.dir_one_drive / "era5-land" / e5l_d / e5l_t / "2020_daily_summaries.nc"
+    )
+    target_file = "/Users/ftar3919/Downloads/test/2t/2020_daily_summaries.nc"
 
     verify_file(file_path=target_file)
