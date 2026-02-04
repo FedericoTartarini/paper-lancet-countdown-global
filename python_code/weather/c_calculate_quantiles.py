@@ -10,6 +10,9 @@ from my_config import (
 )
 
 if __name__ == "__main__":
+    # Ensure output directory exists
+    DirsLocal.e5l_q.mkdir(parents=True, exist_ok=True)
+
     # Collect file list once
     file_list = []
     for file in DirsLocal.e5l_d.rglob("*.nc"):
@@ -26,8 +29,6 @@ if __name__ == "__main__":
     for t_var in Vars.t_vars:
         # Select variable
         daily_temperatures = daily_temperatures_ds[t_var].chunk({"time": -1})
-
-        DirsLocal.e5l_q.mkdir(parents=True, exist_ok=True)
 
         climatology_quantiles = (
             DirsLocal.e5l_q
