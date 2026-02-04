@@ -33,14 +33,8 @@ if [ -z "$YEAR" ]; then
     exit 1
 fi
 
-# Calculate memory per worker (leave headroom for scheduler/overhead)
-TOTAL_MEM_GB=198
-NCPUS=8
-# Reserve 16GB for scheduler/overhead, distribute rest to workers
-WORKER_MEM_GB=$(( ($TOTAL_MEM_GB - 16) / $NCPUS ))
-
 # Build command
-CMD="python3 python_code/weather/b_daily_summaries_gadi.py --year $YEAR --n_workers $NCPUS --memory_limit ${WORKER_MEM_GB}GB"
+CMD="python3 python_code/weather/b_daily_summaries_gadi.py --year $YEAR"
 
 # Add trial flag if TRIAL variable is set
 if [ ! -z "$TRIAL" ]; then
@@ -57,7 +51,7 @@ echo "Job ID: $PBS_JOBID"
 echo "Job Name: $PBS_JOBNAME"
 echo "Working Directory: $PBS_O_WORKDIR"
 echo "Year to process: $YEAR"
-echo "Workers: $NCPUS, Memory per worker: ${WORKER_MEM_GB}GB"
+echo "Workers: $NCPUS"
 echo "Command: $CMD"
 echo "======================================================================"
 

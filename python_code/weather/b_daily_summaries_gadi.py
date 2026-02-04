@@ -5,7 +5,7 @@ This script is optimized for NCI Gadi HPC:
 - Processes one year at a time (submitted as separate PBS jobs)
 - Reads directly from /g/data/zz93/era5-land/reanalysis/2t
 - Writes output to /scratch/mn51/ft8695/era5-land/daily/2t for fast I/O
-- Loads all monthly files at once and creates yearly output directly (no interim files)
+- Processes each month individually, saves interim results, then combines into yearly output
 - Uses Dask distributed for parallel processing
 
 Usage:
@@ -22,6 +22,7 @@ import argparse
 import sys
 import warnings
 from pathlib import Path
+from typing import Optional
 
 # Add project root to sys.path
 project_root = Path(__file__).resolve().parents[2]
@@ -50,19 +51,113 @@ ENCODING_PARAMS = {
 TARGET_CHUNKS = {"time": -1, "latitude": 200, "longitude": 200}
 
 
+def process_month(
+    year: int, month: int, input_dir: Path, interim_dir: Path
+) -> Optional[Path]:
+    """
+    Process a single month of ERA5-Land hourly data to daily summaries.
+
+    Args:
+        year: The year to process
+        month: The month to process (1-12)
+        input_dir: Directory containing hourly data
+        interim_dir: Directory to save interim monthly results
+
+    Returns:
+        Path to the saved interim file
+    """
+    month_str = f"{year}{month:02d}"
+    interim_file = interim_dir / f"{year}_{month:02d}_daily.nc"
+
+    if interim_file.exists():
+        logger.info(f"   ✅ Interim file exists: {interim_file.name}")
+        return interim_file
+
+    # Find input files for this month
+    input_files = sorted(list(input_dir.glob(f"*{month_str}*.nc")))
+
+    if not input_files:
+        logger.warning(f"   ⚠️ No input files found for {year}-{month:02d}")
+        return None
+
+    logger.info(f"   Processing {year}-{month:02d} ({len(input_files)} files)...")
+
+    try:
+        # Open dataset
+        if len(input_files) == 1:
+            ds = xr.open_dataset(input_files[0], chunks={})
+        else:
+            ds = xr.open_mfdataset(
+                input_files,
+                parallel=True,
+                chunks={},
+                coords="minimal",
+                compat="override",
+                combine="by_coords",
+            )
+
+        # Rechunk for processing
+        ds = ds.chunk(TARGET_CHUNKS)
+
+        # Get variable name
+        var_name = list(ds.data_vars)[0]
+
+        # Resample to daily
+        resampler = ds[var_name].resample(time="1D")
+        daily_ds = xr.Dataset()
+        daily_ds["t_min"] = resampler.min()
+        daily_ds["t_mean"] = resampler.mean()
+        daily_ds["t_max"] = resampler.max()
+
+        # Add metadata
+        daily_ds.attrs["description"] = (
+            f"Daily summaries of 2-meter temperature from ERA5-Land for {year}-{month:02d}"
+        )
+        daily_ds.attrs["source"] = "ERA5-Land hourly data from /g/data/zz93"
+        daily_ds.attrs["processing"] = "Resampled to daily min, mean, max"
+        daily_ds.attrs["created_by"] = "b_daily_summaries_gadi.py"
+
+        # Rechunk for output
+        output_chunks = {"time": -1, "latitude": 600, "longitude": 1200}
+        daily_ds = daily_ds.chunk(output_chunks)
+
+        # Encoding
+        time_chunks = daily_ds.dims["time"]  # Use actual number of days in month
+        encoding = {
+            var: {
+                **ENCODING_PARAMS,
+                "chunksizes": (time_chunks, 600, 1200),
+            }
+            for var in daily_ds.data_vars
+        }
+
+        # Save
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="All-NaN slice encountered")
+            daily_ds.to_netcdf(interim_file, encoding=encoding, compute=True)
+
+        logger.info(f"   ✅ Saved interim: {interim_file.name}")
+        ds.close()
+        return interim_file
+
+    except Exception as e:
+        logger.error(f"   ❌ Failed to process {year}-{month:02d}: {e}")
+        return None
+
+
 def process_year(year: int, trial: bool = False) -> None:
     """
     Process a single year of ERA5-Land hourly data to daily summaries.
+    Now processes month by month and combines results.
 
     Args:
         year: The year to process (e.g., 1980). Valid range: 1979-2025
         trial: If True, only process January for testing
 
     The function:
-    1. Locates all monthly files for the year
-    2. Opens them with xarray's open_mfdataset (parallel, lazy loading)
-    3. Resamples to daily min, mean, max
-    4. Saves compressed output to scratch
+    1. Processes each month individually, saving interim files
+    2. Combines all monthly interim files into yearly output
+    3. Cleans up interim files after successful merge
     """
     # Validate year range
     if year < 1979 or year > 2025:
@@ -74,6 +169,8 @@ def process_year(year: int, trial: bool = False) -> None:
     ensure_directories([output_dir])
 
     output_file = output_dir / f"{year}_daily_summaries.nc"
+    interim_dir = output_dir / "interim"
+    ensure_directories([interim_dir])
 
     # Check if already processed
     if output_file.exists():
@@ -86,160 +183,104 @@ def process_year(year: int, trial: bool = False) -> None:
         logger.error(f"❌ Input directory not found: {input_dir}")
         sys.exit(1)
 
-    # Find input files
+    # Determine months to process
     if trial:
-        # Trial mode: only process first month (January)
-        pattern = f"*{year}01*.nc"
+        months_to_process = [1]  # Only January for trial
         logger.info(f"🧪 TRIAL MODE: Processing only January {year}")
     else:
-        # Full mode: all months
-        pattern = "*.nc"
+        months_to_process = list(range(1, 13))  # All months
         logger.info(f"📅 Processing full year: {year}")
 
-    input_files = sorted(list(input_dir.glob(pattern)))
+    # Process each month
+    interim_files = []
+    for month in months_to_process:
+        interim_file = process_month(year, month, input_dir, interim_dir)
+        if interim_file:
+            interim_files.append(interim_file)
 
-    if not input_files:
-        logger.error(f"❌ No input files found in {input_dir} with pattern {pattern}")
-        sys.exit(1)
-
-    logger.info(f"Found {len(input_files)} input file(s)")
-    logger.debug(f"Files: {[f.name for f in input_files[:3]]}...")  # Show first 3
-
-    # Verify we have the expected number of files
-    if not trial:
-        expected_files = 12  # One file per month for a full year
-        if len(input_files) != expected_files:
-            logger.warning(
-                f"⚠️ Expected {expected_files} files but found {len(input_files)}. "
-                f"This may indicate missing months."
-            )
-    else:
-        logger.info(f"Trial mode: processing {len(input_files)} file(s)")
-
-    # Open all files at once with xarray
-    logger.info("Opening dataset with xarray.open_mfdataset...")
-    try:
-        ds = xr.open_mfdataset(
-            input_files,
-            parallel=True,
-            chunks={},  # Load with native chunks first
-            coords="minimal",
-            compat="override",
-            combine="by_coords",
+    # Check if we have all expected files
+    expected_count = 1 if trial else 12
+    if len(interim_files) != expected_count:
+        logger.error(
+            f"❌ Expected {expected_count} interim files, got {len(interim_files)}. "
+            "Cannot proceed with merge."
         )
-        logger.info(f"Dataset opened. Shape: {dict(ds.sizes)}")
+        # Clean up interim files on failure
+        logger.info("🧹 Cleaning up interim files due to merge failure...")
+        for f in interim_files:
+            if f.exists():
+                f.unlink()
+        try:
+            interim_dir.rmdir()
+        except OSError:
+            pass  # Directory not empty or doesn't exist
+        return
 
-        # Verify data spans the expected time range
-        time_start = ds.time.min().values
-        time_end = ds.time.max().values
-        logger.info(f"Time range: {time_start} to {time_end}")
+    logger.info(f"📋 Merging {len(interim_files)} monthly files into yearly output...")
 
-        # Check if data is hourly
-        time_diff = ds.time.diff(dim="time")
-        time_freq = time_diff.median().values
-        logger.info(f"Median time step: {time_freq}")
-
-        if not trial:
-            # Full year checks
-            import pandas as pd
-
-            expected_start = pd.Timestamp(f"{year}-01-01")
-            expected_end = pd.Timestamp(f"{year}-12-31 23:00:00")
-
-            if pd.Timestamp(time_start) > expected_start + pd.Timedelta(days=1):
-                logger.warning(
-                    f"⚠️ Data starts at {time_start}, expected around {expected_start}"
-                )
-
-            if pd.Timestamp(time_end) < expected_end - pd.Timedelta(days=1):
-                logger.warning(
-                    f"⚠️ Data ends at {time_end}, expected around {expected_end}"
-                )
-
-            # Check hourly frequency (should be 1 hour or 3600 seconds)
-            expected_freq = pd.Timedelta(hours=1)
-            if abs(pd.Timedelta(time_freq) - expected_freq) > pd.Timedelta(minutes=1):
-                logger.warning(
-                    f"⚠️ Time frequency is {time_freq}, expected hourly (1 hour)"
-                )
-            else:
-                logger.info("✅ Data confirmed as hourly")
-
-        # Rechunk to optimal size for processing
-        logger.info(f"Rechunking to: {TARGET_CHUNKS}")
-        ds = ds.chunk(TARGET_CHUNKS)
-
-    except Exception as e:
-        logger.error(f"❌ Failed to open dataset: {e}")
-        sys.exit(1)
-
-    # Get variable name (should be 't2m' or similar)
-    var_name = list(ds.data_vars)[0]
-    logger.info(f"Processing variable: {var_name}")
-
-    # Resample to daily frequency
-    logger.info("Resampling to daily summaries (min, mean, max)...")
-    resampler = ds[var_name].resample(time="1D")
-
-    # Create output dataset with daily summaries
-    daily_ds = xr.Dataset()
-    daily_ds["t_min"] = resampler.min()
-    daily_ds["t_mean"] = resampler.mean()
-    daily_ds["t_max"] = resampler.max()
-
-    # Add metadata
-    daily_ds.attrs["description"] = (
-        f"Daily summaries of 2-meter temperature from ERA5-Land for {year}"
+    # Open and combine all interim files
+    ds_year = xr.open_mfdataset(
+        interim_files,
+        parallel=True,
+        chunks={},
+        coords="minimal",
+        compat="override",
+        combine="by_coords",
     )
-    daily_ds.attrs["source"] = "ERA5-Land hourly data from /g/data/zz93"
-    daily_ds.attrs["processing"] = "Resampled to daily min, mean, max"
-    daily_ds.attrs["created_by"] = "b_daily_summaries_gadi.py"
 
-    # Rechunk for optimal write performance (larger chunks for output)
-    # Daily data is much smaller, so we can use larger chunks for writing
-    logger.info("Rechunking for optimal write performance...")
-    # Use chunks that fit within actual dimensions (1801x3600)
-    # Conservative chunks for stability
-    output_chunks = {"time": -1, "latitude": 600, "longitude": 1200}
-    daily_ds = daily_ds.chunk(output_chunks)
-
-    # Prepare encoding for compression with chunking specification
-    encoding = {
-        var: {
-            **ENCODING_PARAMS,
-            "chunksizes": (
-                365 if not trial else 31,
-                600,
-                1200,
-            ),  # Optimize for yearly or monthly access
-        }
-        for var in daily_ds.data_vars
-    }
-
-    # Save to disk
-    logger.info(f"💾 Saving to: {output_file}")
-    logger.info("Computing and writing data (this may take a few minutes)...")
     try:
+        # Rechunk for final output
+        output_chunks = {"time": -1, "latitude": 600, "longitude": 1200}
+        ds_year = ds_year.chunk(output_chunks)
+
+        # Update metadata for yearly file
+        ds_year.attrs["description"] = (
+            f"Daily summaries of 2-meter temperature from ERA5-Land for {year}"
+        )
+        ds_year.attrs["source"] = "ERA5-Land hourly data from /g/data/zz93"
+        ds_year.attrs["processing"] = (
+            "Resampled to daily min, mean, max (monthly processing)"
+        )
+        ds_year.attrs["created_by"] = "b_daily_summaries_gadi.py"
+
+        # Encoding for yearly file
+        encoding = {
+            var: {
+                **ENCODING_PARAMS,
+                "chunksizes": (365 if not trial else 31, 600, 1200),
+            }
+            for var in ds_year.data_vars
+        }
+
+        # Save final output
+        logger.info(f"💾 Saving yearly output: {output_file}")
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="All-NaN slice encountered")
-            # Use compute=True to force computation before writing (faster than lazy write)
-            daily_ds.to_netcdf(
-                output_file,
-                encoding=encoding,
-                compute=True,
-            )
+            ds_year.to_netcdf(output_file, encoding=encoding, compute=True)
 
         logger.info(f"✅ Successfully created: {output_file.name}")
         logger.info(f"File size: {output_file.stat().st_size / 1e9:.2f} GB")
 
+        # Clean up interim files
+        logger.info("🧹 Cleaning up interim files...")
+        for f in interim_files:
+            f.unlink()
+
+        # Remove interim directory if empty
+        try:
+            interim_dir.rmdir()
+        except OSError:
+            pass  # Directory not empty or doesn't exist
+
     except Exception as e:
-        logger.error(f"❌ Failed to save output: {e}")
+        logger.error(f"❌ Failed to merge and save: {e}")
         if output_file.exists():
             output_file.unlink()
         sys.exit(1)
 
     finally:
-        ds.close()
+        if "ds_year" in locals():
+            ds_year.close()
 
 
 def main():
@@ -259,34 +300,21 @@ def main():
         action="store_true",
         help="Trial mode: only process January for testing",
     )
-    parser.add_argument(
-        "--n_workers",
-        type=int,
-        default=8,
-        help="Number of Dask workers (default: 8)",
-    )
-    parser.add_argument(
-        "--memory_limit",
-        type=str,
-        default="4GB",
-        help="Memory limit per worker (e.g., '4GB', default: '4GB')",
-    )
 
     args = parser.parse_args()
 
     # Set up Dask distributed client with proper memory limits and spill-to-disk
     logger.info("🚀 Starting Dask distributed client...")
     client = Client(
-        n_workers=args.n_workers,
+        n_workers=8,
         threads_per_worker=1,
-        memory_limit=args.memory_limit,
         local_directory="/scratch/mn51/ft8695/dask-worker-space",
         memory_target_fraction=0.6,  # Target 60% memory usage before spilling
         memory_spill_fraction=0.7,  # Spill to disk at 70% memory usage
         memory_pause_fraction=0.8,  # Pause workers at 80% memory usage
     )
     logger.info(f"Dask Dashboard: {client.dashboard_link}")
-    logger.info(f"Workers: {args.n_workers}, Memory per worker: {args.memory_limit}")
+    logger.info("Workers: 8")
     logger.info("Memory management: target=60%, spill=70%, pause=80%")
 
     try:
