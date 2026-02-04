@@ -18,7 +18,7 @@ for file in Dirs.dir_era_land_daily_local.glob("*_daily_summaries.nc"):
 # Years to sync: from 1979 to current year (2026), excluding those with daily summaries
 current_year = 2026
 years_to_sync = [
-    year for year in range(1979, current_year + 1) if year not in existing_years
+    year for year in range(1979, current_year) if year not in existing_years
 ]
 
 
