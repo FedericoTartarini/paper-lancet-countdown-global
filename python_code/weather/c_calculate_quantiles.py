@@ -6,31 +6,32 @@ from dask.diagnostics import ProgressBar
 
 from my_config import (
     Vars,
-    Dirs,
+    DirsLocal,
 )
 
 if __name__ == "__main__":
-    for t_var in ["t_max", "t_min", "t_mean"]:
-        file_list = []
-        for file in Dirs.dir_era_daily.rglob("*.nc"):
-            file = Path(file)
+    # Collect file list once
+    file_list = []
+    for file in DirsLocal.e5l_d.rglob("*.nc"):
+        file = Path(file)
+        year = int(file.name.split("_")[0])
+        if Vars.year_reference_start <= year <= Vars.year_reference_end:
+            file_list.append(file)
+    file_list = sorted(file_list)
 
-            year = int(file.name.split("_")[0])
+    # Open dataset once with larger chunks for better performance on local machine
+    daily_temperatures_ds = xr.open_mfdataset(file_list, combine="by_coords")
+    daily_temperatures_ds.chunk(chunks={"latitude": 200, "longitude": 200})
 
-            if Vars.year_reference_start <= year <= Vars.year_reference_end:
-                file_list.append(file)
+    for t_var in Vars.t_vars:
+        # Select variable
+        daily_temperatures = daily_temperatures_ds[t_var].chunk({"time": -1})
 
-        file_list = sorted(file_list)
-
-        daily_temperatures = xr.open_mfdataset(
-            file_list, combine="by_coords", chunks={"latitude": 100, "longitude": 100}
-        )[t_var]
-
-        daily_temperatures = daily_temperatures.chunk({"time": -1})
+        DirsLocal.e5l_q.mkdir(parents=True, exist_ok=True)
 
         climatology_quantiles = (
-            Dirs.dir_era_quantiles
-            / f"daily_{t_var}_quantiles_{'_'.join([str(int(100 * q)) for q in Vars.quantiles])}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc"
+            DirsLocal.e5l_q
+            / f"daily_{t_var}_quantiles_{Vars.quantiles}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc"
         )
 
         daily_quantiles = daily_temperatures.quantile(Vars.quantiles, dim="time")

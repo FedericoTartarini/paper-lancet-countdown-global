@@ -12,6 +12,7 @@ class Vars:
     year_reference_start: int = 1986
     year_reference_end: int = 2005
     quantiles: List[float] = 0.95
+    t_vars: List[str] = ["t_max", "t_min", "t_mean"]
 
     @classmethod
     def get_reference_years(cls) -> List[int]:
