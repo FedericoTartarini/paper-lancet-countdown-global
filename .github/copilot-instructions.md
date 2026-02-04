@@ -75,4 +75,35 @@ It runs on the NCI Gadi supercomputer and processes large climate datasets (ERA5
 - Use type hints for function arguments and return types.
 - Keep functions small and focused; avoid large monolithic functions.
 - If possible, make sure that they can work both locally and on Gadi with minimal changes.
-- Add command-line arguments for local testing (e.g., `--local_file`, `--trial`). 
+- Add command-line arguments for local testing (e.g., `--local_file`, `--trial`).
+
+## 8. HPC Optimization Patterns
+
+### Memory Management
+
+- **Explicit cleanup**: Use `del` to delete large datasets immediately after saving to free memory sooner
+- **Monthly processing**: Process data month-by-month instead of loading entire years to reduce peak memory usage
+- **Interim files**: Save monthly results to disk and combine later to avoid holding all data in memory simultaneously
+
+### Chunking Strategy
+
+- **Dynamic chunksizes**: Use actual dimension sizes for chunking (e.g., actual days in month) instead of fixed values
+- **Output chunking**: Use larger chunks for output files (e.g., 600x1200 for lat/lon) optimized for storage and access
+  patterns
+
+### Error Handling & Cleanup
+
+- **Automatic cleanup**: Remove interim files automatically when processing fails to prevent disk space waste
+- **Checkpointing**: Save progress incrementally so failed jobs can resume from last successful month
+
+### Dask Configuration
+
+- **Fixed workers**: Hardcode worker count to match PBS job allocation instead of making it configurable
+- **Memory management**: Use spill-to-disk thresholds (target=0.6, spill=0.7, pause=0.8) to prevent memory exhaustion
+- **Local directory**: Specify scratch space for Dask worker temporary files
+
+### Data Processing Workflow
+
+- **Trial mode**: Process only January for testing pipeline before full deployment
+- **Validation**: Check input/output file existence and structure before/after processing
+- **Logging**: Use structured logging with emojis for easy monitoring in HPC job logs
