@@ -137,7 +137,12 @@ def process_month(
             daily_ds.to_netcdf(interim_file, encoding=encoding, compute=True)
 
         logger.info(f"   ✅ Saved interim: {interim_file.name}")
+
+        # Clean up memory
         ds.close()
+        del ds
+        del daily_ds
+
         return interim_file
 
     except Exception as e:
@@ -261,6 +266,10 @@ def process_year(year: int, trial: bool = False) -> None:
         logger.info(f"✅ Successfully created: {output_file.name}")
         logger.info(f"File size: {output_file.stat().st_size / 1e9:.2f} GB")
 
+        # Clean up memory
+        ds_year.close()
+        del ds_year
+
         # Clean up interim files
         logger.info("🧹 Cleaning up interim files...")
         for f in interim_files:
@@ -279,8 +288,8 @@ def process_year(year: int, trial: bool = False) -> None:
         sys.exit(1)
 
     finally:
-        if "ds_year" in locals():
-            ds_year.close()
+        # ds_year is already closed and deleted in the try block
+        pass
 
 
 def main():
