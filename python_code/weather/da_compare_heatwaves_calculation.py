@@ -14,7 +14,7 @@ If you see this, the difference might be due to threshold precision (float vs do
 import matplotlib.pyplot as plt
 import xarray as xr
 import numpy as np
-from my_config import Dirs  # Assuming these exist in your project
+from my_config import DirsLocal  # Assuming these exist in your project
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 
@@ -31,7 +31,7 @@ def load_old_data(year: float = 2000):
     Loads old data which was split into two separate directories/files.
     """
     # Adjust filename pattern based on your previous code: "indicator_{year}.nc"
-    dir_results_heatwaves = Dirs.dir_results / "heatwaves" / "results_2025"
+    dir_results_heatwaves = DirsLocal.dir_results / "heatwaves" / "results_2025"
     path_count = (
         dir_results_heatwaves / "heatwaves_counts_era5" / f"indicator_{year}.nc"
     )
@@ -51,7 +51,7 @@ def load_new_data(year):
     """
     Loads new data which is combined in one file.
     """
-    path_new = Dirs.dir_results_heatwaves / f"heatwave_indicators_{year}.nc"
+    path_new = DirsLocal.dir_results_heatwaves / f"heatwave_indicators_{year}.nc"
 
     if not path_new.exists():
         print(f"⚠️ Missing new data for {year}")

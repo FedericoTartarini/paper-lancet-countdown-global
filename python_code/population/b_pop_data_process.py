@@ -6,7 +6,7 @@ import xarray as xr
 from tqdm import tqdm
 
 # Assuming these are your local config files
-from my_config import VarsWorldPop, Dirs, Vars, clean_pop_raw
+from my_config import VarsWorldPop, DirsLocal, Vars, clean_pop_raw
 
 
 def _output_age_label(age_group):
@@ -71,7 +71,7 @@ def get_era5_target_grid(year):
     """
     Extracts the grid coordinates from an ERA5 file.
     """
-    era5_path = Dirs.dir_era_daily / f"{year}_temperature_summary.nc"
+    era5_path = DirsLocal.dir_era_daily / f"{year}_temperature_summary.nc"
 
     # decode_timedelta=False suppresses the warning
     era5_data = xr.open_dataset(era5_path, decode_timedelta=False)
@@ -233,7 +233,7 @@ def process_and_combine_ages(ages, sex, year, directory, target_grid):
 
 def process_and_save_population_data(ages, year, sex, target_grid):
     out_path = (
-        Dirs.dir_pop_era_grid
+        DirsLocal.dir_pop_era_grid
         / f"{sex}_{_output_age_label(ages)}_{year}_era5_compatible.nc"
     )
 
@@ -245,7 +245,7 @@ def process_and_save_population_data(ages, year, sex, target_grid):
         ages=ages,
         sex=sex,
         year=year,
-        directory=Dirs.dir_pop_raw,
+        directory=DirsLocal.dir_pop_raw,
         target_grid=target_grid,
     )
 

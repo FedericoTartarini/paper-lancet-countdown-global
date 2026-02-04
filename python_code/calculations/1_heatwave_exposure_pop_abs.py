@@ -10,7 +10,7 @@ If Person-Days are rising faster than Person-Events, it means heatwaves are gett
 import pandas as pd
 import xarray as xr
 
-from my_config import Dirs
+from my_config import DirsLocal
 from python_code.shared_functions import (
     read_pop_data_processed,
     calculate_exposure_population,
@@ -46,8 +46,8 @@ def load_exposure_data(metric: str = Metrics.DAYS):
         )
 
     if metric == Metrics.DAYS:
-        path_days_eld = Dirs.dir_file_elderly_exposure_abs
-        path_days_inf = Dirs.dir_file_infants_exposure_abs
+        path_days_eld = DirsLocal.dir_file_elderly_exposure_abs
+        path_days_inf = DirsLocal.dir_file_infants_exposure_abs
 
         ds_days_eld = xr.open_dataset(path_days_eld)["heatwave_days"]
         ds_days_inf = xr.open_dataset(path_days_inf)["heatwave_days"]
@@ -58,10 +58,12 @@ def load_exposure_data(metric: str = Metrics.DAYS):
         }
     else:
         path_events_eld = (
-            Dirs.dir_file_elderly_exposure_abs.parent / "exposure_events_elderly_65.nc"
+            DirsLocal.dir_file_elderly_exposure_abs.parent
+            / "exposure_events_elderly_65.nc"
         )
         path_events_inf = (
-            Dirs.dir_file_infants_exposure_abs.parent / "exposure_events_infants_0.nc"
+            DirsLocal.dir_file_infants_exposure_abs.parent
+            / "exposure_events_infants_0.nc"
         )
 
         ds_events_eld = xr.open_dataset(path_events_eld)["heatwave_count"]
@@ -113,7 +115,9 @@ def plot_global_trends(days, events, population=AgeBands.ELDERLY_65):
 
     plt.title(f"Global Heatwave Exposure: {population}\n(Burden vs. Frequency)")
     fig.tight_layout()
-    plt.savefig(Dirs.dir_figures / f"heatwave_exposure_global_trends_{population}.pdf")
+    plt.savefig(
+        DirsLocal.dir_figures / f"heatwave_exposure_global_trends_{population}.pdf"
+    )
     plt.show()
 
 
@@ -168,7 +172,7 @@ def plot_global_trends_combined(days_ds, events_ds):
 
     plt.title("Global Heatwave Exposure: Burden vs. Frequency (Elderly & Infants)")
     fig.tight_layout()
-    plt.savefig(Dirs.dir_figures / "heatwave_exposure_global_trends_combined.pdf")
+    plt.savefig(DirsLocal.dir_figures / "heatwave_exposure_global_trends_combined.pdf")
     plt.show()
 
 
@@ -196,7 +200,7 @@ def plot_severity_ratio(days, events, population=AgeBands.ELDERLY_65):
     )
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig(Dirs.dir_figures / f"heatwave_severity_ratio_{population}.pdf")
+    plt.savefig(DirsLocal.dir_figures / f"heatwave_severity_ratio_{population}.pdf")
     plt.show()
 
 
@@ -236,7 +240,7 @@ def plot_severity_ratio_combined(days_ds, events_ds):
     plt.tight_layout()
     sns.despine()
     plt.grid(True, alpha=0.3)
-    plt.savefig(Dirs.dir_figures / "heatwave_severity_ratio_combined.pdf")
+    plt.savefig(DirsLocal.dir_figures / "heatwave_severity_ratio_combined.pdf")
     plt.show()
 
 
@@ -293,7 +297,7 @@ def main():
 
     # 2. Load Heatwave Metrics
     print("Reading Heatwave Metrics...")
-    heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves.glob("*.nc"))
+    heatwave_metrics_files = sorted(DirsLocal.dir_results_heatwaves.glob("*.nc"))
     heatwave_metrics = xr.open_mfdataset(
         heatwave_metrics_files, combine="by_coords", parallel=True
     )
@@ -315,14 +319,14 @@ def main():
     )
 
     # Save Person-Days
-    print(f"Saving Person-Days to {Dirs.dir_file_elderly_exposure_abs}...")
-    exp_days_eld.to_netcdf(Dirs.dir_file_elderly_exposure_abs)
+    print(f"Saving Person-Days to {DirsLocal.dir_file_elderly_exposure_abs}...")
+    exp_days_eld.to_netcdf(DirsLocal.dir_file_elderly_exposure_abs)
 
-    print(f"Saving Person-Days to {Dirs.dir_file_infants_exposure_abs}...")
-    exp_days_inf.to_netcdf(Dirs.dir_file_infants_exposure_abs)
+    print(f"Saving Person-Days to {DirsLocal.dir_file_infants_exposure_abs}...")
+    exp_days_inf.to_netcdf(DirsLocal.dir_file_infants_exposure_abs)
 
-    print(f"Saving Person-Days to {Dirs.dir_file_above_75_exposure_abs}...")
-    exp_days_75.to_netcdf(Dirs.dir_file_above_75_exposure_abs)
+    print(f"Saving Person-Days to {DirsLocal.dir_file_above_75_exposure_abs}...")
+    exp_days_75.to_netcdf(DirsLocal.dir_file_above_75_exposure_abs)
 
     exposures = xr.concat(
         [exp_days_inf, exp_days_eld, exp_days_75],
@@ -330,18 +334,18 @@ def main():
     )
 
     # This is the new file replacing the old one
-    print(f"Saving {Dirs.dir_file_all_exposure_abs}...")
-    exposures.to_netcdf(Dirs.dir_file_all_exposure_abs)
+    print(f"Saving {DirsLocal.dir_file_all_exposure_abs}...")
+    exposures.to_netcdf(DirsLocal.dir_file_all_exposure_abs)
 
     # --- METRIC B: PERSON-EVENTS (New Count Exposure) ---
     print("\n--- Calculating Person-Events (Frequency Exposure) ---")
 
     # We create new filenames for these (add _count suffix or similar)
     file_events_eld = (
-        Dirs.dir_file_elderly_exposure_abs.parent / "exposure_events_elderly_65.nc"
+        DirsLocal.dir_file_elderly_exposure_abs.parent / "exposure_events_elderly_65.nc"
     )
     file_events_inf = (
-        Dirs.dir_file_infants_exposure_abs.parent / "exposure_events_infants_0.nc"
+        DirsLocal.dir_file_infants_exposure_abs.parent / "exposure_events_infants_0.nc"
     )
 
     # Infants

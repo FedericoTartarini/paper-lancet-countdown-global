@@ -16,7 +16,7 @@ Steps:
 import xarray as xr
 import numpy as np
 from joblib import Parallel, delayed
-from my_config import Vars, Dirs
+from my_config import Vars, DirsLocal
 
 # Define Output Codes
 CAT_NONE = 0
@@ -29,7 +29,7 @@ def calculate_severity_threshold(reference_years):
     """
     Calculates the EHF_85 threshold map from the baseline period.
     """
-    output_file = Dirs.dir_era_quantiles / "ehf_severity_threshold_85.nc"
+    output_file = DirsLocal.e5l_q / "ehf_severity_threshold_85.nc"
 
     if output_file.exists():
         print("Loading existing severity threshold...")
@@ -41,7 +41,7 @@ def calculate_severity_threshold(reference_years):
 
     # 1. Load all EHF files for the reference period
     ehf_files = [
-        Dirs.dir_results / "ehf" / f"ehf_{year}.nc" for year in reference_years
+        DirsLocal.dir_results / "ehf" / f"ehf_{year}.nc" for year in reference_years
     ]
 
     # Verify files exist
@@ -80,7 +80,7 @@ def classify_year(year, ehf_85_path, output_dir):
     """
     Classifies EHF into severity categories 0, 1, 2, 3.
     """
-    input_file = Dirs.dir_results / "ehf" / f"ehf_{year}.nc"
+    input_file = DirsLocal.dir_results / "ehf" / f"ehf_{year}.nc"
     output_file = output_dir / f"ehf_severity_{year}.nc"
 
     if output_file.exists():
@@ -130,10 +130,10 @@ def main():
     # This function calculates the threshold map and saves it
     # We just need the path to pass to workers
     calculate_severity_threshold(reference_years=ref_years)
-    threshold_path = Dirs.dir_era_quantiles / "ehf_severity_threshold_85.nc"
+    threshold_path = DirsLocal.e5l_q / "ehf_severity_threshold_85.nc"
 
     # 2. Prepare Output Directory
-    output_dir = Dirs.dir_results / "ehf_severity"
+    output_dir = DirsLocal.dir_results / "ehf_severity"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     years = Vars.get_analysis_years()

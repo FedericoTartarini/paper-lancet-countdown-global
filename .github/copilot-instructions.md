@@ -22,8 +22,8 @@ It runs on the NCI Gadi supercomputer and processes large climate datasets (ERA5
 - **Do not hardcode paths** unless absolutely necessary for local debugging (and then, use a flag).
 - Do not do this:
   ```python
-  from my_config import Dirs
-  output_file = Dirs.dir_results_heatwaves / "output.nc"
+  from my_config import DirsLocal
+  output_file = DirsLocal.dir_results_heatwaves / "output.nc"
   ```
   but instead create a file path in my_config.py:
   ```python
@@ -110,3 +110,13 @@ It runs on the NCI Gadi supercomputer and processes large climate datasets (ERA5
 - **Trial mode**: Process only January for testing pipeline before full deployment
 - **Validation**: Check input/output file existence and structure before/after processing
 - **Logging**: Use structured logging with emojis for easy monitoring in HPC job logs
+
+## 9. Paths
+
+- Use `pathlib.Path` for all path manipulations.
+- Define all directory paths in `my_config.py`. There are three classes for paths:
+    - `Dirs`: For general paths used across the codebase and folders names which are used across the codebase
+    - `DirsGadi`: For paths on Gadi
+    - `DirsLocal`: For paths on local machine.
+- I should use the same directory structure for the local machine and Gadi to avoid confusion and make it easier to
+  switch between them. The only difference should be the root directory, which is defined in `my_config.py`

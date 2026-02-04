@@ -26,7 +26,7 @@ import geopandas as gpd
 from shapely.geometry import box
 
 # Assuming your config is accessible
-from my_config import Dirs, Vars
+from my_config import DirsLocal, Vars
 
 
 def robust_open_pop(path: Path):
@@ -59,7 +59,7 @@ def robust_open_pop(path: Path):
 
 def save_fig(fig, name: str):
     """Save figure to the interim directory with a consistent name."""
-    out_dir = Path(Dirs.dir_figures)
+    out_dir = Path(DirsLocal.dir_figures)
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / name
     fig.savefig(out_path, dpi=200, bbox_inches="tight")
@@ -101,7 +101,7 @@ def plot_population_map(data, label, year=2001, bounds=(0, 35, 20, 47), v_max=20
 
     plt.title(f"{label.capitalize()} population in {year}")
     # Show the plot
-    plt.savefig(Dirs.dir_figures / f"pop_data_{label}_{year}.png")
+    plt.savefig(DirsLocal.dir_figures / f"pop_data_{label}_{year}.png")
     plt.show()
 
 
@@ -527,7 +527,7 @@ def plot_population_trends(infants_da, elderly_da, elderly75_da):
     axs.legend()
     axs.set(xlabel="Year", ylabel="Population (millions)")
     plt.tight_layout()
-    plt.savefig(Dirs.dir_figures / "pop_data_trends.png")
+    plt.savefig(DirsLocal.dir_figures / "pop_data_trends.png")
     plt.show()
 
     for data, label in zip(
@@ -538,16 +538,16 @@ def plot_population_trends(infants_da, elderly_da, elderly75_da):
         axs.legend()
         axs.set(xlabel="Year", ylabel="Population (millions)")
         plt.tight_layout()
-        plt.savefig(Dirs.dir_figures / f"pop_data_trends_{label}.png")
+        plt.savefig(DirsLocal.dir_figures / f"pop_data_trends_{label}.png")
         plt.show()
 
 
 def main():
     """Load combined files and produce all plots, saving them into the interim folder."""
     # Paths (these should be created by c_pop_data_combine.py)
-    path_inf = Path(Dirs.dir_pop_infants_file)
-    path_eld = Path(Dirs.dir_pop_elderly_file)
-    path_75 = Path(Dirs.dir_pop_above_75_file)
+    path_inf = Path(DirsLocal.dir_pop_infants_file)
+    path_eld = Path(DirsLocal.dir_pop_elderly_file)
+    path_75 = Path(DirsLocal.dir_pop_above_75_file)
 
     # Load combined datasets
     infants_da = robust_open_pop(path_inf)
@@ -577,7 +577,8 @@ def main():
 
     # Also show interactive quick plots if requested
     df = analyze_population_time_series(
-        directory=Dirs.dir_pop_era_grid, ages_array=["under_1", "65_over", "75_over"]
+        directory=DirsLocal.dir_pop_era_grid,
+        ages_array=["under_1", "65_over", "75_over"],
     )  # legacy per-year t_ files
     print("Interactive summary (legacy t_ files):")
     print(df.head())

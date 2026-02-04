@@ -21,7 +21,7 @@ This avoids trying to read non-existent files while producing the renamed output
 
 import xarray as xr
 from tqdm import tqdm
-from my_config import Dirs  # Assuming you have this config
+from my_config import DirsLocal  # Assuming you have this config
 
 
 def _output_age_label(age_group):
@@ -51,7 +51,9 @@ def _source_age_string(age_group):
     return "_".join(map(str, age_group))
 
 
-def create_total_sex_files(ages_array, years_array, directory=Dirs.dir_pop_era_grid):
+def create_total_sex_files(
+    ages_array, years_array, directory=DirsLocal.dir_pop_era_grid
+):
     """
     Combines existing male ('m') and female ('f') NetCDF files into a total ('t') file.
 

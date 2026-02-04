@@ -11,7 +11,7 @@ import pandas as pd
 import xarray as xr
 from shapely.geometry import Point
 
-from my_config import Vars, Dirs
+from my_config import Vars, DirsLocal
 from python_code.calculations.region_raster import plot_world_map
 
 # Suppress the specific RuntimeWarning from icecream
@@ -23,11 +23,11 @@ warnings.filterwarnings(
 def calculate_effect_climate_change_compared_to_pop_change(
     year_max: int = Vars.year_max_analysis,
 ):
-    heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves.glob("*.nc"))
+    heatwave_metrics_files = sorted(DirsLocal.dir_results_heatwaves.glob("*.nc"))
     hw = xr.open_mfdataset(heatwave_metrics_files, combine="by_coords")
-    elderly = xr.open_dataset(Dirs.dir_pop_elderly_file)
+    elderly = xr.open_dataset(DirsLocal.dir_pop_elderly_file)
     elderly = elderly.sel(year=slice(Vars.year_min_analysis, year_max))
-    infants = xr.open_dataset(Dirs.dir_pop_infants_file)
+    infants = xr.open_dataset(DirsLocal.dir_pop_infants_file)
     infants = infants.sel(year=slice(Vars.year_min_analysis, year_max))
 
     """
@@ -272,7 +272,7 @@ def calculate_effect_climate_change_compared_to_pop_change(
         rect=[0, 0.03, 1, 0.95]
     )  # Adjust the rect to make room for the suptitle
 
-    plt.savefig(Dirs.dir_figures / "barplots_dominant_effect_change.pdf")
+    plt.savefig(DirsLocal.dir_figures / "barplots_dominant_effect_change.pdf")
     plt.show()
 
     return (
@@ -299,7 +299,7 @@ def plots(year_max: int = Vars.year_max_analysis):
         combined_increase_infants,
     ) = calculate_effect_climate_change_compared_to_pop_change(year_max=year_max)
 
-    countries_raster = xr.open_dataset(Dirs.dir_file_country_raster_report)
+    countries_raster = xr.open_dataset(DirsLocal.dir_file_country_raster_report)
     land_mask = countries_raster["OBJECTID"] < 2000
 
     diff = climate_recent - climate_past
@@ -346,7 +346,7 @@ def plots(year_max: int = Vars.year_max_analysis):
         increase_elderly_climate_gdf, crs="EPSG:4326", geometry=geometry
     )
 
-    gdf_countries = gpd.read_file(Dirs.dir_file_detailed_boundaries)
+    gdf_countries = gpd.read_file(DirsLocal.dir_file_detailed_boundaries)
 
     increase_elderly_population_country = gpd.sjoin(
         increase_elderly_population_gdf, gdf_countries, how="inner", predicate="within"
@@ -438,7 +438,7 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Optional: Set additional options for the plot
     ax.set_title("Over 65")
     # ax.set_axis_off()
-    plt.savefig(Dirs.dir_figures / "dominant_effect_change_countries_elderly.pdf")
+    plt.savefig(DirsLocal.dir_figures / "dominant_effect_change_countries_elderly.pdf")
     plt.show()
 
     geometry = [
@@ -643,7 +643,9 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Increase the size of the points in the legend
     plt.legend(markerscale=30)  # Increase marker scale in legend for better visibility
 
-    plt.savefig(Dirs.dir_figures / "dominant_effect_change_grid_infants.jpeg", dpi=1200)
+    plt.savefig(
+        DirsLocal.dir_figures / "dominant_effect_change_grid_infants.jpeg", dpi=1200
+    )
     plt.show()
 
     # Step 1: Rename columns for clarity
@@ -739,7 +741,9 @@ def plots(year_max: int = Vars.year_max_analysis):
     # Increase the size of the points in the legend
     plt.legend(markerscale=30)  # Increase marker scale in legend for better visibility
 
-    plt.savefig(Dirs.dir_figures / "dominant_effect_change_grid_elderly.jpeg", dpi=1200)
+    plt.savefig(
+        DirsLocal.dir_figures / "dominant_effect_change_grid_elderly.jpeg", dpi=1200
+    )
     plt.show()
 
     # Assuming dominant_effect_gdf_infants and dominant_effect_gdf_elderly are your GeoDataFrames
@@ -828,7 +832,7 @@ def plots(year_max: int = Vars.year_max_analysis):
 
     plt.tight_layout()  # Adjust the layout to make sure everything fits without overlapping
     plt.savefig(
-        Dirs.dir_figures / "combined_dominant_effect_change_grid.jpeg", dpi=1200
+        DirsLocal.dir_figures / "combined_dominant_effect_change_grid.jpeg", dpi=1200
     )
     plt.show()
 

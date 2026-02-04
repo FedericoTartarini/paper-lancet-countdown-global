@@ -20,7 +20,7 @@ import xarray as xr
 from dask.distributed import Client
 import concurrent.futures
 
-from my_config import Dirs
+from my_config import DirsLocal
 from python_code.log_config import setup_logging
 
 # Set up logging
@@ -184,8 +184,8 @@ def process_single_year(year, input_dir, output_dir, target_chunks):
 
 
 def main():
-    input_dir = Dirs.dir_era_land_hourly_local
-    output_dir = Dirs.dir_era_land_daily_local
+    input_dir = DirsLocal.e5l_h
+    output_dir = DirsLocal.e5l_d
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Detect available years

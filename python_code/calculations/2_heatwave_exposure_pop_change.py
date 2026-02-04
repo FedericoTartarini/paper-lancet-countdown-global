@@ -11,7 +11,7 @@ import xarray as xr
 
 from my_config import (
     Vars,
-    Dirs,
+    DirsLocal,
 )
 from python_code.shared_functions import (
     read_pop_data_processed,
@@ -24,8 +24,8 @@ sns.set_theme(style="whitegrid")
 
 def load_exposure_change_data():
     """Load the exposure change files."""
-    path_days_eld_change = Dirs.dir_file_elderly_exposure_change
-    path_days_inf_change = Dirs.dir_file_infants_exposure_change
+    path_days_eld_change = DirsLocal.dir_file_elderly_exposure_change
+    path_days_inf_change = DirsLocal.dir_file_infants_exposure_change
 
     ds_days_eld = xr.open_dataset(path_days_eld_change)["heatwave_days"]
     ds_days_inf = xr.open_dataset(path_days_inf_change)["heatwave_days"]
@@ -44,7 +44,7 @@ def main():
 
     # 2. Load Heatwave Metrics
     print("Reading Heatwave Metrics...")
-    heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves.glob("*.nc"))
+    heatwave_metrics_files = sorted(DirsLocal.dir_results_heatwaves.glob("*.nc"))
     heatwave_metrics = xr.open_mfdataset(
         heatwave_metrics_files, combine="by_coords", parallel=True
     )
@@ -76,11 +76,11 @@ def main():
     )
 
     # Save
-    print(f"Saving Exposure Change to {Dirs.dir_file_elderly_exposure_change}...")
-    exp_days_eld_change.to_netcdf(Dirs.dir_file_elderly_exposure_change)
+    print(f"Saving Exposure Change to {DirsLocal.dir_file_elderly_exposure_change}...")
+    exp_days_eld_change.to_netcdf(DirsLocal.dir_file_elderly_exposure_change)
 
-    print(f"Saving Exposure Change to {Dirs.dir_file_infants_exposure_change}...")
-    exp_days_inf_change.to_netcdf(Dirs.dir_file_infants_exposure_change)
+    print(f"Saving Exposure Change to {DirsLocal.dir_file_infants_exposure_change}...")
+    exp_days_inf_change.to_netcdf(DirsLocal.dir_file_infants_exposure_change)
 
     # --- PLOTTING ---
     # We plot directly here using the in-memory data to calculate weighted means
@@ -120,7 +120,8 @@ def main():
     ax.axhline(0, color="black", linewidth=0.8, linestyle="--")
 
     plt.savefig(
-        Dirs.dir_figures / "exposure_change_heatwave_days_population_weighted_mean.pdf"
+        DirsLocal.dir_figures
+        / "exposure_change_heatwave_days_population_weighted_mean.pdf"
     )
 
     plt.show()

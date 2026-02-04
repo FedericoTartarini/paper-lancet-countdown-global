@@ -6,7 +6,7 @@ from pathlib import Path
 import requests
 from icecream import ic
 
-from my_config import Dirs, VarsWorldPop
+from my_config import DirsLocal, VarsWorldPop
 
 # this is needed to avoid the error in the download in MaxOS
 os.environ["no_proxy"] = "*"
@@ -14,7 +14,7 @@ os.environ["no_proxy"] = "*"
 
 def download_file(url, filepath):
     filepath = Path(filepath)
-    tmp_filepath = Dirs.dir_population_tmp / filepath.name
+    tmp_filepath = DirsLocal.dir_population_tmp / filepath.name
 
     ic(f"Downloading {filepath.name}...")
 
@@ -60,9 +60,11 @@ def create_urls_sex_age_years(
                 download_url = VarsWorldPop.get_url_download(
                     year=year, sex=sex, age=age
                 )
-                filepath = Dirs.dir_population / f"global_{sex}_{age}_{year}_1km.tif"
-                tmp_filepath = Dirs.dir_population_tmp / filepath.name
-                hd_filepath = Dirs.dir_pop_raw / filepath.name
+                filepath = (
+                    DirsLocal.dir_population / f"global_{sex}_{age}_{year}_1km.tif"
+                )
+                tmp_filepath = DirsLocal.dir_population_tmp / filepath.name
+                hd_filepath = DirsLocal.dir_pop_raw / filepath.name
                 if (
                     not filepath.is_file()
                     and not tmp_filepath.is_file()

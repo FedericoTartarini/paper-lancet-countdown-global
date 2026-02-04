@@ -19,7 +19,7 @@ Improvements over previous versions:
 import numpy as np
 import xarray as xr
 from joblib import Parallel, delayed
-from my_config import Vars, Dirs
+from my_config import Vars, DirsLocal
 
 # Keep attributes to preserve metadata/units
 xr.set_options(keep_attrs=True)
@@ -164,7 +164,7 @@ def main():
     for var in ["t_min", "t_max"]:
         q_str = "_".join([str(int(100 * q)) for q in Vars.quantiles])
         clim_file = (
-            Dirs.dir_era_quantiles
+            DirsLocal.e5l_q
             / f"daily_{var}_quantiles_{q_str}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc"
         )
         with xr.open_dataset(clim_file) as ds:
@@ -179,14 +179,14 @@ def main():
 
     # Ensure output directory exists
     # Using one folder for both indicators keeps things cleaner
-    output_dir = Dirs.dir_results_heatwaves  # e.g. "results/heatwaves"
+    output_dir = DirsLocal.dir_results_heatwaves  # e.g. "results/heatwaves"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # 3. Run Parallel Processing
     # Single pass for both indicators
     results = Parallel(n_jobs=6, verbose=10)(
         delayed(process_year_and_save)(
-            year, Dirs.dir_era_daily, output_dir, t_thresholds, ["t_min", "t_max"]
+            year, DirsLocal.dir_era_daily, output_dir, t_thresholds, ["t_min", "t_max"]
         )
         for year in years
     )

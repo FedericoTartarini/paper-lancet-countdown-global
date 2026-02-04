@@ -6,14 +6,14 @@ import xarray as xr
 from cartopy import crs as ccrs
 from geocube.api.core import make_geocube
 
-from my_config import Dirs
+from my_config import DirsLocal
 from python_code.shared_functions import get_lancet_country_data
 
 
 def get_era5_data():
     # Open one year of ERA5 data to put population data on the same grid
     era5_data = xr.open_dataset(
-        Dirs.dir_era_daily.value / "1980_temperature_summary.nc"
+        DirsLocal.dir_era_daily.value / "1980_temperature_summary.nc"
     )
 
     # Convert longitudes to -180 to 180 range
@@ -38,7 +38,9 @@ def get_era5_data():
 
 def get_elderly_data():
     # opening the hybrid population data downloaded from Zenodo
-    population_elderly = xr.open_dataarray(Dirs.dir_file_population_before_2000.value)
+    population_elderly = xr.open_dataarray(
+        DirsLocal.dir_file_population_before_2000.value
+    )
     population_elderly = population_elderly.sel(age_band_lower_bound=65)
     population_elderly = population_elderly.isel(year=0)
     population_elderly = population_elderly.assign_coords(
@@ -67,9 +69,9 @@ def create_country_raster(country_polygons, era5_data):
     # Plot the rasterized data
     plot_world_map(chn_data)
 
-    if os.path.exists(Dirs.dir_file_country_raster_report.value):
-        os.remove(Dirs.dir_file_country_raster_report.value)
-    rasterized_data.to_netcdf(Dirs.dir_file_country_raster_report.value)
+    if os.path.exists(DirsLocal.dir_file_country_raster_report.value):
+        os.remove(DirsLocal.dir_file_country_raster_report.value)
+    rasterized_data.to_netcdf(DirsLocal.dir_file_country_raster_report.value)
 
 
 def create_who_raster(country_polygons, era5_data):
@@ -89,7 +91,7 @@ def create_who_raster(country_polygons, era5_data):
     # Plot the WHO regions
     plot_world_map(rasterized_data["WHO_REGION_ID"])
 
-    rasterized_data.to_netcdf(Dirs.dir_file_who_raster_report.value)
+    rasterized_data.to_netcdf(DirsLocal.dir_file_who_raster_report.value)
 
 
 def create_hdi_raster(country_polygons, era5_data, hdi_column):
@@ -109,7 +111,7 @@ def create_hdi_raster(country_polygons, era5_data, hdi_column):
     # Plot the rasterized data
     plot_world_map(rasterized_data["HDI_ID"])
 
-    rasterized_data.to_netcdf(Dirs.dir_file_hdi_raster_report.value)
+    rasterized_data.to_netcdf(DirsLocal.dir_file_hdi_raster_report.value)
 
 
 def create_lancet_raster(country_polygons, era5_data, hdi_column):
@@ -138,11 +140,11 @@ def create_lancet_raster(country_polygons, era5_data, hdi_column):
 
     # era5_data = xr.open_dataset(WEATHER_SRC / "era5_0.25deg/daily_temperature_summary/1980_temperature_summary.nc")
     # rasterized_data = rasterized_data.assign_coords(longitude=era5_data.longitude)
-    rasterized_data.to_netcdf(Dirs.dir_file_lancet_raster_report.value)
+    rasterized_data.to_netcdf(DirsLocal.dir_file_lancet_raster_report.value)
 
 
 def create_admin1_raster(era5_data):
-    admin1_polygons = gpd.read_file(Dirs.dir_file_admin1_polygons)
+    admin1_polygons = gpd.read_file(DirsLocal.dir_file_admin1_polygons)
 
     # Create rasterized data using make_geocube
     rasterized_data = make_geocube(
@@ -155,7 +157,7 @@ def create_admin1_raster(era5_data):
 
     # era5_data = xr.open_dataset(WEATHER_SRC / "era5_0.25deg/daily_temperature_summary/1980_temperature_summary.nc")
     # rasterized_data = rasterized_data.assign_coords(longitude=era5_data.longitude)
-    rasterized_data.to_netcdf(Dirs.dir_file_admin1_raster_report.value)
+    rasterized_data.to_netcdf(DirsLocal.dir_file_admin1_raster_report.value)
 
 
 def plot_world_map(data, v_min_max=False):

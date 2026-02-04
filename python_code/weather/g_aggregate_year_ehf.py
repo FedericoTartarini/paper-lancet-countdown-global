@@ -1,7 +1,7 @@
 import xarray as xr
 import numpy as np
 from joblib import Parallel, delayed
-from my_config import Vars, Dirs
+from my_config import Vars, DirsLocal
 
 
 def aggregate_year(year, input_dir, output_dir):
@@ -49,8 +49,8 @@ def aggregate_year(year, input_dir, output_dir):
 
 
 def main():
-    input_dir = Dirs.dir_results / "ehf_severity"
-    output_dir = Dirs.dir_results / "ehf_severity_annual"
+    input_dir = DirsLocal.dir_results / "ehf_severity"
+    output_dir = DirsLocal.dir_results / "ehf_severity_annual"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     years = Vars.get_analysis_years()

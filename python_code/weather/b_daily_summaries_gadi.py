@@ -169,8 +169,8 @@ def process_year(year: int, trial: bool = False) -> None:
         logger.error(f"❌ Invalid year: {year}. Valid range is 1979-2025")
         sys.exit(1)
 
-    input_dir = DirsGadi.dir_era_land_hourly / str(year)
-    output_dir = DirsGadi.dir_era_daily
+    input_dir = DirsGadi.e5l_h / str(year)
+    output_dir = DirsGadi.e5l_d
     ensure_directories([output_dir])
 
     output_file = output_dir / f"{year}_daily_summaries.nc"

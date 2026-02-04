@@ -2,7 +2,7 @@ import xarray as xr
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from my_config import Dirs
+from my_config import DirsLocal
 from python_code.shared_functions import (
     read_pop_data_processed,
     calculate_exposure_population,
@@ -17,7 +17,7 @@ def calculate_severity_exposure():
     pop_inf, pop_eld, _, _ = read_pop_data_processed(get_pop_75=True)
 
     print("Loading Annual Severity Metrics...")
-    input_dir = Dirs.dir_results / "ehf_severity_annual"
+    input_dir = DirsLocal.dir_results / "ehf_severity_annual"
     files = sorted(input_dir.glob("severity_summary_*.nc"))
 
     if not files:
@@ -88,7 +88,7 @@ def plot_severity_stack(df, pop_label):
     ax.plot(df.index, total, color="black", linestyle="--", alpha=0.5, label="Total")
 
     plt.tight_layout()
-    plt.savefig(Dirs.dir_figures / "heatwave_exposure_severity_stacked.pdf")
+    plt.savefig(DirsLocal.dir_figures / "heatwave_exposure_severity_stacked.pdf")
     plt.show()
 
 
@@ -112,7 +112,7 @@ def plot_extreme_rise(df, pop_label):
     ax.legend()
 
     plt.tight_layout()
-    plt.savefig(Dirs.dir_figures / "heatwave_exposure_severe_extreme_trend.pdf")
+    plt.savefig(DirsLocal.dir_figures / "heatwave_exposure_severe_extreme_trend.pdf")
     plt.show()
 
 

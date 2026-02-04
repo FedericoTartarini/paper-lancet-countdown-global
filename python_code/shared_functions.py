@@ -2,17 +2,17 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import xarray as xr
-from my_config import Vars, Dirs
+from my_config import Vars, DirsLocal
 
 
 def get_lancet_country_data(hdi_column="hdi_2019_grouping"):
     """
     Loads country polygons and merges with Lancet HDI grouping data.
     """
-    country_polygons = gpd.read_file(Dirs.dir_file_country_polygons)
+    country_polygons = gpd.read_file(DirsLocal.dir_file_country_polygons)
 
     country_lc_grouping = pd.read_excel(
-        Dirs.dir_file_lancet_country_info,
+        DirsLocal.dir_file_lancet_country_info,
         header=1,
     )
 
@@ -46,13 +46,13 @@ def read_pop_data_processed(get_pop_75=False):
     print("Loading Population Time Series...")
 
     # 1. Infants (<1 year) -> Age string "0"
-    pop_inf = xr.open_dataset(Dirs.dir_pop_infants_file).sel(
+    pop_inf = xr.open_dataset(DirsLocal.dir_pop_infants_file).sel(
         year=slice(Vars.year_min_analysis, Vars.year_max_analysis)
     )
-    pop_eld = xr.open_dataset(Dirs.dir_pop_elderly_file).sel(
+    pop_eld = xr.open_dataset(DirsLocal.dir_pop_elderly_file).sel(
         year=slice(Vars.year_min_analysis, Vars.year_max_analysis)
     )
-    pop_75 = xr.open_dataset(Dirs.dir_pop_above_75_file).sel(
+    pop_75 = xr.open_dataset(DirsLocal.dir_pop_above_75_file).sel(
         year=slice(Vars.year_min_analysis, Vars.year_max_analysis)
     )
 

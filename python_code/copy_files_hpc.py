@@ -69,7 +69,7 @@ def copy_files_from_remote(
 if __name__ == "__main__":
     # Example usage: Copy ERA5-Land hourly data for 2020 from Gadi to local
     copy_files_from_remote(
-        source_dir=f"ft8695@gadi-dm.nci.org.au:{DirsGadi.dir_era_daily}",
+        source_dir=f"ft8695@gadi-dm.nci.org.au:{DirsGadi.e5l_d}",
         dest_dir=Path("/Users/ftar3919/Downloads/test"),
         copy_subdirs=True,
         file_extension=None,  # Temporarily remove filter to debug

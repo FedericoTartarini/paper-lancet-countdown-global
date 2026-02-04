@@ -10,14 +10,14 @@ import os
 
 import xarray as xr
 
-from my_config import VarsWorldPop, Dirs
+from my_config import VarsWorldPop, DirsLocal
 
 
 def load_population_data(age_group, years, suffix="era5_compatible.nc"):
     datasets = []
     for year in years:
         # Load t_{age}_{year} file
-        file_path = Dirs.dir_pop_era_grid / f"t_{age_group}_{year}_{suffix}"
+        file_path = DirsLocal.dir_pop_era_grid / f"t_{age_group}_{year}_{suffix}"
         if file_path.exists():
             ds = xr.open_dataset(file_path)
             # Standardize time dimension to 'year'
@@ -39,7 +39,7 @@ def main():
     elderly_worldpop = load_population_data(age_group="65_over", years=years_range)
 
     # Load and process data before 2000
-    demographics_totals = xr.open_dataarray(Dirs.dir_file_population_before_2000)
+    demographics_totals = xr.open_dataarray(DirsLocal.dir_file_population_before_2000)
     demographics_totals = demographics_totals.sel(year=slice(1950, 1999))
     infants_lancet = demographics_totals.sel(age_band_lower_bound=0).sel(
         year=VarsWorldPop.get_slice_years(period="before")
@@ -66,20 +66,20 @@ def main():
     ).transpose("year", "latitude", "longitude")
 
     # Save the results to NetCDF files
-    if Dirs.dir_pop_infants_file.exists():
-        os.remove(Dirs.dir_pop_infants_file)
-    infants_pop_analysis.to_netcdf(Dirs.dir_pop_infants_file)
+    if DirsLocal.dir_pop_infants_file.exists():
+        os.remove(DirsLocal.dir_pop_infants_file)
+    infants_pop_analysis.to_netcdf(DirsLocal.dir_pop_infants_file)
 
-    if Dirs.dir_pop_elderly_file.exists():
-        os.remove(Dirs.dir_pop_elderly_file)
-    elderly_pop_analysis.to_netcdf(Dirs.dir_pop_elderly_file)
+    if DirsLocal.dir_pop_elderly_file.exists():
+        os.remove(DirsLocal.dir_pop_elderly_file)
+    elderly_pop_analysis.to_netcdf(DirsLocal.dir_pop_elderly_file)
 
     # elderly above 75 (only available for recent years in this flow)
     elderly_worldpop_75 = load_population_data(age_group="75_over", years=years_range)
     # Just save, no extrapolation
-    if Dirs.dir_pop_above_75_file.exists():
-        os.remove(Dirs.dir_pop_above_75_file)
-    elderly_worldpop_75.to_netcdf(Dirs.dir_pop_above_75_file)
+    if DirsLocal.dir_pop_above_75_file.exists():
+        os.remove(DirsLocal.dir_pop_above_75_file)
+    elderly_worldpop_75.to_netcdf(DirsLocal.dir_pop_above_75_file)
 
 
 if __name__ == "__main__":

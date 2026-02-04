@@ -3,7 +3,7 @@ import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
 
-from my_config import Dirs, e5l_d, e5l_t
+from my_config import DirsLocal, e5l_d, e5l_t
 
 
 def plot_global_mean_temperature(ds):
@@ -171,7 +171,7 @@ def verify_file(file_path):
 if __name__ == "__main__":
     # Default to the yearly file
     target_file = (
-        Dirs.dir_one_drive / "era5-land" / e5l_d / e5l_t / "2020_daily_summaries.nc"
+        DirsLocal.one_drive / "era5-land" / e5l_d / e5l_t / "2020_daily_summaries.nc"
     )
     target_file = "/Users/ftar3919/Downloads/test/2t/2020_daily_summaries.nc"
 

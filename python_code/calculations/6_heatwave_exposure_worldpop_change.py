@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import seaborn as sns
-from my_config import Vars, Dirs
+from my_config import Vars, DirsLocal
 from python_code.shared_functions import read_pop_data_processed
 
 # Set style for professional plots
@@ -108,7 +108,7 @@ def plot_zonal_fingerprint(hw_delta, pop_data):
 
     plt.title("The 'Demographic Trap':\nPopulation Peaks where Heatwaves Increase Most")
     plt.tight_layout()
-    plt.savefig(Dirs.dir_figures / "zonal_fingerprint_heat_vs_pop.pdf")
+    plt.savefig(DirsLocal.dir_figures / "zonal_fingerprint_heat_vs_pop.pdf")
     plt.show()
 
 
@@ -193,7 +193,7 @@ def plot_experience_distribution(hw_delta, pop_data):
     ax.set_xlim(left=0)  # Assuming change is mostly positive
 
     plt.tight_layout()
-    plt.savefig(Dirs.dir_figures / "distribution_shift_land_vs_people.pdf")
+    plt.savefig(DirsLocal.dir_figures / "distribution_shift_land_vs_people.pdf")
     plt.show()
 
 
@@ -203,7 +203,7 @@ def main():
     pop_inf, pop_eld, _, _ = read_pop_data_processed(get_pop_75=True)
 
     # 2. Load Heatwaves
-    heatwave_metrics_files = sorted(Dirs.dir_results_heatwaves.glob("*.nc"))
+    heatwave_metrics_files = sorted(DirsLocal.dir_results_heatwaves.glob("*.nc"))
     ds_hw = xr.open_mfdataset(
         heatwave_metrics_files, combine="by_coords", parallel=True
     )
@@ -326,7 +326,7 @@ def main():
         print(f"Skipping annotation: {e}")
 
     plt.tight_layout()
-    plt.savefig(Dirs.dir_figures / "heatwave_exposure_trends_comparison.pdf")
+    plt.savefig(DirsLocal.dir_figures / "heatwave_exposure_trends_comparison.pdf")
     plt.show()
 
     # --- FIGURE 2: Excess Exposure ---

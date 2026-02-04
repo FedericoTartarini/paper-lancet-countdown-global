@@ -19,7 +19,7 @@ Requirement:
 
 import xarray as xr
 from joblib import Parallel, delayed
-from my_config import Vars, Dirs
+from my_config import Vars, DirsLocal
 
 # Preserve attributes
 xr.set_options(keep_attrs=True)
@@ -138,7 +138,7 @@ def main():
 
     # Note: I adjusted the filename to look for 't_mean'
     clim_file = (
-        Dirs.dir_era_quantiles
+        DirsLocal.e5l_q
         / f"daily_t_mean_quantiles_{q_str}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc"
     )
 
@@ -156,7 +156,7 @@ def main():
         )
 
     # 2. Output Directory
-    output_dir = Dirs.dir_results / "ehf"
+    output_dir = DirsLocal.dir_results / "ehf"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     years = Vars.get_analysis_years()
@@ -164,7 +164,7 @@ def main():
     # 3. Parallel Execution
     results = Parallel(n_jobs=1, verbose=10)(
         delayed(calculate_ehf_for_year)(
-            year, Dirs.dir_era_daily, output_dir, t95_threshold
+            year, DirsLocal.dir_era_daily, output_dir, t95_threshold
         )
         for year in years
     )
