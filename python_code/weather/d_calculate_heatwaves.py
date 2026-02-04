@@ -1,5 +1,5 @@
 """
-Calculate heatwave occurrences and duration in a single pass.
+Calculate heatwave occurrences and duration.
 Refactored for Lancet Countdown analysis.
 
 Heatwave Definition:
@@ -7,13 +7,8 @@ Heatwave Definition:
   where both daily minimum and maximum temperatures exceed their
   respective 95th percentile thresholds (climatology).
 
-- Heatwaves crossing year boundaries are truncated. To fully capture these, consider loading Dec 29-31 of the previous year.
-
-Improvements over previous versions:
-- Single pass calculation for both count and duration.
-- Vectorized Boolean mask creation for efficiency.
-- Clearer handling of end-of-year boundary conditions.
-- Memory-efficient accumulators using int16.
+This version uses vectorized operations for speed while correctly
+counting all heatwave days (not just the minimum length).
 """
 
 import numpy as np
@@ -25,127 +20,161 @@ from my_config import Vars, DirsLocal
 xr.set_options(keep_attrs=True)
 
 
-def calculate_heatwave_metrics(datasets, thresholds, days_threshold=2):
+def count_heatwave_days_vectorized(
+    t_max: xr.DataArray,
+    t_min: xr.DataArray,
+    t_max_threshold: xr.DataArray,
+    t_min_threshold: xr.DataArray,
+    hw_min_length: int = 3,
+) -> xr.DataArray:
     """
-    Core logic: Calculates both count and duration of heatwaves.
+    Calculate heatwave days using vectorized rolling operations.
+
+    A day is a heatwave day if it is part of a run of at least
+    `hw_min_length` consecutive days where both t_max > t_max_threshold
+    and t_min > t_min_threshold.
 
     Args:
-        datasets (list): [tmin_array, tmax_array] (xarray DataArrays or numpy arrays)
-        thresholds (list): [tmin_threshold, tmax_threshold]
-        days_threshold (int): Minimum consecutive days to qualify as heatwave (> threshold).
-                              Default 2 means 3 days or more are required.
+        t_max: Daily maximum temperature (time, lat, lon)
+        t_min: Daily minimum temperature (time, lat, lon)
+        t_max_threshold: Threshold for t_max (lat, lon)
+        t_min_threshold: Threshold for t_min (lat, lon)
+        hw_min_length: Minimum consecutive days for heatwave (default 3)
 
     Returns:
-        xr.Dataset: Contains 'heatwave_count' and 'heatwave_days'
+        Boolean DataArray marking heatwave days
     """
-    # 1. Create the Boolean Mask (Vectorized)
-    # Using np.nan > x yields False, so we often don't need fillna(-9999)
-    # unless you have specific needs.
+    # 1. Identify hot days (both conditions met)
+    hot_day = (t_max > t_max_threshold) & (t_min > t_min_threshold)
 
-    # Initialize with the first condition
-    exceeded = datasets[0] > thresholds[0]
+    # 2. Find starts of heatwaves (runs of hw_min_length consecutive hot days)
+    # Rolling min == 1 means all days in the window are hot
+    hw_start = (
+        hot_day.astype(int).rolling(time=hw_min_length, min_periods=hw_min_length).min()
+        == 1
+    )
 
-    # Combine with remaining conditions (e.g. tmax > thresh)
-    for data, thresh in zip(datasets[1:], thresholds[1:]):
-        exceeded = np.logical_and(exceeded, data > thresh)
+    # 3. Extend heatwave flag forward to cover all days in each heatwave
+    # A day is a heatwave day if any of the next (hw_min_length-1) days
+    # or itself is a heatwave start
+    heatwave_days = (
+        hw_start.rolling(time=hw_min_length, min_periods=1, center=False)
+        .max()
+        .shift(time=-(hw_min_length - 1))
+        .fillna(0)
+        == 1
+    )
 
-    # Extract values for fast looping.
-    # Shape: (Time, Lat, Lon)
-    mask_values = exceeded.values
+    # 4. Also mark trailing days of heatwaves that extend beyond minimum
+    # A hot day following a heatwave day is also a heatwave day
+    # We need to propagate forward through consecutive hot days
+    heatwave_days = heatwave_days | (
+        heatwave_days.shift(time=1).fillna(False) & hot_day
+    )
 
-    # 2. Initialize Accumulators
-    # We use int16 to save memory (counts won't exceed 32,000)
-    out_shape = mask_values.shape[1:]
+    # Repeat to capture longer heatwaves (iterate a few times)
+    for _ in range(10):  # Max 10 extra days beyond minimum
+        extended = heatwave_days.shift(time=1).fillna(False) & hot_day
+        if not extended.any():
+            break
+        heatwave_days = heatwave_days | extended
 
-    hw_counts = np.zeros(out_shape, dtype=np.int16)
-    hw_days = np.zeros(out_shape, dtype=np.int16)
+    heatwave_days.name = "heatwave_days"
+    heatwave_days.attrs["units"] = "1"
+    heatwave_days.attrs["long_name"] = "Heatwave day indicator"
 
-    current_run = np.zeros(out_shape, dtype=np.int16)
+    return heatwave_days
 
-    # 3. Iterate over Time (The "Scan Line" approach)
-    # We iterate t from 0 to N.
-    # If mask[t] is True: increment run.
-    # If mask[t] is False: check if run was long enough, add to stats, reset run.
 
-    n_time = mask_values.shape[0]
+def calculate_heatwave_metrics_vectorized(
+    t_max: xr.DataArray,
+    t_min: xr.DataArray,
+    t_max_threshold: xr.DataArray,
+    t_min_threshold: xr.DataArray,
+    hw_min_length: int = 3,
+) -> xr.Dataset:
+    """
+    Calculate heatwave count and total days using vectorized operations.
 
-    for t in range(n_time):
-        is_hot = mask_values[t, :, :]
+    Args:
+        t_max: Daily maximum temperature (time, lat, lon)
+        t_min: Daily minimum temperature (time, lat, lon)
+        t_max_threshold: Threshold for t_max (lat, lon)
+        t_min_threshold: Threshold for t_min (lat, lon)
+        hw_min_length: Minimum consecutive days for heatwave (default 3)
 
-        # Increment active runs
-        current_run[is_hot] += 1
+    Returns:
+        Dataset with 'heatwave_count' and 'heatwave_days'
+    """
+    # Get heatwave day mask
+    hw_days_mask = count_heatwave_days_vectorized(
+        t_max, t_min, t_max_threshold, t_min_threshold, hw_min_length
+    )
 
-        # Handle ended runs (where current_run > 0 BUT is_hot is False)
-        # Note: We need to handle the case where a run ends OR it is the last timestep
-        if t < n_time - 1:
-            # Normal case: run ends if it was active (accum > 0) and now is not hot
-            ended_mask = (current_run > 0) & (~is_hot)
+    # Total heatwave days
+    total_hw_days = hw_days_mask.sum(dim="time")
 
-            # Reset accumulator for non-hot cells
-            # We must process the 'ended' stats before resetting 0s,
-            # but actually we can just process ended_mask.
+    # Count heatwave events (count transitions from 0 to 1)
+    # A new heatwave starts when current day is heatwave but previous wasn't
+    hw_starts = hw_days_mask.astype(int).diff(dim="time") == 1
+    # Also count if first day is a heatwave day
+    first_day_hw = hw_days_mask.isel(time=0)
+    hw_count = hw_starts.sum(dim="time") + first_day_hw.astype(int)
 
-            # Apply heatwave logic to ended runs
-            valid_hw = ended_mask & (current_run > days_threshold)
-
-            if np.any(valid_hw):
-                hw_counts[valid_hw] += 1
-                hw_days[valid_hw] += current_run[valid_hw]
-
-            # Reset counter where heatwave broke
-            current_run[~is_hot] = 0
-
-        else:
-            # Last timestep boundary case
-            # Any runs still active are checked
-            valid_hw = current_run > days_threshold
-            hw_counts[valid_hw] += 1
-            hw_days[valid_hw] += current_run[valid_hw]
-
-    # 4. Wrap result in Dataset
-    coords = {"latitude": datasets[0].latitude, "longitude": datasets[0].longitude}
-
+    # Create output dataset
     ds_out = xr.Dataset(
         {
-            "heatwave_count": (("latitude", "longitude"), hw_counts),
-            "heatwave_days": (("latitude", "longitude"), hw_days),
-        },
-        coords=coords,
+            "heatwave_count": hw_count.astype(np.int16),
+            "heatwave_days": total_hw_days.astype(np.int16),
+        }
     )
+
+    ds_out["heatwave_count"].attrs = {
+        "units": "1",
+        "long_name": "Number of heatwave events",
+    }
+    ds_out["heatwave_days"].attrs = {
+        "units": "days",
+        "long_name": "Total heatwave days",
+    }
 
     return ds_out
 
 
-def process_year_and_save(
-    year, input_dir, output_dir, t_thresholds, var_names=["t_min", "t_max"]
-):
+def process_year_and_save(year, input_dir, output_dir, t_thresholds, var_names=None):
     """
     Worker function for parallel processing.
     """
-    input_file = input_dir / f"{year}_temperature_summary.nc"
+    if var_names is None:
+        var_names = ["t_min", "t_max"]
+
+    input_file = input_dir / f"{year}_daily_summaries.nc"
     output_file = output_dir / f"heatwave_indicators_{year}.nc"
 
     if output_file.exists():
         return f"Skipped {year} (Exists)"
 
-    # Load Data
     try:
         ds = xr.open_dataset(input_file)
 
-        # Optional: Load Dec 29-31 of previous year here and concat
-        # to fix Jan 1st boundary issues.
-
-        data_arrays = [ds[v] for v in var_names]
-
-        # Calculate
-        results = calculate_heatwave_metrics(data_arrays, t_thresholds)
+        # Use vectorized version for speed
+        results = calculate_heatwave_metrics_vectorized(
+            t_max=ds[var_names[1]],  # t_max
+            t_min=ds[var_names[0]],  # t_min
+            t_max_threshold=t_thresholds[1],
+            t_min_threshold=t_thresholds[0],
+            hw_min_length=3,
+        )
 
         # Expand dims for concatenation later if needed
         results = results.expand_dims(dim={"year": [year]})
 
-        # Save (Compresion recommended for float/int maps)
+        # Save with compression
         encoding = {v: {"zlib": True, "complevel": 5} for v in results.data_vars}
         results.to_netcdf(output_file, encoding=encoding)
+
+        ds.close()
+        del ds, results
 
         return f"Processed {year}"
 
@@ -154,39 +183,30 @@ def process_year_and_save(
 
 
 def main():
-    # 1. Setup paths and quantiles
-    quantile_val = Vars.quantiles[0]  # e.g., 0.95
-
-    # Load thresholds (climatology)
-    # Ideally load this once before the loop if small enough,
-    # or pass paths to workers if very large.
+    # 1. Load thresholds (climatology)
     t_thresholds = []
     for var in ["t_min", "t_max"]:
-        q_str = "_".join([str(int(100 * q)) for q in Vars.quantiles])
         clim_file = (
             DirsLocal.e5l_q
-            / f"daily_{var}_quantiles_{q_str}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc"
+            / f"daily_{var}_quantiles_{Vars.quantiles}_{Vars.year_reference_start}-{Vars.year_reference_end}.nc"
         )
-        with xr.open_dataset(clim_file) as ds:
-            # Squeeze to remove quantile dim after selection
-            thresh = (
-                ds.sel(quantile=quantile_val, method="nearest").to_array().squeeze()
-            )
-            t_thresholds.append(thresh.load())  # Load into memory for speed
+        ds = xr.open_dataset(clim_file)
+        # Load threshold into memory
+        thresh = ds[var].load()
+        t_thresholds.append(thresh)
+        ds.close()
 
     # 2. Prepare Analysis Years
     years = Vars.get_analysis_years()
 
     # Ensure output directory exists
-    # Using one folder for both indicators keeps things cleaner
-    output_dir = DirsLocal.dir_results_heatwaves  # e.g. "results/heatwaves"
+    output_dir = DirsLocal.dir_results_heatwaves
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # 3. Run Parallel Processing
-    # Single pass for both indicators
-    results = Parallel(n_jobs=6, verbose=10)(
+    results = Parallel(n_jobs=4, verbose=10)(
         delayed(process_year_and_save)(
-            year, DirsLocal.dir_era_daily, output_dir, t_thresholds, ["t_min", "t_max"]
+            year, DirsLocal.e5l_d, output_dir, t_thresholds, ["t_min", "t_max"]
         )
         for year in years
     )
@@ -195,5 +215,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # pass
     main()
