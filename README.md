@@ -29,7 +29,7 @@ To download the data you need to:
 3. Preprocess the data using [2_daily_summaries.py](python_code/weather/b_daily_summaries.py)
 4. Calculate the quantiles if the reference period has changed
    using [calculate_quantiles.py](python_code/weather/c_calculate_quantiles.py). Otherwise, you can skip it.
-5. Calculate the heatwaves occurrences using [calculate_heatwaves.py](python_code/weather/d_calculate_heatwaves.py)
+5. Calculate the heatwaves occurrences using [calculate_heatwaves.py](python_code/weather/d_calculate_heatwaves_gadi.py)
 
 For the moment I am keeping the old heatwave data used in the previous report, but I should remove the
 `results/heatwave/results_2025` folder
