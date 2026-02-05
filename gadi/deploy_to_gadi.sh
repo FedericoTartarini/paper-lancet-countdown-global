@@ -7,16 +7,16 @@ REMOTE_DIR="~/paper-lancet-countdown-global"
 
 # Exclude list to avoid syncing unnecessary large files or local envs
 EXCLUDE_LIST=(
-    "__pycache__"
-    ".git"
-    ".idea"
-    ".vscode"
-    "venv"
-    "env"
+    "__pycache__/"
+    ".git/"
+    ".idea/"
+    ".vscode/"
+    "venv/"
+    "env/"
     "*.pyc"
     ".DS_Store"
-    "Lancet Countdown Heatwave 2024 v1.0.2.zip"
-    "manuscript"
+    "manuscript/"
+    "logs/"
 )
 
 # Build the exclude arguments array
@@ -33,6 +33,7 @@ echo "Syncing code to ${GADI_USER}@${GADI_HOST}:${REMOTE_DIR}..."
 ssh ${GADI_USER}@${GADI_HOST} "mkdir -p ${REMOTE_DIR}"
 
 # Run rsync
+echo "Running: rsync -avzP ${rsync_args[*]} ./ ${GADI_USER}@${GADI_HOST}:${REMOTE_DIR}/"
 rsync -avzP "${rsync_args[@]}" ./ ${GADI_USER}@${GADI_HOST}:${REMOTE_DIR}/
 
 # Clean up old log files on Gadi
