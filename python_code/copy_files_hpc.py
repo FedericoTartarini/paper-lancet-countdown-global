@@ -140,21 +140,20 @@ def copy_remote_to_local(
 
 
 if __name__ == "__main__":
-    # Copy quantiles from local to Gadi
-    copy_local_to_remote(
-        source_dir=DirsLocal.e5l_q,
-        remote_dest_dir=DirsGadi.e5l_q,
-    )
-
-    # Copy daily summaries from local to Gadi
-    copy_local_to_remote(
-        source_dir=DirsLocal.e5l_d,
-        remote_dest_dir=DirsGadi.e5l_d,
-    )
-
-    # Example: Copy files from Gadi to local
-    # copy_remote_to_local(
-    #     remote_source_dir=DirsGadi.e5l_d,
-    #     dest_dir=Path("/Users/ftar3919/Downloads/test"),
-    #     file_extension=".nc",
+    # # Copy quantiles from local to Gadi
+    # copy_local_to_remote(
+    #     source_dir=DirsLocal.e5l_q,
+    #     remote_dest_dir=DirsGadi.e5l_q,
     # )
+    #
+    # # Copy daily summaries from local to Gadi
+    # copy_local_to_remote(
+    #     source_dir=DirsLocal.e5l_d,
+    #     remote_dest_dir=DirsGadi.e5l_d,
+    # )
+
+    # copy heatwave results from Gadi to local
+    copy_remote_to_local(
+        remote_source_dir=DirsGadi.hw_min_max,
+        dest_dir=DirsLocal.hw_min_max,
+    )
