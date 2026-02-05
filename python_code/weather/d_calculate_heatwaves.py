@@ -13,8 +13,8 @@ counting all heatwave days (not just the minimum length).
 
 import numpy as np
 import xarray as xr
-from joblib import Parallel, delayed
 from my_config import Vars, DirsLocal
+from tqdm import tqdm
 
 # Keep attributes to preserve metadata/units
 xr.set_options(keep_attrs=True)
@@ -200,18 +200,23 @@ def main():
     years = Vars.get_analysis_years()
 
     # Ensure output directory exists
-    output_dir = DirsLocal.dir_results_heatwaves
+    output_dir = DirsLocal.hw_min_max
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 3. Run Parallel Processing
-    results = Parallel(n_jobs=4, verbose=10)(
-        delayed(process_year_and_save)(
-            year, DirsLocal.e5l_d, output_dir, t_thresholds, ["t_min", "t_max"]
-        )
-        for year in years
-    )
+    # 3. Process each year sequentially (memory-efficient) with progress bar
+    with tqdm(total=len(years), desc="Processing years") as pbar:
+        for year in years:
+            result = process_year_and_save(
+                year=year,
+                input_dir=DirsLocal.e5l_d,
+                output_dir=output_dir,
+                t_thresholds=t_thresholds,
+                var_names=["t_min", "t_max"],
+            )
+            pbar.set_postfix_str(result)
+            pbar.update(1)
 
-    print("\n".join(results))
+    print("🎉 Done!")
 
 
 if __name__ == "__main__":
