@@ -75,6 +75,11 @@ class DirsGadi:
 
     # Output: Daily summaries on scratch (fast write access)
     e5l_d = data / Dirs.e5l / Dirs.e5l_d / Dirs.e5l_t
+    e5l_q = data / Dirs.e5l / Dirs.quantiles
+
+    results = data / Dirs.results
+    hw = results / Dirs.heatwaves
+    hw_min_max = hw / "q_min_max"
 
 
 def ensure_directories(path_dirs: list[Path]):
@@ -83,4 +88,4 @@ def ensure_directories(path_dirs: list[Path]):
 
 
 if __name__ == "__main__":
-    print(DirsLocal.e5l_d)
+    print(DirsGadi.scratch)
