@@ -1,0 +1,56 @@
+#!/bin/bash
+#PBS -N heatwave_year
+#PBS -P mn51
+#PBS -q normal
+#PBS -l ncpus=1
+#PBS -l mem=32GB
+#PBS -l walltime=00:10:00
+#PBS -l storage=gdata/zz93+gdata/xp65+scratch/mn51
+#PBS -l wd
+#PBS -j oe
+#PBS -M federico.tartarini@sydney.edu.au
+#PBS -m a
+
+# PBS job script for calculating heatwave indicators for a single year
+# This script processes data in latitude chunks (no Dask needed)
+#
+# Usage (from Gadi):
+#   qsub -v YEAR=2020 job_heatwaves_single_year.pbs
+
+# Load required modules
+module use /g/data/xp65/public/modules
+module load conda/analysis3-25.10
+
+# Check if YEAR variable is set
+if [ -z "$YEAR" ]; then
+    echo "ERROR: YEAR variable not set. Use: qsub -v YEAR=2020 job_heatwaves_single_year.pbs"
+    exit 1
+fi
+
+# Build command
+CMD="python3 python_code/weather/d_calculate_heatwaves_gadi.py --year $YEAR"
+
+echo "Processing heatwaves for year $YEAR"
+
+# Print job info
+echo "======================================================================"
+echo "Job started: $(date)"
+echo "Job ID: $PBS_JOBID"
+echo "Job Name: $PBS_JOBNAME"
+echo "Working Directory: $PBS_O_WORKDIR"
+echo "Year to process: $YEAR"
+echo "Workers: $NCPUS"
+echo "Command: $CMD"
+echo "======================================================================"
+
+# Run the Python script
+$CMD
+
+EXIT_CODE=$?
+
+echo "======================================================================"
+echo "Job finished: $(date)"
+echo "Exit code: $EXIT_CODE"
+echo "======================================================================"
+
+exit $EXIT_CODE
