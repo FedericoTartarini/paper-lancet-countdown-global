@@ -57,7 +57,7 @@ OLD_DIR = Path(
 NEW_DIR = DirsLocal.hw_min_max
 
 # Output directory for plots
-OUTPUT_DIR = DirsLocal.hw_min_max / "heatwave_comparison_plots"
+OUTPUT_DIR = project_root / "python_code" / "verify_output" / "compare_heatwave_results"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 
