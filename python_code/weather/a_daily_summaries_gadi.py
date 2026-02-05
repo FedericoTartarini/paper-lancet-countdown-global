@@ -9,8 +9,8 @@ This script is optimized for NCI Gadi HPC:
 - Uses Dask distributed for parallel processing
 
 Usage:
-    python python_code/weather/b_daily_summaries_gadi.py --year 1980
-    python python_code/weather/b_daily_summaries_gadi.py --year 1980 --trial  # Process only January for testing
+    python python_code/weather/a_daily_summaries_gadi.py --year 1980
+    python python_code/weather/a_daily_summaries_gadi.py --year 1980 --trial  # Process only January for testing
 
     --trial: Only processes January (for testing the pipeline)
     --year 1980: Processes the entire year 1980 (all 12 months)
@@ -115,7 +115,7 @@ def process_month(
         )
         daily_ds.attrs["source"] = "ERA5-Land hourly data from /g/data/zz93"
         daily_ds.attrs["processing"] = "Resampled to daily min, mean, max"
-        daily_ds.attrs["created_by"] = "b_daily_summaries_gadi.py"
+        daily_ds.attrs["created_by"] = "a_daily_summaries_gadi.py"
 
         # Rechunk for output
         output_chunks = {"time": -1, "latitude": 600, "longitude": 1200}
@@ -246,7 +246,7 @@ def process_year(year: int, trial: bool = False) -> None:
         ds_year.attrs["processing"] = (
             "Resampled to daily min, mean, max (monthly processing)"
         )
-        ds_year.attrs["created_by"] = "b_daily_summaries_gadi.py"
+        ds_year.attrs["created_by"] = "a_daily_summaries_gadi.py"
 
         # Encoding for yearly file
         encoding = {
