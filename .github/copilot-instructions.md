@@ -2,6 +2,27 @@
 
 This project generates the Heatwave Indicator for the Lancet Countdown Global Report.
 It runs on the NCI Gadi supercomputer and processes large climate datasets (ERA5-Land) and population data.
+Some of the calculations are computationally intensive and require careful memory management and optimization.
+Some other can be run locally.
+When I ask you to change the code read the document docstring, the docstring of the function and the comments in the
+code to understand the context and the requirements of the code.
+Also review the README.md and the README-GADI.md to understand the overall structure of the code and the workflow.
+If there are any questions about the code, the workflow, the data or the requirements, please ask me before making any
+changes to the code.
+Never make changes to the code without understanding the context and the requirements, as it can break the code and
+cause issues in the workflow.
+Never assume that you understand the context and the requirements without asking me, as it can lead to misunderstandings
+and mistakes.
+If two documents or comments contradict each other, please ask me to clarify which one is correct before making any
+changes to the code.
+
+# Aim of the project
+
+## Weather
+
+- Process ERA5-Land hourly data into daily summaries (e.g., max temperature).
+- Calculate 95th percentile thresholds for heatwave definitions.
+- Identify heatwave days based on thresholds.
 
 # Technology Stack
 
