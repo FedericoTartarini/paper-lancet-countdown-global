@@ -285,11 +285,6 @@ def main():
         # Open dataset
         ds = xr.open_dataset(quantile_file)
 
-        # filter out values outside of the reasonable range before checks
-        data = ds[t_var]
-        data = data.where((data >= 180) & (data <= 350))
-        ds[t_var] = data
-
         # Run checks
         if not check_file_structure(ds, t_var):
             all_checks_passed = False
