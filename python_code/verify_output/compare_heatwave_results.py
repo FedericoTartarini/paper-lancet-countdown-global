@@ -33,8 +33,19 @@ import xarray as xr
 from scipy.stats import pearsonr
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+import warnings
 
 from my_config import DirsLocal
+
+# Suppress shapely warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="shapely")
+# Suppress cartopy facecolor warnings
+warnings.filterwarnings(
+    "ignore",
+    message="facecolor will have no effect",
+    category=UserWarning,
+    module="cartopy",
+)
 
 # Set up matplotlib for non-interactive use
 plt.switch_backend("Agg")
@@ -106,17 +117,14 @@ def load_and_regrid(year):
         f"   New longitude range: {new_ds.longitude.values.min():.2f} to {new_ds.longitude.values.max():.2f}"
     )
 
-    # select only texas
-    # new_ds.heatwave_days.sel(latitude=slice(37, 25), longitude=slice(-105, -93)).values
+    # Convert old_ds longitude from 0-360 to -180-180 for consistency
+    old_ds = old_ds.assign_coords(longitude=((old_ds.longitude + 180) % 360) - 180)
+    old_ds = old_ds.sortby("longitude")
 
     # Regrid new data to old resolution
     new_regridded = new_ds.interp(
-        latitude=old_ds.latitude, longitude=old_ds.longitude - 180, method="linear"
+        latitude=old_ds.latitude, longitude=old_ds.longitude, method="linear"
     )
-
-    # new_regridded.heatwave_days.sel(
-    #     latitude=slice(25, 37), longitude=slice(-105, -93)
-    # ).values
 
     # Apply land mask: mask old data to only include areas where ERA5-Land has data
     # This ensures fair comparison by excluding ocean areas from ERA5
@@ -160,7 +168,7 @@ def create_comparison_plots(year, old_ds, new_ds):
         # Plot old
         ax = axes[i * 3]
         mesh1 = ax.pcolormesh(
-            lon - 180,
+            lon,
             lat,
             old_data,
             cmap="Reds",
@@ -172,13 +180,13 @@ def create_comparison_plots(year, old_ds, new_ds):
         ax.set_title(f"ERA5 {var.replace('_', ' ').title()}", fontsize=12)
         ax.coastlines(resolution="50m", color="black", linewidth=0.5)
         ax.add_feature(cfeature.BORDERS, linestyle=":", color="gray")
-        ax.add_feature(cfeature.LAND, facecolor="lightgray", alpha=0.3)
+        ax.add_feature(cfeature.LAND)
         plt.colorbar(mesh1, ax=ax, orientation="horizontal", pad=0.05, shrink=0.8)
 
         # Plot new
         ax = axes[i * 3 + 1]
         mesh2 = ax.pcolormesh(
-            lon - 180,
+            lon,
             lat,
             new_data,
             cmap="Reds",
@@ -190,7 +198,7 @@ def create_comparison_plots(year, old_ds, new_ds):
         ax.set_title(f"ERA5-Land {var.replace('_', ' ').title()}", fontsize=12)
         ax.coastlines(resolution="50m", color="black", linewidth=0.5)
         ax.add_feature(cfeature.BORDERS, linestyle=":", color="gray")
-        ax.add_feature(cfeature.LAND, facecolor="lightgray", alpha=0.3)
+        ax.add_feature(cfeature.LAND)
         plt.colorbar(mesh2, ax=ax, orientation="horizontal", pad=0.05, shrink=0.8)
 
         # Plot difference
@@ -199,7 +207,7 @@ def create_comparison_plots(year, old_ds, new_ds):
         # Use different color scale for differences
         diff_vmax = max(abs(np.nanmin(diff)), abs(np.nanmax(diff)))
         mesh3 = ax.pcolormesh(
-            lon - 180,
+            lon,
             lat,
             diff,
             cmap="RdBu_r",
@@ -211,10 +219,10 @@ def create_comparison_plots(year, old_ds, new_ds):
         ax.set_title("Difference (ERA5-Land - ERA5)", fontsize=12)
         ax.coastlines(resolution="50m", color="black", linewidth=0.5)
         ax.add_feature(cfeature.BORDERS, linestyle=":", color="gray")
-        ax.add_feature(cfeature.LAND, facecolor="lightgray", alpha=0.3)
+        ax.add_feature(cfeature.LAND)
         plt.colorbar(mesh3, ax=ax, orientation="horizontal", pad=0.05, shrink=0.8)
 
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.savefig(OUTPUT_DIR / f"heatwave_maps_{year}.png", dpi=150, bbox_inches="tight")
     plt.close()
 
@@ -271,8 +279,8 @@ def create_scatter_plots(year, old_ds, new_ds):
         old_clean = old_flat[valid_mask]
         new_clean = new_flat[valid_mask]
 
-        # Scatter plot
-        axes[i].scatter(old_clean, new_clean, alpha=0.1, s=1)
+        # Hexbin plot
+        hb = axes[i].hexbin(old_clean, new_clean, gridsize=50, cmap="Blues", mincnt=1)
         axes[i].set_xlabel(f"ERA5 {var.replace('_', ' ').title()}")
         axes[i].set_ylabel(f"ERA5-Land {var.replace('_', ' ').title()}")
         axes[i].set_title(f"{var.replace('_', ' ').title()} Correlation")
@@ -284,6 +292,8 @@ def create_scatter_plots(year, old_ds, new_ds):
             label="1:1 line",
         )
         axes[i].legend()
+        # Add colorbar for hexbin
+        plt.colorbar(hb, ax=axes[i], label="Count")
 
         # Compute statistics
         if len(old_clean) > 0:
@@ -370,8 +380,8 @@ def main():
         years_to_compare = common_years
     else:
         # Default: compare first year
-        years_to_compare = [common_years[0]]
-        print(f"Defaulting to year {common_years[0]} (use --all-years for all)")
+        years_to_compare = [common_years[-1]]
+        print(f"Defaulting to year {common_years[-1]} (use --all-years for all)")
 
     print(f"\n📁 Plots will be saved to: {OUTPUT_DIR}")
 
