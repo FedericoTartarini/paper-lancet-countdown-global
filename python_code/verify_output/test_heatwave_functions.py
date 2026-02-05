@@ -1,5 +1,5 @@
 """
-Test script for the heatwave calculation functions in d_calculate_heatwaves.py.
+Test script for the heatwave calculation functions in d_calculate_heatwaves_gadi.py.
 
 This script creates sample temperature data and tests the vectorized heatwave
 calculation functions to ensure they work correctly.
@@ -15,7 +15,7 @@ import xarray as xr
 project_root = Path(__file__).resolve().parents[2]
 sys.path.append(str(project_root))
 
-from python_code.weather.d_calculate_heatwaves import (
+from python_code.weather.d_calculate_heatwaves_gadi import (
     count_heatwave_days_vectorized,
     calculate_heatwave_metrics_vectorized,
 )
