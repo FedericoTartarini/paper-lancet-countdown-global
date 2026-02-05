@@ -39,6 +39,7 @@ class Dirs:
     heatwaves = "heatwaves"
     reanalysis = "reanalysis"
     quantiles = "quantiles"
+    results = "results"
 
 
 class DirsLocal:
@@ -53,6 +54,10 @@ class DirsLocal:
     e5l_h = data / Dirs.e5l / Dirs.e5l_h / Dirs.e5l_t
     e5l_d = data / Dirs.e5l / Dirs.e5l_d / Dirs.e5l_t
     e5l_q: Path = data / Dirs.e5l / Dirs.quantiles
+
+    results = data / Dirs.results
+    hw = results / Dirs.heatwaves
+    hw_min_max = hw / "q_min_max"
 
 
 class DirsGadi:
