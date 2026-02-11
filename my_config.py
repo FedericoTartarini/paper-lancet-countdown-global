@@ -40,6 +40,7 @@ class Dirs:
     reanalysis = "reanalysis"
     quantiles = "quantiles"
     results = "results"
+    pop = "population"
 
 
 class DirsLocal:
@@ -58,6 +59,11 @@ class DirsLocal:
     results = data / Dirs.results
     hw = results / Dirs.heatwaves
     hw_min_max = hw / "q_min_max"
+
+    # population data
+    # dir_pop_raw_ssd = Path("/Volumes/T7/lancet_countdown/population")
+    pop_raw_ssd = data / Dirs.pop / "raw"
+    pop_e5l_grid = data / Dirs.pop / "era_grid"
 
 
 class DirsGadi:
@@ -81,6 +87,25 @@ class DirsGadi:
     hw = results / Dirs.heatwaves
     hw_min_max = hw / "q_min_max"
 
+    # population data
+    pop_raw = data / Dirs.pop / "raw"
+    pop_e5l_grid = data / Dirs.pop / "era_grid"
+
+
+class VarsWorldPop:
+    """Variables for WorldPop data processing."""
+
+    age_groups: List[List[int]] = [[0], [65, 70, 75, 80, 85, 90]]
+    year_min: int = 2000
+    year_max: int = 2025
+    under_1_label: str = "under_1"
+    over_65_label: str = "65_over"
+
+    @classmethod
+    def get_years_range(cls) -> List[int]:
+        """Return all years for WorldPop processing as a list."""
+        return list(range(cls.year_min, cls.year_max + 1))
+
 
 def ensure_directories(path_dirs: list[Path]):
     for path_dir in path_dirs:
@@ -88,4 +113,4 @@ def ensure_directories(path_dirs: list[Path]):
 
 
 if __name__ == "__main__":
-    print(DirsGadi.scratch)
+    print(DirsGadi.e5l_h)
