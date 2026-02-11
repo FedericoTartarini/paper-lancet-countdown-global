@@ -152,8 +152,14 @@ if __name__ == "__main__":
     #     remote_dest_dir=DirsGadi.e5l_d,
     # )
 
-    # copy heatwave results from Gadi to local
-    copy_remote_to_local(
-        remote_source_dir=DirsGadi.hw_min_max,
-        dest_dir=DirsLocal.hw_min_max,
+    # # copy heatwave results from Gadi to local
+    # copy_remote_to_local(
+    #     remote_source_dir=DirsGadi.hw_min_max,
+    #     dest_dir=DirsLocal.hw_min_max,
+    # )
+
+    # copy population data from local to Gadi
+    copy_local_to_remote(
+        source_dir=DirsLocal.pop_raw_ssd,
+        remote_dest_dir=DirsGadi.pop_raw,
     )
