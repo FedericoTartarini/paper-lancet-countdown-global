@@ -30,6 +30,16 @@ from my_config import Vars, VarsWorldPop, DirsLocal, FilesLocal
 
 # Suppress simple warnings for cleaner output
 warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message='facecolor will have no effect as it has been defined as "never".',
+)
+warnings.filterwarnings(
+    "ignore",
+    category=RuntimeWarning,
+    message="invalid value encountered in create_collection",
+)
 
 
 def upsample_population_with_mask(pop_data, era_template):
@@ -240,12 +250,10 @@ def main():
     print("--- Starting Population Combination ---")
 
     # 1. Define Years
-    # Ideally get this from config, but falling back to provided range
-    modern_years = range(2000, 2026)
+    modern_years = range(2000, 2026)  # todo this should be in the config file
     historical_years = range(1980, 2000)  # Adjust based on available data
 
     # 2. Load Modern Data (Already Regridded to ERA5-Land)
-    # ---------------------------------------------------------
     print("\n[1/4] Loading Modern WorldPop Data...")
     infants_worldpop = load_population_data(age_group="under_1", years=modern_years)
     elderly_worldpop = load_population_data(age_group="65_over", years=modern_years)
@@ -256,6 +264,7 @@ def main():
 
     # Plot WorldPop for verification
     plot_worldpop_region(data=infants_worldpop, year=2020)
+    plot_worldpop_region(data=elderly_worldpop, year=2020)
 
     # 3. Load & Process Historical Data (Pre-2000)
     # ---------------------------------------------------------
@@ -282,17 +291,19 @@ def main():
         age_band_lower_bound=0,
     )
 
-    print(
-        f"  > Pre-2000 Infants (Coarse) Total: {infants_lancet.sum().values / 1e6:.2f} M"
-    )
-
     # Transpose and Upsample
     infants_lancet = infants_lancet.transpose("year", "latitude", "longitude")
     infants_lancet_fine = upsample_population_with_mask(infants_lancet, era_template)
 
     # Verify conservation
+    original_total = infants_lancet.sum().values
+    upsampled_total = infants_lancet_fine.sum().values
+    print("\nInfants (Pre-2000) Upsampling Verification:")
     print(
-        f"  > Pre-2000 Infants (Fine) Total:   {infants_lancet_fine.sum().values / 1e6:.2f} M"
+        f"  > (Coarse) Total: {original_total / 1e6:.2f} M \n",
+        f"  > (Fine) Total:   {upsampled_total / 1e6:.2f} M \n",
+        f"  > Difference: {upsampled_total - original_total:.0f} "
+        f"({(upsampled_total - original_total) / max(original_total, 1) * 100:.2f}%)",
     )
 
     # Plot verification for one year
@@ -311,46 +322,83 @@ def main():
     elderly_lancet = elderly_lancet.transpose("year", "latitude", "longitude")
     elderly_lancet_fine = upsample_population_with_mask(elderly_lancet, era_template)
 
-    # # 4. Concatenate Historical + Modern
-    # # ---------------------------------------------------------
-    # print("\n[3/4] Combining Datasets...")
-    #
-    # # Convert DataArrays to Datasets for merging if necessary, or ensure variable names match
-    # # Usually we want a Dataset with variable 'pop'
-    #
-    # def prep_dataset(da, name="pop"):
-    #     ds = da.to_dataset(name=name) if isinstance(da, xr.DataArray) else da
-    #     if "demographic_totals" in ds:
-    #         ds = ds.rename({"demographic_totals": name})
-    #     return ds
-    #
-    # ds_inf_hist = prep_dataset(infants_lancet_fine)
-    # ds_inf_mod = prep_dataset(infants_worldpop)
-    #
-    # ds_eld_hist = prep_dataset(elderly_lancet_fine)
-    # ds_eld_mod = prep_dataset(elderly_worldpop)
-    #
-    # # Concatenate
-    # infants_final = xr.concat([ds_inf_hist, ds_inf_mod], dim="year")
-    # elderly_final = xr.concat([ds_eld_hist, ds_eld_mod], dim="year")
+    # Verify conservation for elderly
+    original_total_eld = elderly_lancet.sum().values
+    upsampled_total_eld = elderly_lancet_fine.sum().values
+    print("\nElderly (Pre-2000) Upsampling Verification:")
+    print(
+        f"  > (Coarse) Total: {original_total_eld / 1e6:.2f} M \n",
+        f"  > (Fine) Total:   {upsampled_total_eld / 1e6:.2f} M \n",
+        f"  > Difference: {upsampled_total_eld - original_total_eld:.0f} "
+        f"({(upsampled_total_eld - original_total_eld) / max(original_total_eld, 1) * 100:.2f}%)",
+    )
 
-    # # 5. Save Results
-    # # ---------------------------------------------------------
-    # print("\n[4/4] Saving to NetCDF...")
-    #
-    # def save_clean(ds, path):
-    #     if path.exists():
-    #         os.remove(path)
-    #     # Ensure encoding for compression
-    #     comp = {"zlib": True, "complevel": 5}
-    #     encoding = {var: comp for var in ds.data_vars}
-    #     ds.to_netcdf(path, encoding=encoding)
-    #     print(f"  Saved: {path}")
-    #
-    # save_clean(infants_final, DirsLocal.dir_pop_infants_file)
-    # save_clean(elderly_final, DirsLocal.dir_pop_elderly_file)
-    #
-    # print("\n✅ Processing Complete.")
+    # plot verification for elderly
+    plot_pre_post_upsampling(
+        pre_data=elderly_lancet,
+        post_data=elderly_lancet_fine,
+        year=1990,
+        region_name="Elderly_Med_Coast",
+    )
+
+    # 4. Concatenate Historical + Modern
+    # ---------------------------------------------------------
+    print("\n[3/4] Combining Datasets...")
+
+    # Convert DataArrays to Datasets for merging if necessary, or ensure variable names match
+
+    def prep_dataset(da, name="pop"):
+        ds = da.to_dataset(name=name) if isinstance(da, xr.DataArray) else da
+        if "demographic_totals" in ds:
+            ds = ds.rename({"demographic_totals": name})
+
+        # Drop extra coordinates and data variables not needed
+        extra_coords = ["spatial_ref", "band", "age_band_lower_bound"]
+        ds = ds.drop_vars(extra_coords, errors="ignore")
+
+        # Shift longitude to -180..180 if necessary
+        if ds.longitude.max() > 180:
+            ds = ds.assign_coords(longitude=(((ds.longitude + 180) % 360) - 180))
+            ds = ds.sortby("longitude")
+
+        # Sort latitude to match ERA5 (90 to -90, descending)
+        ds = ds.sortby("latitude", ascending=False)
+
+        # Keep only essential: year, latitude, longitude, pop
+        essential_vars = ["pop"]
+        ds = ds[essential_vars]
+
+        return ds
+
+    ds_inf_hist = prep_dataset(infants_lancet_fine)
+    ds_inf_mod = prep_dataset(infants_worldpop)
+
+    ds_eld_hist = prep_dataset(elderly_lancet_fine)
+    ds_eld_mod = prep_dataset(elderly_worldpop)
+
+    # Concatenate
+    infants_final = xr.concat([ds_inf_hist, ds_inf_mod], dim="year")
+    elderly_final = xr.concat([ds_eld_hist, ds_eld_mod], dim="year")
+
+    # 5. Save Results
+    # ---------------------------------------------------------
+    print("\n[4/4] Saving to NetCDF...")
+
+    def save_clean(ds, path):
+        if path.exists():
+            os.remove(path)
+        # Ensure encoding for compression
+        comp = {"zlib": True, "complevel": 5}
+        encoding = {var: comp for var in ds.data_vars}
+        ds.to_netcdf(path, encoding=encoding)
+        print(f"  Saved: {path}")
+
+    DirsLocal.pop_e5l_grid_combined.mkdir(parents=True, exist_ok=True)
+
+    save_clean(infants_final, FilesLocal.pop_infant)
+    save_clean(elderly_final, FilesLocal.pop_over_65)
+
+    print("\n✅ Processing Complete.")
 
 
 if __name__ == "__main__":

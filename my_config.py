@@ -13,6 +13,8 @@ class Vars:
     year_reference_end: int = 2005
     quantiles: List[float] = 0.95
     t_vars: List[str] = ["t_max", "t_min", "t_mean"]
+    infants = "under_1"
+    over_65 = "over_65"
 
     @classmethod
     def get_reference_years(cls) -> List[int]:
@@ -63,12 +65,19 @@ class DirsLocal:
     # population data
     # dir_pop_raw_ssd = Path("/Volumes/T7/lancet_countdown/population")
     pop_raw_ssd = data / Dirs.pop / "raw"
-    pop_e5l_grid = data / Dirs.pop / (Dirs.e5l + "_grid")
+    pop_e5l_grid = data / Dirs.pop / (Dirs.e5l + "-grid")
+    pop_e5l_grid_combined = data / Dirs.pop / (Dirs.e5l + "-grid-combined")
 
 
 class FilesLocal:
     pop_before_2000 = (
-        DirsLocal.data / Dirs.pop / "lancet_2023" / "Hybrid Demographics 1950-2020.nc"
+        DirsLocal.data / Dirs.pop / "lancet-2023" / "Hybrid Demographics 1950-2020.nc"
+    )
+    pop_infant = (
+        DirsLocal.pop_e5l_grid_combined / f"t-{Vars.infants}-regridded-combined.nc"
+    )
+    pop_over_65 = (
+        DirsLocal.pop_e5l_grid_combined / f"t-{Vars.over_65}-regridded-combined.nc"
     )
 
 
