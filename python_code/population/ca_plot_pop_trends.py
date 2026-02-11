@@ -577,7 +577,7 @@ def main():
 
     # Also show interactive quick plots if requested
     df = analyze_population_time_series(
-        directory=DirsLocal.dir_pop_era_grid,
+        directory=DirsLocal.pop_e5l_grid,
         ages_array=["under_1", "65_over", "75_over"],
     )  # legacy per-year t_ files
     print("Interactive summary (legacy t_ files):")

@@ -17,7 +17,7 @@ def load_population_data(age_group, years, suffix="era5_compatible.nc"):
     datasets = []
     for year in years:
         # Load t_{age}_{year} file
-        file_path = DirsLocal.dir_pop_era_grid / f"t_{age_group}_{year}_{suffix}"
+        file_path = DirsLocal.pop_e5l_grid / f"t_{age_group}_{year}_{suffix}"
         if file_path.exists():
             ds = xr.open_dataset(file_path)
             # Standardize time dimension to 'year'
