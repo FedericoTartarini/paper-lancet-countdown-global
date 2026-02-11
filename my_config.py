@@ -63,7 +63,13 @@ class DirsLocal:
     # population data
     # dir_pop_raw_ssd = Path("/Volumes/T7/lancet_countdown/population")
     pop_raw_ssd = data / Dirs.pop / "raw"
-    pop_e5l_grid = data / Dirs.pop / "era_grid"
+    pop_e5l_grid = data / Dirs.pop / (Dirs.e5l + "_grid")
+
+
+class FilesLocal:
+    pop_before_2000 = (
+        DirsLocal.data / Dirs.pop / "lancet_2023" / "Hybrid Demographics 1950-2020.nc"
+    )
 
 
 class DirsGadi:
@@ -89,12 +95,14 @@ class DirsGadi:
 
     # population data
     pop_raw = data / Dirs.pop / "raw"
-    pop_e5l_grid = data / Dirs.pop / "era_grid"
+    pop_e5l_grid = data / Dirs.pop / (Dirs.e5l + "_grid")
 
 
 class VarsWorldPop:
     """Variables for WorldPop data processing."""
 
+    year_worldpop_start: int = 2000
+    year_worldpop_end: int = 2030
     age_groups: List[List[int]] = [[0], [65, 70, 75, 80, 85, 90]]
     year_min: int = 2000
     year_max: int = 2025
