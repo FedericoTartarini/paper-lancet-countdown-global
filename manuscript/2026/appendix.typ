@@ -135,7 +135,6 @@ Results will be updated each year using the latest available climate and populat
 The definition of conditions that constitute a “heatwave” may be altered to align with emerging standardization from organizations such as the World Meteorological Society. 
 The estimation of heat stress risk may also be expanded beyond heatwave days to include thermophysiological indices that account for dry-bulb air temperature, humidity, solar radiation, and wind speed, providing a more comprehensive assessment of heat-related health risks.
 
-/* 
 === Additional Analyses and Figures
 
 @change-heatwave-days illustrates the change in the number of heatwave days in #max_year_analysis compared to the baseline period, highlighting intense events across all continents, particularly in regions such as Africa, Asia. 
@@ -239,7 +238,7 @@ The number of individuals over 65 has more than doubled from approximately 290 m
 
 // todo remove the red line from the plot
 #figure(
-  image("/figures/global_population_trend_absolute.png"),
+  image("/figures/global_population_trend_millions.pdf"),
   caption: [],
 ) <population-trend-absolute>
 
@@ -278,5 +277,4 @@ While climate change drives the increase in heatwave days, population growth als
 For each geographic coordinate, the average annual heatwave days affecting both elderly and infant populations were calculated for 2006–2024. The same calculation was repeated while holding heatwave incidence constant to the 1986–2005 levels, isolating the impact of climate change. Comparing these scenarios reveals how many heatwave days vulnerable populations would have been exposed to purely due to demographic changes.
 Under a constant heatwave incidence at baseline levels, vulnerable populations would have experienced an average of 5.4 heatwave days per person per year in 2006–2024—50% fewer than observed. Infants faced an average increase of 4.6 heatwave days per year, while individuals over 65, a rapidly growing group, experienced an additional 5.3 heatwave days annually. For infants a slight decrease in per-person heatwave exposure (from 4.8 to 4.6) would have been observed if heatwave incidence remained at 1986–2005 levels, reflecting shifts in the geographic distribution of vulnerable populations. No change would have been observed for adults ages 65 years or over.
 
-*/
 #bibliography("references.bib")
