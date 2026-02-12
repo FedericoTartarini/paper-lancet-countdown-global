@@ -1,6 +1,12 @@
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import List
+
+from matplotlib import pyplot as plt
+
+plt.rcParams["figure.figsize"] = [8, 4]
+plt.rcParams["savefig.dpi"] = 300
 
 
 class Vars:
@@ -52,6 +58,7 @@ class DirsLocal:
         "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)"
     )
     data = one_drive / "data" / "lancet" / "countdown-global"
+    project = Path(os.getcwd())
 
     # local directory for ERA5-Land data
     e5l_h = data / Dirs.e5l / Dirs.e5l_h / Dirs.e5l_t
@@ -67,6 +74,9 @@ class DirsLocal:
     pop_raw_ssd = data / Dirs.pop / "raw"
     pop_e5l_grid = data / Dirs.pop / (Dirs.e5l + "-grid")
     pop_e5l_grid_combined = data / Dirs.pop / (Dirs.e5l + "-grid-combined")
+
+    manuscript = project / "manuscript"
+    figures = manuscript / f"{Vars.year_report}" / "figures"
 
 
 class FilesLocal:
