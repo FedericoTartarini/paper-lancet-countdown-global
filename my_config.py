@@ -2,11 +2,15 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import List
+import seaborn as sns
 
 from matplotlib import pyplot as plt
 
 plt.rcParams["figure.figsize"] = [8, 4]
 plt.rcParams["savefig.dpi"] = 300
+plt.rcParams["figure.autolayout"] = True  # Enable tight_layout by default
+plt.rcParams["legend.frameon"] = False  # Disable legend frame by default
+sns.set_theme(style="whitegrid", context="paper", font_scale=1.2)
 
 
 class Vars:
