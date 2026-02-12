@@ -346,6 +346,7 @@ def plot_hovmoller_from_da(da, age_label="under_1"):
     ax.set_title(f"Population by Latitude over Time ({age_label})")
     fig.colorbar(im, ax=ax, label="Population")
     save_fig(fig, f"hovmoller_{age_label}.png")
+    plt.show()
 
 
 def plot_population_trends(infants_da, elderly_da):
@@ -370,6 +371,75 @@ def plot_population_trends(infants_da, elderly_da):
         plt.show()
 
 
+def plot_population_imshow(da, year, age_label, filter_region=None):
+    """
+    Plots population using imshow (Raster) instead of pcolormesh (Vector).
+    Eliminates vertical striping/aliasing artifacts on high-res maps.
+    """
+    import matplotlib.pyplot as plt
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
+    import numpy as np
+
+    # 1. Select Data
+    # Sort strictly ascending to ensure image isn't flipped
+    da = da.sortby("latitude").sortby("longitude")
+
+    if filter_region:
+        data_slice = da.sel(year=year).sel(**filter_region)
+    else:
+        data_slice = da.sel(year=year)
+
+    # Sanity Check: If empty, stop
+    if data_slice.size == 0 or data_slice.sum() == 0:
+        print(f"Region is empty for year {year}. Skipping.")
+        return
+
+    # 2. Calculate Extent (The Half-Pixel Fix)
+    # imshow draws from edge-to-edge. Xarray coords are centers.
+    # We must expand the bounding box by 50% of a pixel size on all sides.
+    lat_res = abs(data_slice.latitude[1] - data_slice.latitude[0])
+    lon_res = abs(data_slice.longitude[1] - data_slice.longitude[0])
+
+    extent = [
+        float(data_slice.longitude.min()) - float(lon_res) / 2,
+        float(data_slice.longitude.max()) + float(lon_res) / 2,
+        float(data_slice.latitude.min()) - float(lat_res) / 2,
+        float(data_slice.latitude.max()) + float(lat_res) / 2,
+    ]
+
+    # 3. Plot
+    fig, ax = plt.subplots(
+        figsize=(12, 8), subplot_kw={"projection": ccrs.PlateCarree()}
+    )
+
+    # Get robust max value (98th percentile) to avoid one city blowing out the scale
+    vmax = float(data_slice.quantile(0.98))
+
+    im = ax.imshow(
+        data_slice.values,
+        origin="lower",  # Essential because we sorted Lat ascending
+        extent=extent,
+        transform=ccrs.PlateCarree(),
+        cmap="viridis",
+        vmin=0,
+        vmax=vmax,
+        interpolation="nearest",  # "nearest" keeps pixels crisp, "bilinear" smooths them
+    )
+
+    # 4. Decoration
+    ax.set_title(f"{age_label} Population - {year}")
+    ax.add_feature(cfeature.COASTLINE, linewidth=1.5, color="white", alpha=0.5)
+    ax.add_feature(cfeature.BORDERS, linestyle=":", alpha=0.5)
+
+    # Add colorbar
+    plt.colorbar(im, ax=ax, label="Population Count", shrink=0.6)
+
+    plt.tight_layout()
+
+    plt.show()
+
+
 def main():
     """Load combined files and produce all plots, saving them into the interim folder."""
 
@@ -383,6 +453,15 @@ def main():
     # Hovmöller per group
     plot_hovmoller_from_da(infants_da, age_label="under_1")
     plot_hovmoller_from_da(elderly_da, age_label="65_over")
+
+    # World maps for a specific year
+    plot_population_imshow(
+        da=infants_da.pop,
+        year=2020,
+        age_label="Infants (under_1)",
+        filter_region={"latitude": slice(43, 48), "longitude": slice(7, 15)},
+    )
+    plot_population_imshow(elderly_da.pop, 1999, "Elderly (65_over)")
 
 
 if __name__ == "__main__":
