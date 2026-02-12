@@ -1,24 +1,23 @@
 """
-Combine Population Data Module
+Combine Population Data Module - FIXED & ROBUST
 
 This module combines:
 1. Historical Population (Pre-2000): Coarse resolution (0.25°), upsampled to ERA5-Land (0.1°).
 2. Modern Population (2000-2025): High resolution WorldPop, already regridded to ERA5-Land.
 
-It handles the 'Ocean Pixel' issue during upsampling and stitches the time series together.
+FIXES:
+- Enforces strict -180..180 longitude convention on ALL inputs.
+- Validates grid alignment before merging to prevent mixed coordinate systems.
 """
 
-import os
 from pathlib import Path
 import warnings
-
 import xarray as xr
-import rioxarray
 from rasterio.enums import Resampling
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-import cartopy.feature as cfeature
 import numpy as np
+from scipy.spatial import cKDTree
 
 # Add project root to sys.path
 try:
@@ -28,73 +27,153 @@ except NameError:
 
 from my_config import Vars, VarsWorldPop, DirsLocal, FilesLocal
 
-# Suppress simple warnings for cleaner output
+# Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings(
-    "ignore",
-    category=UserWarning,
-    message='facecolor will have no effect as it has been defined as "never".',
-)
-warnings.filterwarnings(
-    "ignore",
-    category=RuntimeWarning,
-    message="invalid value encountered in create_collection",
-)
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+
+def standardize_longitude(ds):
+    """
+    Forces Longitude to be in the range -180 to 180.
+    """
+    # Check for common longitude names
+    lon_name = "longitude"
+    if "lon" in ds.dims and "longitude" not in ds.dims:
+        ds = ds.rename({"lon": "longitude"})
+    elif "x" in ds.dims and "longitude" not in ds.dims:
+        ds = ds.rename({"x": "longitude"})
+
+    # If no longitude, return (likely not spatial)
+    if "longitude" not in ds.dims:
+        return ds
+
+    # Convert 0..360 to -180..180
+    # Logic: (lon + 180) % 360 - 180
+    ds = ds.assign_coords(longitude=(((ds.longitude + 180) % 360) - 180))
+
+    # SORTING IS CRITICAL after wrapping
+    ds = ds.sortby("longitude").sortby("latitude")
+
+    return ds
+
+
+def validate_alignment(ds1, ds2, name1="Dataset 1", name2="Dataset 2"):
+    """
+    Checks if two datasets are on the exact same spatial grid.
+    Raises an error if they do not match.
+    """
+    print(f"Validating alignment between {name1} and {name2}...")
+
+    # 1. Check Longitude Extents
+    min1, max1 = ds1.longitude.min().item(), ds1.longitude.max().item()
+    min2, max2 = ds2.longitude.min().item(), ds2.longitude.max().item()
+
+    if not np.isclose(min1, min2, atol=1e-3) or not np.isclose(max1, max2, atol=1e-3):
+        raise ValueError(
+            f"❌ Longitude mismatch!\n  {name1}: {min1} to {max1}\n  {name2}: {min2} to {max2}"
+        )
+
+    # 2. Check Size
+    if ds1.longitude.size != ds2.longitude.size:
+        raise ValueError(
+            f"❌ Longitude size mismatch! {name1}: {ds1.longitude.size}, {name2}: {ds2.longitude.size}"
+        )
+
+    print("✅ Grid alignment confirmed.")
+
+
+def relocate_ocean_population(pop_data, era_template):
+    """
+    Detects population counts located in pixels where ERA5 is NaN (Ocean).
+    Moves these counts to the NEAREST valid land pixel.
+    """
+    if "time" in era_template.dims:
+        land_mask = era_template.isel(time=0).notnull().values
+    else:
+        land_mask = era_template.notnull().values
+
+    lats = pop_data.latitude.values
+    lons = pop_data.longitude.values
+    lon_grid, lat_grid = np.meshgrid(lons, lats)
+
+    land_indices = np.where(land_mask.ravel())[0]
+
+    if len(land_indices) == 0:
+        print("Warning: ERA5 Template has no valid land pixels!")
+        return pop_data
+
+    pop_vals = pop_data.values.copy()
+    is_3d = pop_vals.ndim == 3
+    if not is_3d:
+        pop_vals = pop_vals[np.newaxis, :, :]
+
+    pop_sum_flat = pop_vals.sum(axis=0).ravel()
+    stranded_mask_flat = (pop_sum_flat > 0) & (~land_mask.ravel())
+    stranded_indices = np.where(stranded_mask_flat)[0]
+
+    if len(stranded_indices) > 0:
+        land_coords = np.column_stack(
+            (lat_grid.ravel()[land_indices], lon_grid.ravel()[land_indices])
+        )
+        tree = cKDTree(land_coords)
+        stranded_coords = np.column_stack(
+            (lat_grid.ravel()[stranded_indices], lon_grid.ravel()[stranded_indices])
+        )
+
+        _, nearest_land_pos = tree.query(stranded_coords, k=1)
+        target_indices_flat = land_indices[nearest_land_pos]
+
+        total_moved = 0
+        for t in range(pop_vals.shape[0]):
+            year_data_flat = pop_vals[t].reshape(-1)
+            values_to_move = year_data_flat[stranded_indices]
+            np.add.at(year_data_flat, target_indices_flat, values_to_move)
+            year_data_flat[stranded_indices] = 0
+            pop_vals[t] = year_data_flat.reshape(pop_vals[t].shape)
+            total_moved += values_to_move.sum()
+
+        print(
+            f"    - Relocated {total_moved / 1e6:.3f} M people from ocean to nearest coast."
+        )
+
+    if not is_3d:
+        pop_vals = pop_vals[0]
+
+    return pop_data.copy(data=pop_vals)
 
 
 def upsample_population_with_mask(pop_data, era_template):
     """
     Upsamples Coarse Population to Fine ERA5 Grid.
-    PREVENTS 'Ocean People' by masking with ERA5 land-sea mask and
-    conserving total population count.
     """
-    # 1. Shift Longitude (0..360 -> -180..180) to match ERA5
-    # (Only if necessary, assumes pop_data might be 0-360)
-    if pop_data.longitude.max() > 180:
-        pop_data = pop_data.assign_coords(
-            longitude=(((pop_data.longitude + 180) % 360) - 180)
-        )
-        pop_data = pop_data.sortby("longitude")
+    # 0. STANDARDISATION
+    # Ensure inputs are -180..180 and sorted
+    pop_data = standardize_longitude(pop_data)
+    era_template = standardize_longitude(era_template)
 
-    # Ensure CRS is set
+    # 1. Dimension Ordering (Time, Y, X)
+    try:
+        pop_data = pop_data.transpose("year", "latitude", "longitude")
+    except ValueError:
+        pop_data = pop_data.transpose(..., "latitude", "longitude")
+
+    # 2. Strict Sorting
+    pop_data = pop_data.sortby("latitude").sortby("longitude")
+    era_template = era_template.sortby("latitude").sortby("longitude")
+
     pop_data = pop_data.rio.write_crs("EPSG:4326")
 
-    # 2. Create a Land Mask from ERA5 Template
-    # ERA5-Land variables are usually NaN over the ocean.
-    # We create a boolean mask: 1.0 = Land, 0.0 = Ocean
-    land_mask = era_template.notnull().astype(float)
-
-    # 3. Naive Upsample (Bilinear)
-    # This creates the "fine" grid but might spill people into the ocean
-    pop_fine_naive = pop_data.rio.reproject_match(
+    # 3. Upsample (Bilinear)
+    pop_fine = pop_data.rio.reproject_match(
         era_template, resampling=Resampling.bilinear
     )
 
-    # Rename dimensions if rioxarray changed them to x/y
-    if "x" in pop_fine_naive.dims:
-        pop_fine_naive = pop_fine_naive.rename({"y": "latitude", "x": "longitude"})
+    if "x" in pop_fine.dims:
+        pop_fine = pop_fine.rename({"y": "latitude", "x": "longitude"})
 
-    # Ensure coords match exactly for proper alignment
-    pop_fine_naive = pop_fine_naive.assign_coords(
-        latitude=era_template.latitude, longitude=era_template.longitude
-    )
-
-    # 4. Apply Land Mask
-    # Zeros out population in ocean pixels
-    pop_fine_masked = pop_fine_naive * land_mask
-
-    # 5. CONSERVATION OF MASS (Critical)
-    # We must ensure the Total Population didn't change due to masking.
-    old_total = pop_data.sum()
-    new_total = pop_fine_masked.sum()
-
-    # Avoid division by zero
-    if new_total == 0:
-        return pop_fine_masked
-
-    # Calculate correction factor to restore the total count
-    correction_factor = old_total / new_total
-    pop_final = pop_fine_masked * correction_factor
+    # 4. Coastal Fix
+    pop_final = relocate_ocean_population(pop_fine, era_template)
 
     return pop_final
 
@@ -102,306 +181,263 @@ def upsample_population_with_mask(pop_data, era_template):
 def load_population_data(age_group, years, suffix="era5_regridded.nc"):
     """Loads processed annual population files for the modern period."""
     datasets = []
-
     print(f"Loading {age_group} data for {len(years)} years...")
 
     for year in years:
         file_path = DirsLocal.pop_e5l_grid / f"t_{age_group}_{year}_{suffix}"
-
         if file_path.exists():
             ds = xr.open_dataset(file_path)
-            # Standardize time dimension to 'year'
+
+            # Standardization happens IMMEDIATELY upon loading
+            ds = standardize_longitude(ds)
+
             if "time" in ds.dims:
                 ds = ds.rename({"time": "year"})
-
-            # Ensure it has a 'year' coordinate if missing
             if "year" not in ds.coords:
                 ds = ds.expand_dims(year=[year])
-
             datasets.append(ds)
         else:
             print(f"Warning: Missing file {file_path}")
 
     if not datasets:
-        raise FileNotFoundError(f"No files found for age group: {age_group}")
+        raise FileNotFoundError(f"No files found for {age_group}")
 
-    # Concatenate over time
-    return xr.concat(datasets, dim="year", data_vars="minimal", coords="minimal")
+    ds = xr.concat(datasets, dim="year", data_vars="minimal", coords="minimal")
+
+    # Sort after concat
+    if "latitude" in ds.dims:
+        ds = ds.sortby("latitude").sortby("longitude")
+
+    return ds
 
 
 def plot_pre_post_upsampling(pre_data, post_data, year, region_name="Med_Coast"):
-    """
-    Plots pre and post upsampling.
-    Uses strict sorting to ensure the map is not flipped.
-    """
-    # Define region (Mediterranean)
-    # We use (min, max) and let xarray handle the slice direction automatically
-    lat_min, lat_max = 35, 45
-    lon_min, lon_max = 10, 20
+    """Plots pre and post upsampling using xarray for safety."""
+    pre_data = standardize_longitude(pre_data)
+    post_data = standardize_longitude(post_data)
 
-    # Ensure data is sorted ascending before slicing for consistent behavior
-    pre_data = pre_data.sortby("latitude").sortby("longitude")
-    post_data = post_data.sortby("latitude").sortby("longitude")
+    lat_slice = slice(35, 45)  # Mediterranean
+    lon_slice = slice(10, 20)
 
-    try:
-        pre_region = pre_data.sel(
-            year=year,
-            latitude=slice(lat_min, lat_max),
-            longitude=slice(lon_min, lon_max),
+    pre_region = pre_data.sel(year=year, latitude=lat_slice, longitude=lon_slice)
+    post_region = post_data.sel(year=year, latitude=lat_slice, longitude=lon_slice)
+
+    if pre_region.sum() == 0 or post_region.sum() == 0:
+        print(
+            f"Warning: No population in pre-upsampling data for {region_name} in {year}. Skipping plot."
         )
-        post_region = post_data.sel(
-            year=year,
-            latitude=slice(lat_min, lat_max),
-            longitude=slice(lon_min, lon_max),
-        )
-    except KeyError:
-        print(f"Year {year} not found for plotting.")
         return
 
-    if pre_region.sum() == 0:
-        print("Selected region has no data. Skipping plot.")
-        return
-
-    # Setup Plot
     fig, axs = plt.subplots(
         1, 2, figsize=(14, 6), subplot_kw={"projection": ccrs.PlateCarree()}
     )
 
-    # Common arguments
-    plot_kwargs = {
+    kwargs = {
         "transform": ccrs.PlateCarree(),
         "cmap": "viridis",
-        "add_colorbar": True,
-        "vmin": 0,
-        # Robust=True automatically cuts off extreme outliers (like the 99th quantile)
         "robust": True,
+        "add_colorbar": True,
     }
 
-    # 1. Plot Coarse
-    pre_region.plot(
-        ax=axs[0], **plot_kwargs, cbar_kwargs={"label": "Population", "shrink": 0.6}
-    )
-    axs[0].set_title(f"Pre-Upsampling (Coarse) - {year}")
-    axs[0].add_feature(cfeature.COASTLINE, linewidth=1, color="black")
-    axs[0].add_feature(cfeature.BORDERS, linestyle=":")
+    pre_region.plot(ax=axs[0], **kwargs)
+    axs[0].set_title(f"Coarse (Pre) - {year}")
+    axs[0].coastlines()
 
-    # 2. Plot Fine
-    post_region.plot(
-        ax=axs[1], **plot_kwargs, cbar_kwargs={"label": "Population", "shrink": 0.6}
-    )
-    axs[1].set_title(f"Post-Upsampling (Fine) - {year}")
-    axs[1].add_feature(cfeature.COASTLINE, linewidth=1, color="black")
-    axs[1].add_feature(cfeature.BORDERS, linestyle=":")
+    post_region.plot(ax=axs[1], **kwargs)
+    axs[1].set_title(f"Fine (Post) - {year}")
+    axs[1].coastlines()
 
-    plt.suptitle(f"Upsampling Verification: {region_name}")
-    plt.savefig(
-        DirsLocal.figures / f"upsampling_check_{region_name}_{year}_xarray.png",
-        bbox_inches="tight",
-    )
+    plt.suptitle(f"Upsampling Check: {region_name}")
     plt.show()
 
 
-def plot_worldpop_region(data, year, region_name="Med_Coast"):
-    """
-    Plots WorldPop data for a specific region and year.
-    """
-    # Define region (Mediterranean)
-    lat_min, lat_max = 35, 45
-    lon_min, lon_max = 10, 20
-
-    # Ensure data is sorted
-    data = data.sortby("latitude").sortby("longitude")
-
-    try:
-        region_data = data.sel(
-            year=year,
-            latitude=slice(lat_min, lat_max),
-            longitude=slice(lon_min, lon_max),
-        )
-    except KeyError:
-        print(f"Year {year} not found for plotting.")
-        return
-
-    if region_data.pop.sum() == 0:
-        print("Selected region has no data. Skipping plot.")
-        return
-
-    # Plot
-    fig, ax = plt.subplots(
-        figsize=(8, 6), subplot_kw={"projection": ccrs.PlateCarree()}
+def plot_final_data(dat):
+    """Plots pre and post upsampling using xarray for safety."""
+    fig, axs = plt.subplots(
+        1, 1, figsize=(14, 6), subplot_kw={"projection": ccrs.PlateCarree()}
     )
 
-    region_data.pop.plot(
-        ax=ax,
-        transform=ccrs.PlateCarree(),
-        cmap="viridis",
-        vmin=0,
-        robust=True,
-        cbar_kwargs={"label": "Population", "shrink": 0.6},
-    )
-    ax.set_title(f"WorldPop Infants - {region_name} ({year})")
-    ax.add_feature(cfeature.COASTLINE, linewidth=1, color="black")
-    ax.add_feature(cfeature.BORDERS, linestyle=":")
+    kwargs = {
+        "transform": ccrs.PlateCarree(),
+        "cmap": "viridis",
+        "robust": True,
+        "add_colorbar": True,
+    }
 
-    plt.savefig(
-        DirsLocal.figures / f"worldpop_{region_name}_{year}.png",
-        dpi=150,
-        bbox_inches="tight",
-    )
+    dat.plot(ax=axs, **kwargs)
+    axs.coastlines()
+    plt.tight_layout()
+
     plt.show()
+
+
+def clean_and_align(ds_to_fix, ds_reference):
+    """
+    1. Drops extra coordinates (band, spatial_ref) that block concatenation.
+    2. Overwrites lat/lon with the reference dataset to fix floating point mismatches.
+    """
+    # A. Convert to Dataset if needed
+    if isinstance(ds_to_fix, xr.DataArray):
+        ds_to_fix = ds_to_fix.to_dataset(name="pop")
+
+    # B. Drop non-dimensional coordinates that might conflict
+    # (e.g., 'band', 'spatial_ref', 'age_band_lower_bound')
+    drop_vars = [
+        v for v in ds_to_fix.coords if v not in ["year", "latitude", "longitude"]
+    ]
+    ds_to_fix = ds_to_fix.drop_vars(drop_vars)
+
+    # C. FORCE ALIGNMENT (The Magic Step)
+    # We assign the latitude/longitude arrays from the reference directly.
+    # This guarantees they are bitwise identical.
+    ds_to_fix = ds_to_fix.assign_coords(
+        {"latitude": ds_reference.latitude, "longitude": ds_reference.longitude}
+    )
+
+    return ds_to_fix
 
 
 def main():
     print("--- Starting Population Combination ---")
 
-    # 1. Define Years
-    modern_years = range(2000, 2026)  # todo this should be in the config file
-    historical_years = range(1980, 2000)  # Adjust based on available data
+    modern_years = range(2000, 2026)
+    historical_years = range(1980, 2000)
 
-    # 2. Load Modern Data (Already Regridded to ERA5-Land)
-    print("\n[1/4] Loading Modern WorldPop Data...")
-    infants_worldpop = load_population_data(age_group="under_1", years=modern_years)
-    elderly_worldpop = load_population_data(age_group="65_over", years=modern_years)
-
-    # Ensure dimensions order
-    infants_worldpop = infants_worldpop.transpose("year", "latitude", "longitude")
-    elderly_worldpop = elderly_worldpop.transpose("year", "latitude", "longitude")
-
-    # Plot WorldPop for verification
-    plot_worldpop_region(data=infants_worldpop, year=2020)
-    plot_worldpop_region(data=elderly_worldpop, year=2020)
-
-    # 3. Load & Process Historical Data (Pre-2000)
-    # ---------------------------------------------------------
-    print("\n[2/4] Processing Historical Data (Pre-2000)...")
-
-    # Prepare ERA5 Template for upsampling
+    # 1. Load ERA5 Template & Standardize
     era_files = list(DirsLocal.e5l_d.glob("*.nc"))
     if not era_files:
-        raise FileNotFoundError("No ERA5 files found to use as grid template.")
+        raise FileNotFoundError("No ERA5 files found.")
 
     with xr.open_dataset(era_files[0]) as era_ds:
-        # Use a 2D slice (t_max, first time step) as the spatial template
         era_template = era_ds["t_max"].isel(time=0).drop_vars("time", errors="ignore")
         era_template = era_template.rio.write_crs("EPSG:4326")
+        # STRICT STANDARDIZATION
+        era_template = standardize_longitude(era_template)
+        era_template = era_template.sortby("latitude").sortby("longitude")
 
-    # Load the coarse pre-2000 dataset
+    # 2. Modern Data
+    infants_worldpop = load_population_data("under_1", modern_years)
+    elderly_worldpop = load_population_data("65_over", modern_years)
+
+    # Verify Modern Data matches ERA5 range
+    validate_alignment(
+        infants_worldpop, era_template, "WorldPop Infants", "ERA5 Template"
+    )
+
+    # 3. Historical Data (Pre-2000)
+    print("\n[2/4] Processing Historical Data...")
     demographics_totals = xr.open_dataarray(FilesLocal.pop_before_2000)
 
-    # --- INFANTS PRE-2000 ---
-    # Note: Assuming age_band=0 represents the 0-4 age group in the historical dataset.
-    # We divide by 5 later to approximate the <1 year group.
+    print("Plotting raw historical data slice (1990) to check for obvious issues...")
+    mediterranean_slice = demographics_totals.sel(
+        year=1990,
+        age_band_lower_bound=0,
+        latitude=slice(45, 35),
+        longitude=slice(10, 20),
+    )
+    plot_final_data(dat=mediterranean_slice)
+
+    # Standardize Historical Input BEFORE anything else
+    demographics_totals = standardize_longitude(demographics_totals)
+
+    # --- Infants ---
     infants_lancet = demographics_totals.sel(
         year=slice(historical_years.start, historical_years.stop - 1),
         age_band_lower_bound=0,
     )
-
-    # Transpose and Upsample
-    infants_lancet = infants_lancet.transpose("year", "latitude", "longitude")
+    # Upsample (will use standardized era_template)
     infants_lancet_fine = upsample_population_with_mask(infants_lancet, era_template)
 
-    # Verify conservation
-    original_total = infants_lancet.sum().values
-    upsampled_total = infants_lancet_fine.sum().values
-    print("\nInfants (Pre-2000) Upsampling Verification:")
-    print(
-        f"  > (Coarse) Total: {original_total / 1e6:.2f} M \n",
-        f"  > (Fine) Total:   {upsampled_total / 1e6:.2f} M \n",
-        f"  > Difference: {upsampled_total - original_total:.0f} "
-        f"({(upsampled_total - original_total) / max(original_total, 1) * 100:.2f}%)",
+    # 0-4y to <1y Conversion
+    infants_lancet_fine = infants_lancet_fine / 5.0
+
+    # Verify Upsampled Data matches WorldPop range
+    validate_alignment(
+        infants_lancet_fine, infants_worldpop, "Upsampled Infants", "WorldPop Infants"
     )
 
-    # Plot verification for one year
+    print(
+        f"Infants Pre-2000 Final Total: {infants_lancet_fine.sum().values / 1e6:.2f} M"
+    )
     plot_pre_post_upsampling(
         pre_data=infants_lancet, post_data=infants_lancet_fine, year=1990
     )
 
-    # Apply heuristic: Convert 0-4 age band to <1 year (divide by 5)
-    infants_lancet_fine = infants_lancet_fine / 5.0
-
-    # --- ELDERLY PRE-2000 ---
+    # --- Elderly ---
     elderly_lancet = demographics_totals.sel(
         year=slice(historical_years.start, historical_years.stop - 1),
         age_band_lower_bound=65,
     )
-    elderly_lancet = elderly_lancet.transpose("year", "latitude", "longitude")
     elderly_lancet_fine = upsample_population_with_mask(elderly_lancet, era_template)
-
-    # Verify conservation for elderly
-    original_total_eld = elderly_lancet.sum().values
-    upsampled_total_eld = elderly_lancet_fine.sum().values
-    print("\nElderly (Pre-2000) Upsampling Verification:")
-    print(
-        f"  > (Coarse) Total: {original_total_eld / 1e6:.2f} M \n",
-        f"  > (Fine) Total:   {upsampled_total_eld / 1e6:.2f} M \n",
-        f"  > Difference: {upsampled_total_eld - original_total_eld:.0f} "
-        f"({(upsampled_total_eld - original_total_eld) / max(original_total_eld, 1) * 100:.2f}%)",
+    validate_alignment(
+        elderly_lancet_fine, elderly_worldpop, "Upsampled Elderly", "WorldPop Elderly"
     )
 
-    # plot verification for elderly
-    plot_pre_post_upsampling(
-        pre_data=elderly_lancet,
-        post_data=elderly_lancet_fine,
-        year=1990,
-        region_name="Elderly_Med_Coast",
-    )
+    # 4. Combine and Save
+    print("\n[3/4] Combining and Saving...")
 
-    # 4. Concatenate Historical + Modern
-    # ---------------------------------------------------------
-    print("\n[3/4] Combining Datasets...")
+    # Prepare Reference (Modern Data is usually the 'truth' since it came from Script B)
+    # Ensure modern data is clean too
+    ds_inf_mod = clean_and_align(infants_worldpop, infants_worldpop)
+    ds_eld_mod = clean_and_align(elderly_worldpop, elderly_worldpop)
 
-    # Convert DataArrays to Datasets for merging if necessary, or ensure variable names match
+    # Align Historical Data to Modern Grid
+    ds_inf_hist = clean_and_align(infants_lancet_fine, infants_worldpop)
+    ds_eld_hist = clean_and_align(elderly_lancet_fine, elderly_worldpop)
 
-    def prep_dataset(da, name="pop"):
-        ds = da.to_dataset(name=name) if isinstance(da, xr.DataArray) else da
-        if "demographic_totals" in ds:
-            ds = ds.rename({"demographic_totals": name})
-
-        # Drop extra coordinates and data variables not needed
-        extra_coords = ["spatial_ref", "band", "age_band_lower_bound"]
-        ds = ds.drop_vars(extra_coords, errors="ignore")
-
-        # Shift longitude to -180..180 if necessary
-        if ds.longitude.max() > 180:
-            ds = ds.assign_coords(longitude=(((ds.longitude + 180) % 360) - 180))
-            ds = ds.sortby("longitude")
-
-        # Sort latitude to match ERA5 (90 to -90, descending)
-        ds = ds.sortby("latitude", ascending=False)
-
-        # Keep only essential: year, latitude, longitude, pop
-        essential_vars = ["pop"]
-        ds = ds[essential_vars]
-
-        return ds
-
-    ds_inf_hist = prep_dataset(infants_lancet_fine)
-    ds_inf_mod = prep_dataset(infants_worldpop)
-
-    ds_eld_hist = prep_dataset(elderly_lancet_fine)
-    ds_eld_mod = prep_dataset(elderly_worldpop)
-
-    # Concatenate
+    # Combine
     infants_final = xr.concat([ds_inf_hist, ds_inf_mod], dim="year")
     elderly_final = xr.concat([ds_eld_hist, ds_eld_mod], dim="year")
 
-    # 5. Save Results
-    # ---------------------------------------------------------
-    print("\n[4/4] Saving to NetCDF...")
+    infants_final = infants_final.where(infants_final.pop > 0)
+    elderly_final = elderly_final.where(elderly_final.pop > 0)
 
-    def save_clean(ds, path):
-        if path.exists():
-            os.remove(path)
-        # Ensure encoding for compression
-        comp = {"zlib": True, "complevel": 5}
-        encoding = {var: comp for var in ds.data_vars}
-        ds.to_netcdf(path, encoding=encoding)
-        print(f"  Saved: {path}")
+    plot_final_data(dat=infants_final.sel(year=1990).pop)
+    plot_final_data(dat=infants_final.sel(year=2010).pop)
+    plot_final_data(dat=elderly_final.sel(year=1990).pop)
+    plot_final_data(dat=elderly_final.sel(year=2010).pop)
+
+    def plot_worldpop_lancet(dat):
+        fig, axs = plt.subplots(
+            2, 1, figsize=(7, 8), subplot_kw={"projection": ccrs.PlateCarree()}
+        )
+
+        dat = dat.sortby("latitude").sortby("longitude")
+        dat = dat.sel(latitude=slice(35, 45), longitude=slice(0, 20))
+
+        kwargs = {
+            "transform": ccrs.PlateCarree(),
+            "cmap": "viridis",
+            "robust": True,
+            "add_colorbar": True,
+        }
+
+        dat.sel(year=2000).pop.plot(ax=axs[0], **kwargs)
+        axs[0].set_title("WorldPop - 2000")
+        axs[0].coastlines()
+
+        dat.sel(year=1999).pop.plot(ax=axs[1], **kwargs)
+        axs[1].set_title("Lancet Upsampled - 1999")
+        axs[1].coastlines()
+
+        plt.suptitle("Comparison of WorldPop and Lancet Upsampled (1990)")
+        plt.show()
+
+    plot_worldpop_lancet(dat=infants_final)
+
+    # FINAL CHECK
+    print(
+        f"Final Infants Longitude Range: {infants_final.longitude.min().item():.2f} to {infants_final.longitude.max().item():.2f}"
+    )
+
+    if infants_final.longitude.max() > 181:
+        raise ValueError("CRITICAL ERROR: Final dataset still has >180 longitudes!")
 
     DirsLocal.pop_e5l_grid_combined.mkdir(parents=True, exist_ok=True)
 
-    save_clean(infants_final, FilesLocal.pop_infant)
-    save_clean(elderly_final, FilesLocal.pop_over_65)
+    comp = {"zlib": True, "complevel": 5}
+    infants_final.to_netcdf(FilesLocal.pop_infant, encoding={"pop": comp})
+    elderly_final.to_netcdf(FilesLocal.pop_over_65, encoding={"pop": comp})
 
     print("\n✅ Processing Complete.")
 
