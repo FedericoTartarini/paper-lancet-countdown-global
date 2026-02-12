@@ -194,9 +194,11 @@ def plot_pre_post_upsampling(pre_data, post_data, year, region_name="Med_Coast")
     axs[1].add_feature(cfeature.BORDERS, linestyle=":")
 
     plt.suptitle(f"Upsampling Verification: {region_name}")
-    # plt.savefig(DirsLocal.dir_figures / f"upsampling_check_{region_name}_{year}_xarray.png", bbox_inches="tight")
+    plt.savefig(
+        DirsLocal.figures / f"upsampling_check_{region_name}_{year}_xarray.png",
+        bbox_inches="tight",
+    )
     plt.show()
-    # plt.close()
 
 
 def plot_worldpop_region(data, year, region_name="Med_Coast"):
@@ -241,9 +243,12 @@ def plot_worldpop_region(data, year, region_name="Med_Coast"):
     ax.add_feature(cfeature.COASTLINE, linewidth=1, color="black")
     ax.add_feature(cfeature.BORDERS, linestyle=":")
 
-    # plt.savefig(f"worldpop_{region_name}_{year}.png", dpi=150, bbox_inches="tight")
+    plt.savefig(
+        DirsLocal.figures / f"worldpop_{region_name}_{year}.png",
+        dpi=150,
+        bbox_inches="tight",
+    )
     plt.show()
-    # plt.close()
 
 
 def main():
