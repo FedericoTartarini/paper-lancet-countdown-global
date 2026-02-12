@@ -101,6 +101,9 @@ class FilesLocal:
     hw_combined_q = (
         DirsLocal.results_report / f"hw-{Vars.hw_q_min_max}-combined-all-ages.nc"
     )
+    hw_change_combined = (
+        DirsLocal.results_report / f"hw-{Vars.hw_q_min_max}-change-combined-all-ages.nc"
+    )
 
 
 class DirsGadi:
