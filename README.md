@@ -42,9 +42,6 @@ once the new report is finalised.
        group and year for the old WorldPop data.
     2. I am using the new WorldPop data from 2015 since they published a new
        dataset in 2020 with data from 2015 to 2030.
-    3. [b_compare_worldpop_gpw.py](python_code/population/cb_compare_worldpop_gpw.py) compares the WorldPop and GPW data
-       for the infant
-       and elderly population. Not essential for the new report.
 2. Re-grid the data to the ERA5 grid using [2_pop_data_process.py](python_code/population/b_pop_data_process.py)
 3. Combine the age groups using [pop_data_combine.py](python_code/population/c_pop_data_combine.py)
 
