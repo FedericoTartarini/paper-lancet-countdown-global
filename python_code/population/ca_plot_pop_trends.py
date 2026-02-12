@@ -152,6 +152,7 @@ def plot_zonal_hovmoller(directory, age_label="under_1"):
     # Attempt to ensure proper ordering
     try:
         combined = combined.transpose("year", "latitude")
+        combined = combined.sortby("latitude", ascending=False)
     except Exception:
         pass
 
@@ -187,14 +188,14 @@ def plot_zonal_hovmoller(directory, age_label="under_1"):
     extent = (
         float(years.min()),
         float(years.max()),
-        float(lats.min()),
         float(lats.max()),
+        float(lats.min()),
     )
 
     im = plt.imshow(
         data2d.T,
         aspect="auto",
-        origin="lower",
+        origin="upper",
         extent=extent,
         cmap="viridis",
         interpolation="nearest",
@@ -253,7 +254,7 @@ def plot_population_trends_from_combined(infants_da, elderly_da):
     ax.set_ylabel("Total People (millions)")
     ax.grid(True, which="both", linestyle="--", alpha=0.7)
     # ax.axvline(x=2015, color="r", linestyle=":", alpha=0.5)
-    save_fig(fig, "global_population_trend_millions.png")
+    save_fig(fig, "global_population_trend_millions.pdf")
     plt.show()
 
     # Plot 2: Growth rate
@@ -265,7 +266,7 @@ def plot_population_trends_from_combined(infants_da, elderly_da):
     ax.axhline(0, color="k", linewidth=0.8)
     ax.axhspan(-0.5, 2.0, color="green", alpha=0.1)
     ax.grid(True, which="both", linestyle="--", alpha=0.7)
-    save_fig(fig, "global_population_growth_rate.png")
+    save_fig(fig, "global_population_growth_rate.pdf")
     plt.show()
 
 
@@ -305,6 +306,9 @@ def plot_hovmoller_from_da(da, age_label="under_1"):
     if extra:
         zonal = zonal.sum(dim=extra)
 
+    # Sort latitude descending
+    zonal = zonal.sortby("latitude", ascending=False)
+
     # Sort years
     yrs = np.asarray(zonal["year"].values)
     sort_idx = np.argsort(yrs)
@@ -329,13 +333,13 @@ def plot_hovmoller_from_da(da, age_label="under_1"):
     extent = (
         float(years.min()),
         float(years.max()),
-        float(lats.min()),
         float(lats.max()),
+        float(lats.min()),
     )
 
     fig, ax = plt.subplots(figsize=(12, 8))
     im = ax.imshow(
-        data2d_sorted.T, aspect="auto", origin="lower", extent=extent, cmap="viridis"
+        data2d_sorted.T, aspect="auto", origin="upper", extent=extent, cmap="viridis"
     )
     ax.set_xlabel("Year")
     ax.set_ylabel("Latitude")
