@@ -164,13 +164,20 @@ def upsample_population_with_mask(pop_data, era_template):
 
     pop_data = pop_data.rio.write_crs("EPSG:4326")
 
-    # 3. Upsample (Bilinear)
-    pop_fine = pop_data.rio.reproject_match(
-        era_template, resampling=Resampling.bilinear
-    )
+    # Compute original total for assertion
+    original_total = pop_data.sum().values
+
+    # 3. Upsample (Sum for conservation)
+    pop_fine = pop_data.rio.reproject_match(era_template, resampling=Resampling.sum)
 
     if "x" in pop_fine.dims:
         pop_fine = pop_fine.rename({"y": "latitude", "x": "longitude"})
+
+    # Assert total is conserved
+    upsampled_total = pop_fine.sum().values
+    assert np.isclose(original_total, upsampled_total, rtol=3), (
+        f"Population total changed: {original_total} -> {upsampled_total}"
+    )
 
     # 4. Coastal Fix
     pop_final = relocate_ocean_population(pop_fine, era_template)
@@ -300,7 +307,7 @@ def clean_and_align(ds_to_fix, ds_reference):
 def main():
     print("--- Starting Population Combination ---")
 
-    modern_years = range(2000, 2026)
+    modern_years = range(2000, 2026)  # todo this should not be hardcoded
     historical_years = range(1980, 2000)
 
     # 1. Load ERA5 Template & Standardize
@@ -318,6 +325,12 @@ def main():
     # 2. Modern Data
     infants_worldpop = load_population_data("under_1", modern_years)
     elderly_worldpop = load_population_data("65_over", modern_years)
+
+    # calc average totals across all modern years for sanity check
+    avg_infants = infants_worldpop.pop.mean(dim="year").sum().item()
+    avg_elderly = elderly_worldpop.pop.mean(dim="year").sum().item()
+    print(f"Average Infants (2000-2025): {avg_infants / 1e6:.2f} M")
+    print(f"Average Elderly (2000-2025): {avg_elderly / 1e6:.2f} M")
 
     # Verify Modern Data matches ERA5 range
     validate_alignment(
@@ -341,23 +354,23 @@ def main():
     demographics_totals = standardize_longitude(demographics_totals)
 
     # --- Infants ---
-    infants_lancet = demographics_totals.sel(
-        year=slice(historical_years.start, historical_years.stop - 1),
-        age_band_lower_bound=0,
+    infants_lancet = (
+        demographics_totals.sel(
+            year=slice(historical_years.start, historical_years.stop - 1),
+            age_band_lower_bound=0,
+        )
+        / 5.0
     )
+
     # Upsample (will use standardized era_template)
     infants_lancet_fine = upsample_population_with_mask(infants_lancet, era_template)
 
     # 0-4y to <1y Conversion
-    infants_lancet_fine = infants_lancet_fine / 5.0
+    infants_lancet_fine = infants_lancet_fine
 
     # Verify Upsampled Data matches WorldPop range
     validate_alignment(
         infants_lancet_fine, infants_worldpop, "Upsampled Infants", "WorldPop Infants"
-    )
-
-    print(
-        f"Infants Pre-2000 Final Total: {infants_lancet_fine.sum().values / 1e6:.2f} M"
     )
     plot_pre_post_upsampling(
         pre_data=infants_lancet, post_data=infants_lancet_fine, year=1990
