@@ -36,7 +36,7 @@ This script will:
 
 ```bash
 # Process specific years (full year - all 12 months)
-./gadi/submit_daily_summaries_gadi.sh --years 1980 1981 1982
+./gadi/submit_daily_summaries_gadi.sh --years 2025 2024
 
 # Process all years (1979-2025)
 ./gadi/submit_daily_summaries_gadi.sh

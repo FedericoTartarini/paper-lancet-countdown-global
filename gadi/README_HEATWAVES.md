@@ -5,8 +5,9 @@ This directory contains scripts to calculate heatwave indicators from ERA5-Land 
 ## Overview
 
 The heatwave calculation processes daily temperature summaries to identify heatwave events based on 95th percentile
-thresholds from a reference period (1986-2005). A heatwave is defined as 3+ consecutive days where both daily maximum
-and minimum temperatures exceed their respective thresholds.
+thresholds from a reference period (1986-2005).
+A heatwave is defined as 3+ consecutive days where both daily maximum and minimum temperatures exceed their respective
+thresholds.
 
 **Key Features:**
 
@@ -54,7 +55,7 @@ cd paper-lancet-countdown-global/
 ./gadi/submit_heatwaves_gadi.sh
 
 # Single year
-./gadi/submit_heatwaves_gadi.sh 2020
+./gadi/submit_heatwaves_gadi.sh 2000
 
 # Year range
 ./gadi/submit_heatwaves_gadi.sh 2020 2024
