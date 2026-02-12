@@ -444,7 +444,7 @@ def main():
     """Load combined files and produce all plots, saving them into the interim folder."""
 
     # Load combined datasets
-    infants_da = xr.open_dataset(FilesLocal.pop_infant)
+    infants_da = xr.open_dataset(FilesLocal.pop_inf)
     elderly_da = xr.open_dataset(FilesLocal.pop_over_65)
 
     # Trend plots (global totals, growth rate, absolute counts)

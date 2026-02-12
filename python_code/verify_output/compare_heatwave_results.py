@@ -54,7 +54,7 @@ plt.switch_backend("Agg")
 OLD_DIR = Path(
     "/Users/ftar3919/Library/CloudStorage/OneDrive-TheUniversityofSydney(Staff)/data/lancet/countdown-global/results/heatwaves/old"
 )
-NEW_DIR = DirsLocal.hw_min_max
+NEW_DIR = DirsLocal.hw_q_min_max
 
 # Output directory for plots
 OUTPUT_DIR = project_root / "python_code" / "verify_output" / "compare_heatwave_results"

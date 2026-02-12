@@ -21,6 +21,10 @@ class Vars:
     t_vars: List[str] = ["t_max", "t_min", "t_mean"]
     infants = "under_1"
     over_65 = "over_65"
+    hw_count = "heatwave_counts"
+    hw_days = "heatwave_days"
+    hw_q_min_max = "q_min_max"
+    age_band = "age_band"
 
     @classmethod
     def get_reference_years(cls) -> List[int]:
@@ -66,11 +70,12 @@ class DirsLocal:
     e5l_q: Path = data / Dirs.e5l / Dirs.quantiles
 
     results = data / Dirs.results
+    results_report = results / f"results_{Vars.year_report}"
     hw = results / Dirs.heatwaves
-    hw_min_max = hw / "q_min_max"
+    hw_q_min_max = hw / Vars.hw_q_min_max
 
     # population data
-    # dir_pop_raw_ssd = Path("/Volumes/T7/lancet_countdown/population")
+    # pop_raw_ssd = Path("/Volumes/T7/lancet_countdown/population")
     pop_raw_ssd = data / Dirs.pop / "raw"
     pop_e5l_grid = data / Dirs.pop / (Dirs.e5l + "-grid")
     pop_e5l_grid_combined = data / Dirs.pop / (Dirs.e5l + "-grid-combined")
@@ -83,11 +88,14 @@ class FilesLocal:
     pop_before_2000 = (
         DirsLocal.data / Dirs.pop / "lancet-2023" / "Hybrid Demographics 1950-2020.nc"
     )
-    pop_infant = (
+    pop_inf = (
         DirsLocal.pop_e5l_grid_combined / f"t-{Vars.infants}-regridded-combined.nc"
     )
     pop_over_65 = (
         DirsLocal.pop_e5l_grid_combined / f"t-{Vars.over_65}-regridded-combined.nc"
+    )
+    hw_combined_q = (
+        DirsLocal.results_report / f"hw-{Vars.hw_q_min_max}-combined-all-ages.nc"
     )
 
 

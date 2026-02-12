@@ -449,7 +449,7 @@ def main():
     DirsLocal.pop_e5l_grid_combined.mkdir(parents=True, exist_ok=True)
 
     comp = {"zlib": True, "complevel": 5}
-    infants_final.to_netcdf(FilesLocal.pop_infant, encoding={"pop": comp})
+    infants_final.to_netcdf(FilesLocal.pop_inf, encoding={"pop": comp})
     elderly_final.to_netcdf(FilesLocal.pop_over_65, encoding={"pop": comp})
 
     print("\n✅ Processing Complete.")
