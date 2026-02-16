@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import List
 import seaborn as sns
 
+from cartopy import crs as ccrs
+
 from matplotlib import pyplot as plt
 
 plt.rcParams["figure.figsize"] = [8, 4]
@@ -29,6 +31,7 @@ class Vars:
     hw_days = "heatwave_days"
     hw_q_min_max = "q_min_max"
     age_band = "age_band"
+    map_projection = ccrs.EckertIII()
 
     @classmethod
     def get_reference_years(cls) -> List[int]:
