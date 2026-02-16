@@ -77,6 +77,8 @@ class DirsLocal:
     results_report = results / f"results_{Vars.year_report}"
     hw = results / Dirs.heatwaves
     hw_q_min_max = hw / Vars.hw_q_min_max
+    aggregates = results_report / "aggregates"
+    aggregates_figures = aggregates / "figures"
 
     # population data
     # pop_raw_ssd = Path("/Volumes/T7/lancet_countdown/population")
@@ -84,8 +86,13 @@ class DirsLocal:
     pop_e5l_grid = data / Dirs.pop / (Dirs.e5l + "-grid")
     pop_e5l_grid_combined = data / Dirs.pop / (Dirs.e5l + "-grid-combined")
 
-    manuscript = project / "manuscript"
-    figures = manuscript / f"{Vars.year_report}" / "figures"
+    # boundaries and rasters
+    boundaries: Path = data / "boundaries-2026"
+    world_bank_boundaries: Path = boundaries / "world-bank-shapefile-admin-0"
+    region_rasters: Path = boundaries / "region-rasters"
+
+    manuscript = project / "manuscript" / f"{Vars.year_report}"
+    figures = manuscript / "figures"
 
 
 class FilesLocal:
@@ -103,6 +110,25 @@ class FilesLocal:
     )
     hw_change_combined = (
         DirsLocal.results_report / f"hw-{Vars.hw_q_min_max}-change-combined-all-ages.nc"
+    )
+
+    world_bank_shapefile: Path = (
+        DirsLocal.world_bank_boundaries / "WB_GAD_ADM0_complete.shp"
+    )
+    raster_country: Path = DirsLocal.region_rasters / "country.nc"
+    raster_who: Path = DirsLocal.region_rasters / "who.nc"
+    raster_hdi: Path = DirsLocal.region_rasters / "hdi.nc"
+    raster_lancet: Path = DirsLocal.region_rasters / "lc.nc"
+    country_names_groupings: Path = (
+        DirsLocal.boundaries / "2026-country-names-groupings.xlsx"
+    )
+    aggregate_country = DirsLocal.aggregates / "country.nc"
+    aggregate_who = DirsLocal.aggregates / "who.nc"
+    aggregate_hdi = DirsLocal.aggregates / "hdi.nc"
+    aggregate_lancet = DirsLocal.aggregates / "lancet.nc"
+    aggregate_submission = (
+        DirsLocal.manuscript
+        / "1.1.1 - 2026 Global Report - Data Submission - Tartarini.xlsx"
     )
 
 
