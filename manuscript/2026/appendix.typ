@@ -104,7 +104,6 @@ In this 2026 update, we have introduced:
 
 We are also proposing to include Dr Mitchell Black as a co-author for this indicator.
 
-/*
 === Data
  
 - Climate Data: ECMWF ERA5-Land reanalysis dataset.
@@ -197,43 +196,27 @@ Extreme heatwaves are becoming increasingly common, and the more than 5 billion 
     caption: [],
     ) <hw-exposure-severe-extreme-trend>
 
-// todo check and finalise numbers in the following paragraph
-The spatial distribution of the increase in heatwave exposure for vulnerable populations is illustrated in @zonal-fingerprint-heat-vs-pop.
-This figure compares the change in heatwave days to the absolute population of vulnerable people across different latitudinal zones.
-It highlights that regions with significant populations, particularly latitudes between +10 and +60, are also experiencing substantial increases in heatwave exposure.
-
-// todo check and finalise numbers in the following paragraph
-#figure(
-  image("/figures/zonal_fingerprint_heat_vs_pop.pdf"),
-  caption: [Population-weighted latitudinal distribution of the change in heatwave days for vulnerable populations from 1986–2005 to #max_year_analysis.],
-) <zonal-fingerprint-heat-vs-pop>
-
-#figure(
-  image("/figures/heatwave_exposure_global_trends_combined.pdf"),
-  caption: [],
-) <hw-exposure-global-trends>
-
 ==== Heatwave Exposure by Regions and Countries
 
 #figure(
-  image("/figures/heatwave_days_by_hdi.pdf"),
-  caption: [],
+  image("/figures/heatwave_days_by_hdi_group.pdf"),
+  caption: [Total number of person-days experienced per year by vulnerable populations, aggregated by Human Development Index (HDI) group.],
 ) <hw-days-by-hdi>
 
 #figure(
-  image("/figures/heatwave_days_by_who.pdf"),
-  caption: [],
+  image("/figures/heatwave_days_by_who_region.pdf"),
+  caption: [Total number of person-days experienced per year by vulnerable populations, aggregated by World Health Organization (WHO) region.],
 ) <hw-days-by-who>
 
 #figure(
-  image("/figures/hw_exposure_age_0_countries_1980-2025.pdf"),
-  caption: [],
-) <hw-exposure-age-0-countries>
+  image("/figures/heatwave_days_by_country.pdf"),
+  caption: [Total heatwave person-days experienced per year by vulnerable populations, aggregated by country.],
+) <hw-days-by-country>
 
 #figure(
-  image("/figures/hw_exposure_age_65_countries_1980-2025.pdf"),
-  caption: [],
-) <hw-exposure-age-65-countries>
+  image("/figures/heatwave_days_by_hdi_group.pdf"),
+  caption: [Total heatwave person-days experienced per year by vulnerable populations, by HDI group.],
+) <hw-days-by-hdi>
 
 ==== Drivers of Change in Heatwave Exposure
 
@@ -282,7 +265,5 @@ Additional analysis
 While climate change drives the increase in heatwave days, population growth also contributes to the rising number of heatwave person-days. This section compares the periods 1986–2005 and 2006–2024 to estimate how many heatwave days vulnerable populations would have experienced if climate change had not occurred, considering only demographic shifts.  
 For each geographic coordinate, the average annual heatwave days affecting both elderly and infant populations were calculated for 2006–2024. The same calculation was repeated while holding heatwave incidence constant to the 1986–2005 levels, isolating the impact of climate change. Comparing these scenarios reveals how many heatwave days vulnerable populations would have been exposed to purely due to demographic changes.
 Under a constant heatwave incidence at baseline levels, vulnerable populations would have experienced an average of 5.4 heatwave days per person per year in 2006–2024—50% fewer than observed. Infants faced an average increase of 4.6 heatwave days per year, while individuals over 65, a rapidly growing group, experienced an additional 5.3 heatwave days annually. For infants a slight decrease in per-person heatwave exposure (from 4.8 to 4.6) would have been observed if heatwave incidence remained at 1986–2005 levels, reflecting shifts in the geographic distribution of vulnerable populations. No change would have been observed for adults ages 65 years or over.
-
-*/
 
 #bibliography("references.bib")

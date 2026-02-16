@@ -479,7 +479,7 @@ def main() -> None:
 
 def plot_trends_by(data, region_dim: str, num_regions: int) -> None:
     data = data.copy().to_dataframe().reset_index()
-    f, axs = plt.subplots(2, 1, sharex=True, figsize=(7, 6))
+    f, axs = plt.subplots(2, 1, sharex=True, figsize=(7, 4.5))
     country_color_map = {}
     if num_regions >= 5:
         country_colors = sns.color_palette("tab20")
