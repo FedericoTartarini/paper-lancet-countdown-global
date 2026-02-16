@@ -1,4 +1,5 @@
 #let max_year_analysis = 2025
+#set par(justify: true)
 
 = Section 1: Health Hazards, Exposure, and Impact
 
@@ -10,7 +11,7 @@ Dr Federico Tartarini, Prof Ollie Jay, Dr Mitchell Black
 
 === Methods
 
-==== Heatwave Occurrence and Duration
+==== Heatwave Definition, Occurrence, and Duration
 
 Heatwaves effects on human health is a growing concern worldwide, particularly for vulnerable populations such as the elderly, infants, and pregnant women.
 However, there is no universally accepted definition of a heatwave, with various studies employing different temperature thresholds, durations, and metrics to characterize these events @xu2016impact.
@@ -29,7 +30,9 @@ For each grid cell and each year from 1980 to 2025, we calculated two primary me
 
 ==== Heatwave Severity (Excess Heat Factor)
 
+#highlight[
 To assess the changing intensity of heatwaves, we calculated the Excess Heat Factor (EHF), a metric that accounts for both the long-term climatological anomaly and short-term acclimatization @nairn2015excess.
+]
 
 /* The EHF for a given day ($t$) is calculated as:
 
@@ -40,9 +43,11 @@ Where:
 - *Acclimatization Index ($"EHI"_("accl")$):* The difference between the 3-day rolling average of $T_("mean")$ and the average $T_("mean")$ of the preceding 30 days.
 
 */
-We classified daily heatwave severity into three tiers—*Low-Intensity*, *Severe*, and *Extreme*—based on the methodology of the Australian Bureau of Meteorology @nairn2015excess. 
+#highlight[
+We classified daily heatwave severity into three tiers—*Low-Intensity*, *Severe*, and *Extreme*—based on the methodology of the Australian Bureau of Meteorology @nairn2015excess.
+]
 
-/* The severity threshold ($"EHF"_(85)$) was defined as the 85th percentile of all positive EHF days recorded at that location during the 1986–2005 baseline. 
+/* The severity threshold ($"EHF"_(85)$) was defined as the 85th percentile of all positive EHF days recorded at that location during the 1986–2005 baseline.
 Days were classified as:
 
 - *Low-Intensity:* $0 < "EHF" <= "EHF"_(85)$
@@ -60,11 +65,11 @@ We focused on three demographic groups particularly susceptible to heat-related 
 ==== Population Data Integration
 
 To construct a continuous annual time series of global population distribution from 1980 to #max_year_analysis, we combined three distinct datasets:
-- *1980–1999:* We utilized the *Lancet Countdown 2023 dataset* @romanello20232023, derived from the ISIMIP Histsoc dataset. This data was resampled to a $0.1 degree times 0.1 degree$ resolution using 2D linear interpolation incorporating population densities and NASA GPWv4 land area data.
-- *2000–2014:* We used global gridded demographic data from the *WorldPop project* @worldpop2018global available at a $1 "km" times 1 "km"$ resolution based on the "top-down unconstrained approach." Aggregated age/sex groups were downscaled to match the ERA5-Land grid by summing values within each cell.
-- *2015–#max_year_analysis:* We utilized the *updated WorldPop dataset* @bondarenko2025spatial, providing high-resolution annual estimates that account for recent migration and urbanization trends.
+- *1980–1999:* We utilized the *Lancet Countdown 2023 dataset* @romanello20232023, derived from the ISIMIP Histsoc dataset and NASA GPWv4 land area data. This data was available at a $0.25 degree times 0.25 degree$ resolution and was upscaled to match the ERA5-Land grid resolution of $0.1 degree times 0.1 degree$. We redistributed population counts from the coarser grid to the finer grid while preserving total population and masking out ocean cells.
+- *2000–2014:* We used global gridded demographic data from the *WorldPop project* @worldpop2018global available at a $1 "km" times 1 "km"$ resolution based on the "top-down unconstrained approach." Age and sex groups were aggregated and then regridded to the ERA5-Land grid by summing values within each 0.1° cell.
+- *2015–#max_year_analysis:* We utilized the *updated WorldPop dataset* @bondarenko2025spatial and aggregated age groups to the ERA5-Land grid by summing values within each cell.
 
-For infants counts were derived by aggregating the age bands 0–1 from the respective datasets.
+For infant counts we aggregated the age band 0–1 from the respective datasets.
 For the elderly ($>= 65$ years), we summed the age bands 65–70, 70–75, 75–80, and 80+.  
 // todo describe methods for Pregnant women estimation
 
@@ -99,6 +104,7 @@ In this 2026 update, we have introduced:
 
 We are also proposing to include Dr Mitchell Black as a co-author for this indicator.
 
+/*
 === Data
  
 - Climate Data: ECMWF ERA5-Land reanalysis dataset.
@@ -276,5 +282,7 @@ Additional analysis
 While climate change drives the increase in heatwave days, population growth also contributes to the rising number of heatwave person-days. This section compares the periods 1986–2005 and 2006–2024 to estimate how many heatwave days vulnerable populations would have experienced if climate change had not occurred, considering only demographic shifts.  
 For each geographic coordinate, the average annual heatwave days affecting both elderly and infant populations were calculated for 2006–2024. The same calculation was repeated while holding heatwave incidence constant to the 1986–2005 levels, isolating the impact of climate change. Comparing these scenarios reveals how many heatwave days vulnerable populations would have been exposed to purely due to demographic changes.
 Under a constant heatwave incidence at baseline levels, vulnerable populations would have experienced an average of 5.4 heatwave days per person per year in 2006–2024—50% fewer than observed. Infants faced an average increase of 4.6 heatwave days per year, while individuals over 65, a rapidly growing group, experienced an additional 5.3 heatwave days annually. For infants a slight decrease in per-person heatwave exposure (from 4.8 to 4.6) would have been observed if heatwave incidence remained at 1986–2005 levels, reflecting shifts in the geographic distribution of vulnerable populations. No change would have been observed for adults ages 65 years or over.
+
+*/
 
 #bibliography("references.bib")

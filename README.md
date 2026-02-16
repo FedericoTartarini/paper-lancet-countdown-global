@@ -19,17 +19,18 @@ This code allows you to:
 
 ## Weather data
 
-The weather data used in this analysis is the ERA5 reanalysis data from the Copernicus Climate Data Store (CDS).
-The data is available at https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form
+The weather data used in this analysis is the ERA5-Land reanalysis data from the Copernicus Climate Data Store (CDS).
+The data is available at https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land?tab=form
 To download the data you need to:
 
 1. Register on their portal and save the Personal Access Token in [secrets.py](python_code/secrets.py). Create the file
-   if the file does not exist and save the token as `copernicus_api_key = "XX".
-2. Download the data using [1_weather_data_download.py](python_code/weather/a_weather_data_download.py)
-3. Preprocess the data using [2_daily_summaries.py](python_code/weather/b_daily_summaries.py)
-4. Calculate the quantiles if the reference period has changed
-   using [calculate_quantiles.py](python_code/weather/b_calculate_quantiles.py). Otherwise, you can skip it.
-5. Calculate the heatwaves occurrences using [calculate_heatwaves.py](python_code/weather/c_calculate_heatwaves_gadi.py)
+   if the file does not exist and save the token as `copernicus_api_key = "XX"`.
+2. Preprocess the data into daily summaries
+   using [a_daily_summaries_gadi.py](python_code/weather/a_daily_summaries_gadi.py)
+3. Calculate the quantiles if the reference period has changed
+   using [b_calculate_quantiles.py](python_code/weather/b_calculate_quantiles.py). Otherwise, you can skip it.
+4. Calculate the heatwave occurrences
+   using [c_calculate_heatwaves_gadi.py](python_code/weather/c_calculate_heatwaves_gadi.py)
 
 For the moment I am keeping the old heatwave data used in the previous report, but I should remove the
 `results/heatwave/results_2025` folder
@@ -37,36 +38,26 @@ once the new report is finalised.
 
 ## Population data
 
-1. Download the WorldPop using [1_pop_data_download.py](python_code/population/a_pop_data_download.py)
-    1. [2.1_pop_create_t_file.py](python_code/population/ba_pop_create_t_file.py) creates total files for each age
-       group and year for the old WorldPop data.
-    2. I am using the new WorldPop data from 2015 since they published a new
-       dataset in 2020 with data from 2015 to 2030.
-2. Re-grid the data to the ERA5 grid using [2_pop_data_process.py](python_code/population/b_pop_data_process.py)
-3. Combine the age groups using [pop_data_combine.py](python_code/population/c_pop_data_combine.py)
-
-## Other files to analyse
-
-1. Generate the rasterized data using [region_raster.py](python_code/calculations/region_raster.py)
+1. Download the WorldPop using [a_pop_data_download.py](python_code/population/a_pop_data_download.py)
+2. Re-grid the data to the ERA5-Land grid
+   using [b_pop_merge_and_coarsen.py](python_code/population/b_pop_merge_and_coarsen.py)
+3. Combine the age groups using [c_pop_data_combine.py](python_code/population/c_pop_data_combine.py)
 
 ## Heatwaves exposure
 
 1. Calculate the absolute exposure to heatwaves
-   using [heatwave_exposure_pop_abs.py](python_code/calculations/1_heatwave_exposure_pop_abs.py)
-2. Run the file [heatwaves_aggregates_worldpop.py](python_code/calculations/3_heatwaves_aggregates_worldpop.py)
-3. Generate most of the results
-   using [results_heatwaves_worldpop.py](python_code/calculations/results_heatwaves_worldpop.py)
-4. Calculate the exposure due to climate change and pop growth
-   using [results_climate_change_vs_pop_growth.py](python_code/calculations/5_results_climate_change_vs_pop_growth.py)
+   using [a_heatwave_exposure_pop_abs.py](python_code/calculations/a_heatwave_exposure_pop_abs.py)
+2. Calculate the change in exposure to heatwaves relative to the reference period
+   using [b_heatwave_exposure_pop_change.py](python_code/calculations/b_heatwave_exposure_pop_change.py)
+3. Rasterize the World Bank Admin0 polygons onto the ERA5-Land grid
+   using [c_regions_rasters.py](python_code/calculations/c_regions_rasters.py)
+4. Aggregate the exposure data by country, WHO, HDI, and Lancet groupings
+   using [d_aggregate_results.py](python_code/calculations/d_aggregate_results.py)
 
-## Other calculations
+## Planned updates
 
-1. Calculate the change in exposure to heatwaves
-   using [heatwave_exposure_pop_change.py](python_code/calculations/2_heatwave_exposure_pop_change.py). These data are
-   not used in the report.
-2. Calculate the worldpop exposure to heatwaves
-   using [heatwave_exposure_worldpop_change.py](python_code/calculations/6_heatwave_exposure_worldpop_change.py). These
-   data are not used in the report.
+- Heatwave severity (EHF) calculation.
+- Pregnant women exposure estimation (pending a robust demographic proxy).
 
 # Other info
 
