@@ -538,7 +538,7 @@ def plot_trends_by(data, region_dim: str, num_regions: int) -> None:
 
 if __name__ == "__main__":
     pass
-    # main()
+    main()
 
     # import datasets for plotting
     population = load_population_dataset()
@@ -549,16 +549,26 @@ if __name__ == "__main__":
     who = xr.open_dataset(FilesLocal.aggregate_who)
     hdi = xr.open_dataset(FilesLocal.aggregate_hdi)
 
-    # # Plot trends by region
-    # plot_trends_by(countries, region_dim="country", num_regions=5)
-    # plot_trends_by(lancet, region_dim="lc_group", num_regions=3)
-    # plot_trends_by(who, region_dim="who_region", num_regions=3)
-    # plot_trends_by(hdi, region_dim="hdi_group", num_regions=3)
+    # Plot trends by region
+    plot_trends_by(countries, region_dim="country", num_regions=5)
+    plot_trends_by(lancet, region_dim="lc_group", num_regions=3)
+    plot_trends_by(who, region_dim="who_region", num_regions=3)
+    plot_trends_by(hdi, region_dim="hdi_group", num_regions=3)
+
+    # group country-level results by year for global summary
+    global_summary = countries.to_dataframe().reset_index()
+    global_summary = (
+        global_summary.groupby(["year", Vars.age_band])
+        .sum()
+        .reset_index()
+        .drop(columns="country")
+        .set_index(["year", Vars.age_band])
+    ).to_xarray()
 
     logging.info("Exporting Excel summary...")
     export_excel(
         datasets={
-            "Global Summary": ("country", countries.groupby("year").sum()),
+            "Global Summary": ("year", global_summary),
             "Country": ("country", countries),
             "WHO Region": ("who_region", who),
             "HDI Group": ("hdi_group", hdi),
