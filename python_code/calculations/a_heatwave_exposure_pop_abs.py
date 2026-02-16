@@ -343,7 +343,7 @@ def plot_global_trends(ds: xr.Dataset, population: str) -> None:
 
 def plot_global_trends_combined(ds: xr.Dataset) -> None:
     """Plot global person-days and person-events for both populations."""
-    fig, ax1 = plt.subplots(figsize=(7, 4))
+    fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
 
     colors_days = {Vars.over_65: "tab:red", Vars.infants: "tab:green"}
@@ -384,8 +384,15 @@ def plot_global_trends_combined(ds: xr.Dataset) -> None:
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left")
 
+    ax1.grid(True, alpha=0.3)
+    ax2.grid(False)
+    ax1.set_ylim(0, None)
+    ax2.set_ylim(0, None)
+    ax2.set(yticks=np.arange(0, 3.1, 0.5))
+
     ax1.set_title("Global Heatwave Exposure: Burden vs Frequency")
     fig.tight_layout()
+    sns.despine()
     plt.savefig(DirsLocal.figures / "hw_exposure_global_trends_combined.pdf")
     plt.show()
 
@@ -538,8 +545,12 @@ def main() -> None:
         },
     )
 
+
+def plot() -> None:
+    combined = xr.open_dataset(FilesLocal.hw_combined_q)
+
     logging.info("Generating plots from combined results...")
-    plot_global_trends_combined(combined)
+    plot_global_trends_combined(ds=combined)
     plot_global_trends(combined, Vars.over_65)
     plot_global_trends(combined, Vars.infants)
     plot_severity_ratio(combined, Vars.over_65)
@@ -559,4 +570,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    pass
+    # main()
+    # plot()

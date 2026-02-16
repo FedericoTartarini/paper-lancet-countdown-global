@@ -15,7 +15,6 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from my_config import (
     Vars,
     DirsLocal,
-    SheetsFinalSubmission,
 )
 
 countries_raster = xr.open_dataset(DirsLocal.dir_file_country_raster_report)
@@ -1062,14 +1061,3 @@ if __name__ == "__plot__":
     plot_absolute_and_change_exposure_range_years_lc_group()
     plot_exposure_vulnerable_to_change_heatwave()
     plot_exposure_vulnerable_absolute_heatwave()
-    plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=65)
-    plot_exposure_vulnerable_to_change_by_country_heatwave(age_band=0)
-    plot_exposure_vulnerable_absolute_by_country_heatwave(
-        age_band=65, max_year=Vars.year_max_analysis
-    )
-    plot_exposure_vulnerable_absolute_by_country_heatwave(
-        age_band=0, max_year=Vars.year_max_analysis
-    )
-    plot_exposure_by_hdi()
-    plot_exposure_by_who()
-    save_lc_data_to_excel()

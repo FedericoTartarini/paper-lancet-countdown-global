@@ -153,10 +153,11 @@ The estimation of heat stress risk may also be expanded beyond heatwave days to 
 While the total number of heatwave days decreased from last year, older adults (65+ y) were exposed to record 10 billion person-days of heatwaves (the second highest year on record), while infants under one year experienced 2.9 billion person-days, as illustrated in @hw-exposure-total.
 
 #figure(
-  image("/figures/heatwaves_exposure_total.pdf"),
+  image("/figures/hw_exposure_global_trends_combined.pdf"),
   caption: [Total number of heatwaves days experienced per year by older adults (over 65)  and infants.],
 ) <hw-exposure-total>
 
+/*
 // todo check and finalise numbers in the following paragraph
 When normalized by population size, individuals over 65 years experienced on average 12.4 heatwave days per person in #max_year_analysis, while infants experienced 9.5 heatwave days per person, as shown in @avg-hw-per-person.
 
@@ -164,6 +165,7 @@ When normalized by population size, individuals over 65 years experienced on ave
   image("/figures/global_hw_per_person.pdf"),
   caption: [Average number of heatwave days experienced per person per year by older adults (over 65) and infants.],
 ) <avg-hw-per-person>
+*/
 
 ==== Heatwave Severity and Duration
 
