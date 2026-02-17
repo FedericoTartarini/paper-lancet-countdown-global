@@ -1,19 +1,22 @@
 """
 Calculate daily summaries (min, mean, max) from ERA5-Land hourly data for a single year.
 
-This script is optimized for NCI Gadi HPC:
-- Processes one year at a time (submitted as separate PBS jobs)
-- Reads directly from /g/data/zz93/era5-land/reanalysis/2t
-- Writes output to /scratch/mn51/ft8695/era5-land/daily/2t for fast I/O
+This script runs on both NCI Gadi HPC and local machines:
+- Auto-detects Gadi vs local paths (or can be forced with --mode)
+- Processes one year at a time
+- Reads ERA5-Land hourly data from the configured paths in my_config.py
+- Writes output to the configured daily folder
 - Processes each month individually, saves interim results, then combines into yearly output
-- Uses Dask distributed for parallel processing
+- Uses Dask distributed on Gadi; local runs use xarray defaults
 
 Usage:
-    python python_code/weather/a_daily_summaries_gadi.py --year 1980
-    python python_code/weather/a_daily_summaries_gadi.py --year 1980 --trial  # Process only January for testing
+    python python_code/weather/b_daily_summaries.py --year 1980
+    python python_code/weather/b_daily_summaries.py --year 1980 --trial
+    python python_code/weather/b_daily_summaries.py --year 2025 --mode local
 
     --trial: Only processes January (for testing the pipeline)
     --year 1980: Processes the entire year 1980 (all 12 months)
+    --mode auto|gadi|local: Select runtime environment (default: auto)
 
 Valid years: 1979-2025
 """
@@ -22,7 +25,7 @@ import argparse
 import sys
 import warnings
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 # Add project root to sys.path
 project_root = Path(__file__).resolve().parents[2]
@@ -31,7 +34,7 @@ sys.path.append(str(project_root))
 import xarray as xr
 from dask.distributed import Client
 
-from my_config import DirsGadi, ensure_directories
+from my_config import DirsGadi, DirsLocal, ensure_directories
 from python_code.log_config import setup_logging
 
 # Set up logging
@@ -51,8 +54,39 @@ ENCODING_PARAMS = {
 TARGET_CHUNKS = {"time": -1, "latitude": 200, "longitude": 200}
 
 
+def resolve_environment(mode: str) -> Tuple[str, Path, Path, str, Optional[Path]]:
+    """Resolve input/output paths and metadata for Gadi or local execution."""
+    if mode == "auto":
+        mode = "gadi" if DirsGadi.e5l_h.exists() else "local"
+
+    if mode == "gadi":
+        input_root = DirsGadi.e5l_h
+        output_dir = DirsGadi.e5l_d
+        source_label = "ERA5-Land hourly data from /g/data/zz93"
+        dask_local_dir = DirsGadi.scratch / "dask-worker-space"
+    elif mode == "local":
+        input_root = DirsLocal.e5l_h
+        output_dir = DirsLocal.e5l_d
+        source_label = "ERA5-Land hourly data from local storage"
+        dask_local_dir = None
+    else:
+        raise ValueError("mode must be one of: auto, gadi, local")
+
+    return mode, input_root, output_dir, source_label, dask_local_dir
+
+
+def resolve_input_dir(input_root: Path, year: int) -> Path:
+    """Return the year subfolder if it exists; otherwise use the root."""
+    year_dir = input_root / str(year)
+    return year_dir if year_dir.exists() else input_root
+
+
 def process_month(
-    year: int, month: int, input_dir: Path, interim_dir: Path
+    year: int,
+    month: int,
+    input_dir: Path,
+    interim_dir: Path,
+    source_label: str,
 ) -> Optional[Path]:
     """
     Process a single month of ERA5-Land hourly data to daily summaries.
@@ -62,6 +96,7 @@ def process_month(
         month: The month to process (1-12)
         input_dir: Directory containing hourly data
         interim_dir: Directory to save interim monthly results
+        source_label: Metadata value for data source
 
     Returns:
         Path to the saved interim file
@@ -113,16 +148,16 @@ def process_month(
         daily_ds.attrs["description"] = (
             f"Daily summaries of 2-meter temperature from ERA5-Land for {year}-{month:02d}"
         )
-        daily_ds.attrs["source"] = "ERA5-Land hourly data from /g/data/zz93"
+        daily_ds.attrs["source"] = source_label
         daily_ds.attrs["processing"] = "Resampled to daily min, mean, max"
-        daily_ds.attrs["created_by"] = "a_daily_summaries_gadi.py"
+        daily_ds.attrs["created_by"] = "b_daily_summaries.py"
 
         # Rechunk for output
         output_chunks = {"time": -1, "latitude": 600, "longitude": 1200}
         daily_ds = daily_ds.chunk(output_chunks)
 
         # Encoding
-        time_chunks = daily_ds.dims["time"]  # Use actual number of days in month
+        time_chunks = daily_ds.sizes["time"]  # Use actual number of days in month
         encoding = {
             var: {
                 **ENCODING_PARAMS,
@@ -150,7 +185,7 @@ def process_month(
         return None
 
 
-def process_year(year: int, trial: bool = False) -> None:
+def process_year(year: int, trial: bool = False, mode: str = "auto") -> None:
     """
     Process a single year of ERA5-Land hourly data to daily summaries.
     Now processes month by month and combines results.
@@ -158,6 +193,7 @@ def process_year(year: int, trial: bool = False) -> None:
     Args:
         year: The year to process (e.g., 1980). Valid range: 1979-2025
         trial: If True, only process January for testing
+        mode: auto, gadi, or local
 
     The function:
     1. Processes each month individually, saving interim files
@@ -169,8 +205,9 @@ def process_year(year: int, trial: bool = False) -> None:
         logger.error(f"❌ Invalid year: {year}. Valid range is 1979-2025")
         sys.exit(1)
 
-    input_dir = DirsGadi.e5l_h / str(year)
-    output_dir = DirsGadi.e5l_d
+    mode, input_root, output_dir, source_label, _ = resolve_environment(mode)
+
+    input_dir = resolve_input_dir(input_root, year)
     ensure_directories([output_dir])
 
     output_file = output_dir / f"{year}_daily_summaries.nc"
@@ -199,7 +236,7 @@ def process_year(year: int, trial: bool = False) -> None:
     # Process each month
     interim_files = []
     for month in months_to_process:
-        interim_file = process_month(year, month, input_dir, interim_dir)
+        interim_file = process_month(year, month, input_dir, interim_dir, source_label)
         if interim_file:
             interim_files.append(interim_file)
 
@@ -242,11 +279,11 @@ def process_year(year: int, trial: bool = False) -> None:
         ds_year.attrs["description"] = (
             f"Daily summaries of 2-meter temperature from ERA5-Land for {year}"
         )
-        ds_year.attrs["source"] = "ERA5-Land hourly data from /g/data/zz93"
+        ds_year.attrs["source"] = source_label
         ds_year.attrs["processing"] = (
             "Resampled to daily min, mean, max (monthly processing)"
         )
-        ds_year.attrs["created_by"] = "a_daily_summaries_gadi.py"
+        ds_year.attrs["created_by"] = "b_daily_summaries.py"
 
         # Encoding for yearly file
         encoding = {
@@ -297,7 +334,7 @@ def process_year(year: int, trial: bool = False) -> None:
 def main():
     """Main entry point with argument parsing."""
     parser = argparse.ArgumentParser(
-        description="Process ERA5-Land hourly data to daily summaries for a single year (Gadi-optimized)",
+        description="Process ERA5-Land hourly data to daily summaries for a single year",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -311,30 +348,45 @@ def main():
         action="store_true",
         help="Trial mode: only process January for testing",
     )
+    parser.add_argument(
+        "--mode",
+        choices=["auto", "gadi", "local"],
+        default="auto",
+        help="Select runtime environment (default: auto)",
+    )
 
     args = parser.parse_args()
 
-    # Set up Dask distributed client with proper memory limits and spill-to-disk
-    logger.info("🚀 Starting Dask distributed client...")
-    client = Client(
-        n_workers=8,
-        threads_per_worker=1,
-        local_directory="/scratch/mn51/ft8695/dask-worker-space",
-        memory_target_fraction=0.6,  # Target 60% memory usage before spilling
-        memory_spill_fraction=0.7,  # Spill to disk at 70% memory usage
-        memory_pause_fraction=0.8,  # Pause workers at 80% memory usage
-    )
-    logger.info(f"Dask Dashboard: {client.dashboard_link}")
-    logger.info("Workers: 8")
-    logger.info("Memory management: target=60%, spill=70%, pause=80%")
+    mode, _, _, _, dask_local_dir = resolve_environment(args.mode)
+    use_dask = mode == "gadi"
+
+    client = None
+    if use_dask:
+        logger.info("🚀 Starting Dask distributed client...")
+        if dask_local_dir is not None:
+            ensure_directories([dask_local_dir])
+        client = Client(
+            n_workers=8,
+            threads_per_worker=1,
+            local_directory=str(dask_local_dir) if dask_local_dir else None,
+            memory_target_fraction=0.6,
+            memory_spill_fraction=0.7,
+            memory_pause_fraction=0.8,
+        )
+        logger.info(f"Dask Dashboard: {client.dashboard_link}")
+        logger.info("Workers: 8")
+        logger.info("Memory management: target=60%, spill=70%, pause=80%")
+    else:
+        logger.info("🖥️ Running without Dask distributed client (local mode)")
 
     try:
-        process_year(args.year, trial=args.trial)
+        process_year(args.year, trial=args.trial, mode=args.mode)
     except Exception as e:
         logger.error(f"❌ Processing failed: {e}", exc_info=True)
         sys.exit(1)
     finally:
-        client.close()
+        if client is not None:
+            client.close()
 
     logger.info("🎉 Done!")
 
