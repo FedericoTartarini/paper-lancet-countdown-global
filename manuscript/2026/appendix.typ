@@ -142,7 +142,7 @@ The estimation of heat stress risk may also be expanded beyond heatwave days to 
 
 === Additional Analyses and Figures
 
-@change-heatwave-days illustrates the change in the number of heatwave days in #max_year_analysis compared to the baseline period, highlighting intense events across all continents, particularly in regions such as Africa, Asia. 
+@change-heatwave-days illustrates the change in the number of heatwave days in #max_year_analysis compared to the baseline period, highlighting intense events across all continents.
 
 #figure(
   image("/figures/map_hw_change_2025.png"),
@@ -157,15 +157,14 @@ While the total number of heatwave days decreased from last year, older adults (
   caption: [Total number of heatwaves days experienced per year by older adults (over 65)  and infants.],
 ) <hw-exposure-total>
 
-/*
 // todo check and finalise numbers in the following paragraph
 When normalized by population size, individuals over 65 years experienced on average 12.4 heatwave days per person in #max_year_analysis, while infants experienced 9.5 heatwave days per person, as shown in @avg-hw-per-person.
 
 #figure(
-  image("/figures/global_hw_per_person.pdf"),
+  image("/figures/hw_exposure_avg_days_per_person.pdf"),
   caption: [Average number of heatwave days experienced per person per year by older adults (over 65) and infants.],
 ) <avg-hw-per-person>
-*/
+
 
 ==== Heatwave Severity and Duration
 

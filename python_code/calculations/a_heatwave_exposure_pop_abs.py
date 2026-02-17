@@ -546,8 +546,54 @@ def main() -> None:
     )
 
 
+def plot_avg_hw_days_per_person(
+    ds: xr.Dataset,
+    pop_inf: xr.DataArray,
+    pop_old: xr.DataArray,
+) -> None:
+    """Plot global average heatwave days per person for each population by year."""
+    days_inf = (
+        ds[Vars.hw_days].sel(age_band=Vars.infants).sum(dim=["latitude", "longitude"])
+    )
+    days_old = (
+        ds[Vars.hw_days].sel(age_band=Vars.over_65).sum(dim=["latitude", "longitude"])
+    )
+
+    pop_inf_total = pop_inf.sum(dim=["latitude", "longitude"])
+    pop_old_total = pop_old.sum(dim=["latitude", "longitude"])
+
+    common_years = np.intersect1d(days_inf["year"].values, pop_inf_total["year"].values)
+    common_years = np.intersect1d(common_years, pop_old_total["year"].values)
+    if common_years.size == 0:
+        raise ValueError("No overlapping years between exposure and population totals.")
+
+    days_inf = days_inf.sel(year=common_years)
+    days_old = days_old.sel(year=common_years)
+    pop_inf_total = pop_inf_total.sel(year=common_years)
+    pop_old_total = pop_old_total.sel(year=common_years)
+
+    avg_inf = days_inf / pop_inf_total
+    avg_old = days_old / pop_old_total
+
+    plt.figure(figsize=(7, 4))
+    plt.plot(avg_inf["year"].values, avg_inf, marker="o", label=Vars.infants)
+    plt.plot(avg_old["year"].values, avg_old, marker="o", label=Vars.over_65)
+    plt.xlabel("Year")
+    plt.ylabel("Average Heatwave Days per Person")
+    plt.title("Average Heatwave Days per Person (Global)")
+    plt.legend(frameon=False)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    sns.despine()
+    plt.savefig(DirsLocal.figures / "hw_exposure_avg_days_per_person.pdf")
+    plt.show()
+
+
 def plot() -> None:
     combined = xr.open_dataset(FilesLocal.hw_combined_q)
+
+    pop_inf = load_population(FilesLocal.pop_inf, "pop", None)
+    pop_old = load_population(FilesLocal.pop_over_65, "pop", None)
 
     logging.info("Generating plots from combined results...")
     plot_global_trends_combined(ds=combined)
@@ -556,6 +602,7 @@ def plot() -> None:
     plot_severity_ratio(combined, Vars.over_65)
     plot_severity_ratio(combined, Vars.infants)
     plot_severity_ratio_combined(combined)
+    plot_avg_hw_days_per_person(ds=combined, pop_inf=pop_inf, pop_old=pop_old)
     # plot_exposure_map(combined, year=2020, population=Vars.over_65, metric=Vars.hw_days)
     # plot_exposure_map(combined, year=2020, population=Vars.infants, metric=Vars.hw_days)
     # plot_exposure_map(
@@ -572,4 +619,4 @@ def plot() -> None:
 if __name__ == "__main__":
     pass
     # main()
-    # plot()
+    plot()
