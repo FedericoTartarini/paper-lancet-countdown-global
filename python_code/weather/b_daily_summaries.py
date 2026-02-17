@@ -136,17 +136,7 @@ def process_month(
                 engine="netcdf4",
             )
 
-        if "valid_time" in ds.dims and "time" not in ds.dims:
-            ds = ds.rename({"valid_time": "time"})
-
-        if "longitude" in ds.coords:
-            lon = ds["longitude"].values
-            if not (np.all(np.diff(lon) > 0) or np.all(np.diff(lon) < 0)):
-                ds = ds.sortby("longitude")
-        if "latitude" in ds.coords:
-            lat = ds["latitude"].values
-            if not (np.all(np.diff(lat) > 0) or np.all(np.diff(lat) < 0)):
-                ds = ds.sortby("latitude")
+        ds = normalize_hourly_structure(ds)
 
         # Rechunk for processing
         ds = ds.chunk(TARGET_CHUNKS)
@@ -280,11 +270,13 @@ def process_year(year: int, trial: bool = False, mode: str = "auto") -> None:
     # Open and combine all interim files
     interim_datasets = []
     reference_file = [f for f in interim_files if f.name.endswith("01_daily.nc")]
+    if not reference_file:
+        raise ValueError("January file not found; cannot enforce reference grid.")
     logger.info(f"Using reference file for coordinate checks: {reference_file[0].name}")
     ref_ds = xr.open_dataset(reference_file[0], engine="netcdf4")
     for f in interim_files:
         ds = xr.open_dataset(f, engine="netcdf4")
-        ds = check_and_fix_longitude(ds, ref_ds)
+        ds = align_to_reference_grid(ds, ref_ds)
         check_resolution_and_units(ds)
         interim_datasets.append(ds)
 
@@ -376,25 +368,89 @@ def process_year(year: int, trial: bool = False, mode: str = "auto") -> None:
         pass
 
 
-def check_and_fix_longitude(ds: xr.Dataset, ref_ds) -> xr.Dataset:
-    """Ensure longitude is -180..180. If 0..360, convert and sort."""
+def normalize_hourly_structure(ds: xr.Dataset) -> xr.Dataset:
+    """Standardize hourly dataset structure to match Jan: time dim and -180..180 lon."""
+    if "valid_time" in ds.dims and "time" not in ds.dims:
+        ds = ds.rename({"valid_time": "time"})
+
+    if "longitude" in ds.coords:
+        lon = ds["longitude"].values
+        if np.all(lon >= 0) and np.all(lon <= 360):
+            new_lon = ((lon + 180) % 360) - 180
+            ds = ds.assign_coords(longitude=new_lon).sortby("longitude")
+        lon = ds["longitude"].values
+        if np.isclose(lon[0], -179.9, atol=1e-6) and np.isclose(
+            lon[-1], 180.0, atol=1e-6
+        ):
+            ds = ds.assign_coords(longitude=lon - 0.1)
+            ds = ds.sortby("longitude")
+
+    if "latitude" in ds.coords:
+        lat = ds["latitude"].values
+        if np.all(np.diff(lat) > 0):
+            ds = ds.sortby("latitude", ascending=False)
+
+    ds = ds.assign_coords(
+        latitude=ds["latitude"].astype("float32"),
+        longitude=ds["longitude"].astype("float32"),
+    )
+
+    extra_coords = set(ds.coords) - {"time", "latitude", "longitude"}
+    if extra_coords:
+        ds = ds.drop_vars(list(extra_coords))
+
+    for var in ds.data_vars:
+        if ds[var].dtype != np.float32:
+            ds[var] = ds[var].astype("float32")
+
+    return ds
+
+
+def align_to_reference_grid(ds: xr.Dataset, ref_ds: xr.Dataset) -> xr.Dataset:
+    """Force dataset lat/lon to match the reference grid with strict checks."""
+    ref_lat = ref_ds["latitude"].values
+    ref_lon = ref_ds["longitude"].values
+
+    # Ensure time dimension name
+    if "valid_time" in ds.dims and "time" not in ds.dims:
+        ds = ds.rename({"valid_time": "time"})
+
+    # Normalize latitude order to match reference (descending)
+    lat = ds["latitude"].values
+    if np.all(np.diff(lat) > 0):
+        ds = ds.sortby("latitude", ascending=False)
+        lat = ds["latitude"].values
+
+    # Normalize longitude to -180..180 and sort
     lon = ds["longitude"].values
     if np.all(lon >= 0) and np.all(lon <= 360):
-        # Convert to -180..180
-        new_lon = (
-            ref_ds.longitude.values
-        )  # Use reference longitude to ensure exact match
-        ds = ds.assign_coords(longitude=new_lon)
-        ds = ds.sortby("longitude")
+        lon = ((lon + 180) % 360) - 180
+        ds = ds.assign_coords(longitude=lon).sortby("longitude")
+        lon = ds["longitude"].values
+    if np.isclose(lon[0], -179.9, atol=1e-6) and np.isclose(lon[-1], 180.0, atol=1e-6):
+        lon = lon - 0.1
+        ds = ds.assign_coords(longitude=lon).sortby("longitude")
+        lon = ds["longitude"].values
 
-    # Match dtype for latitude/longitude
-    ds = ds.assign_coords(
-        latitude=ds["latitude"].astype(ref_ds["latitude"].dtype),
-        longitude=ds["longitude"].astype(ref_ds["longitude"].dtype),
-    )
+    # Enforce exact coordinate match (values and shape)
+    if lat.shape != ref_lat.shape or lon.shape != ref_lon.shape:
+        raise ValueError(
+            "Latitude/longitude shape mismatch: "
+            f"lat {lat.shape} vs {ref_lat.shape}, lon {lon.shape} vs {ref_lon.shape}."
+        )
+    if not np.allclose(lat, ref_lat, rtol=0.0, atol=1e-6):
+        raise ValueError("Latitude values do not match reference grid.")
+    if not np.allclose(lon, ref_lon, rtol=0.0, atol=1e-6):
+        raise ValueError("Longitude values do not match reference grid.")
+
+    # Assign reference coordinates to enforce exact equality and dtype
+    ds = ds.assign_coords(latitude=ref_lat, longitude=ref_lon)
+
     # Remove extra coordinates if present
-    for coord in set(ds.coords) - {"time", "latitude", "longitude"}:
-        ds = ds.drop_vars(coord)
+    extra_coords = set(ds.coords) - {"time", "latitude", "longitude"}
+    if extra_coords:
+        ds = ds.drop_vars(list(extra_coords))
+
     return ds
 
 
