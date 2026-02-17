@@ -13,6 +13,7 @@ from calendar import monthrange
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Iterable, List, Optional
+from zipfile import ZipFile, BadZipFile
 
 # Add project root to sys.path
 project_root = Path(__file__).resolve().parents[2]
@@ -28,6 +29,53 @@ logger = setup_logging(project_root)
 
 DEFAULT_DATASET = "reanalysis-era5-land"
 DEFAULT_URL = "https://cds.climate.copernicus.eu/api"
+
+
+def is_netcdf_file(path: Path) -> bool:
+    """Quick check for NetCDF/HDF5 file signatures."""
+    if not path.exists() or path.stat().st_size < 4:
+        return False
+
+    with path.open("rb") as handle:
+        header = handle.read(8)
+
+    # NetCDF classic: 'CDF\001' or 'CDF\002'
+    if header[:3] == b"CDF":
+        return True
+
+    # HDF5 (NetCDF4): '\x89HDF\r\n\x1a\n'
+    if header == b"\x89HDF\r\n\x1a\n":
+        return True
+
+    return False
+
+
+def is_zip_file(path: Path) -> bool:
+    """Return True if the file starts with a ZIP signature."""
+    if not path.exists() or path.stat().st_size < 4:
+        return False
+
+    with path.open("rb") as handle:
+        header = handle.read(4)
+
+    return header.startswith(b"PK")
+
+
+def extract_zip_to_nc(zip_path: Path, target_nc: Path) -> bool:
+    """Extract the first .nc file from a ZIP into target_nc, preserving the ZIP."""
+    try:
+        with ZipFile(zip_path, "r") as archive:
+            members = [name for name in archive.namelist() if name.endswith(".nc")]
+            if not members:
+                return False
+
+            member = members[0]
+            logger.info(f"📦 Extracting {member} from {zip_path.name}")
+            with archive.open(member) as src, target_nc.open("wb") as dst:
+                dst.write(src.read())
+        return True
+    except BadZipFile:
+        return False
 
 
 def build_month_filename(year: int, month: int) -> str:
@@ -49,6 +97,7 @@ def build_request_payload(year: int, month: int) -> dict:
         "day": [f"{day:02d}" for day in range(1, last_day + 1)],
         "time": [f"{hour:02d}:00" for hour in range(24)],
         "format": "netcdf",
+        "download_format": "unarchived",
     }
 
 
@@ -68,6 +117,25 @@ def download_month(
 
     logger.info(f"⬇️ Downloading {output_path.name}")
     client.retrieve(dataset, payload, str(output_path))
+
+    if is_zip_file(output_path):
+        zip_path = output_path.with_suffix(output_path.suffix + ".zip")
+        if not zip_path.exists():
+            output_path.replace(zip_path)
+        extracted = extract_zip_to_nc(zip_path, output_path)
+        if extracted and is_netcdf_file(output_path):
+            logger.info(f"✅ Extracted NetCDF from ZIP: {output_path.name}")
+            return output_path
+
+    if not is_netcdf_file(output_path):
+        preview = "<empty>"
+        try:
+            preview = output_path.read_bytes()[:500].decode("utf-8", errors="replace")
+        except OSError:
+            preview = "<unreadable>"
+        logger.error("Downloaded file is not NetCDF; first 500 bytes:\n%s", preview)
+        raise ValueError(f"Downloaded file is not NetCDF: {output_path.name}")
+
     return output_path
 
 
@@ -77,12 +145,12 @@ def iter_missing_months(year_dir: Path, year: int) -> Iterable[tuple[int, Path]]
         filename = build_month_filename(year, month)
         output_path = year_dir / filename
 
-        if output_path.exists() and output_path.stat().st_size > 0:
+        if output_path.exists() and is_netcdf_file(output_path):
             logger.info(f"✅ Exists: {output_path.name}")
             continue
 
         if output_path.exists():
-            logger.warning(f"⚠️ Empty or corrupted file found: {output_path.name}")
+            logger.warning(f"⚠️ Invalid file found: {output_path.name}")
             output_path.unlink()
 
         yield month, output_path
