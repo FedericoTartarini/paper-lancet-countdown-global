@@ -15,7 +15,7 @@ Heatwave Definition:
   respective 95th percentile thresholds (climatology).
 
 Usage:
-    python python_code/weather/c_calculate_heatwaves_gadi.py --year 2020
+    python python_code/weather/d_calculate_heatwaves_gadi.py --year 2020
 
 Valid years: 1980-2024 (based on Vars.get_analysis_years())
 """
@@ -371,7 +371,7 @@ def process_year_chunked(
         combined.attrs["reference_period"] = (
             f"{Vars.year_reference_start}-{Vars.year_reference_end}"
         )
-        combined.attrs["created_by"] = "c_calculate_heatwaves_gadi.py"
+        combined.attrs["created_by"] = "d_calculate_heatwaves_gadi.py"
 
         combined["heatwave_count"].attrs = {
             "units": "1",

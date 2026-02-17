@@ -1,5 +1,5 @@
 """
-Verification script for the output of b_calculate_quantiles.py.
+Verification script for the output of c_calculate_quantiles.py.
 
 This script performs the following checks and visualizations:
 1. Verifies that output files exist for all temperature variables

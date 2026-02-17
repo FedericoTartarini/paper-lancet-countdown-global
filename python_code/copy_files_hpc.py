@@ -158,8 +158,16 @@ if __name__ == "__main__":
     #     dest_dir=DirsLocal.hw_min_max,
     # )
 
-    # copy population data from local to Gadi
-    copy_local_to_remote(
-        source_dir=DirsLocal.pop_raw_ssd,
-        remote_dest_dir=DirsGadi.pop_raw,
+    # # copy population data from local to Gadi
+    # copy_local_to_remote(
+    #     source_dir=DirsLocal.pop_raw_ssd,
+    #     remote_dest_dir=DirsGadi.pop_raw,
+    # )
+
+    # copy ERA5-Land hourly data from Gadi to local
+    copy_remote_to_local(
+        remote_source_dir=DirsGadi.e5l_h / "2025",
+        dest_dir=DirsLocal.e5l_h / "2025",
+        file_extension=".nc",
+        copy_subdirs=True,
     )
