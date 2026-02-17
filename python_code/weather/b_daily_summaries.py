@@ -279,14 +279,41 @@ def process_year(year: int, trial: bool = False, mode: str = "auto") -> None:
 
     # Open and combine all interim files
     interim_datasets = []
+    reference_file = [f for f in interim_files if f.name.endswith("01_daily.nc")]
+    logger.info(f"Using reference file for coordinate checks: {reference_file[0].name}")
+    ref_ds = xr.open_dataset(reference_file[0], engine="netcdf4")
     for f in interim_files:
         ds = xr.open_dataset(f, engine="netcdf4")
-        ds = check_and_fix_longitude(ds)
+        ds = check_and_fix_longitude(ds, ref_ds)
         check_resolution_and_units(ds)
         interim_datasets.append(ds)
 
-    # All datasets now have -180..180 longitude, same resolution, units
-    ds_year = xr.concat(interim_datasets, dim="time", join="outer")
+    # Strict check: all lat/lon must match reference
+    ref_lat = interim_datasets[0]["latitude"].values
+    ref_lon = interim_datasets[0]["longitude"].values
+    for i, ds in enumerate(interim_datasets[1:], 1):
+        lat = ds["latitude"].values
+        lon = ds["longitude"].values
+        if not (np.array_equal(lat, ref_lat) and np.array_equal(lon, ref_lon)):
+            logger.error(f"❌ Latitude/longitude mismatch in file {interim_files[i]}")
+            logger.error(
+                f"  Reference lat shape: {ref_lat.shape}, file lat shape: {lat.shape}"
+            )
+            logger.error(
+                f"  Reference lon shape: {ref_lon.shape}, file lon shape: {lon.shape}"
+            )
+            logger.error(
+                f"  Reference lat (first 5): {ref_lat[:5]}, file lat (first 5): {lat[:5]}"
+            )
+            logger.error(
+                f"  Reference lon (first 5): {ref_lon[:5]}, file lon (first 5): {lon[:5]}"
+            )
+            raise ValueError(
+                "Latitude/longitude coordinates do not match across all months."
+            )
+
+    # All datasets now have -180..180 longitude, same resolution, units, and matching grid
+    ds_year = xr.concat(interim_datasets, dim="time", join="exact")
 
     try:
         # Rechunk for final output
@@ -349,14 +376,25 @@ def process_year(year: int, trial: bool = False, mode: str = "auto") -> None:
         pass
 
 
-def check_and_fix_longitude(ds: xr.Dataset) -> xr.Dataset:
+def check_and_fix_longitude(ds: xr.Dataset, ref_ds) -> xr.Dataset:
     """Ensure longitude is -180..180. If 0..360, convert and sort."""
     lon = ds["longitude"].values
     if np.all(lon >= 0) and np.all(lon <= 360):
         # Convert to -180..180
-        new_lon = ((lon + 180) % 360) - 180
+        new_lon = (
+            ref_ds.longitude.values
+        )  # Use reference longitude to ensure exact match
         ds = ds.assign_coords(longitude=new_lon)
         ds = ds.sortby("longitude")
+
+    # Match dtype for latitude/longitude
+    ds = ds.assign_coords(
+        latitude=ds["latitude"].astype(ref_ds["latitude"].dtype),
+        longitude=ds["longitude"].astype(ref_ds["longitude"].dtype),
+    )
+    # Remove extra coordinates if present
+    for coord in set(ds.coords) - {"time", "latitude", "longitude"}:
+        ds = ds.drop_vars(coord)
     return ds
 
 
