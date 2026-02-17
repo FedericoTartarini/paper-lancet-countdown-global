@@ -28,11 +28,15 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 # Add project root to sys.path
-project_root = Path(__file__).resolve().parents[2]
+try:
+    project_root = Path(__file__).resolve().parents[2]
+except NameError:
+    project_root = Path.cwd()
 sys.path.append(str(project_root))
 
 import xarray as xr
 from dask.distributed import Client
+import numpy as np
 
 from my_config import DirsGadi, DirsLocal, ensure_directories
 from python_code.log_config import setup_logging
@@ -120,7 +124,7 @@ def process_month(
     try:
         # Open dataset
         if len(input_files) == 1:
-            ds = xr.open_dataset(input_files[0], chunks={})
+            ds = xr.open_dataset(input_files[0], chunks={}, engine="netcdf4")
         else:
             ds = xr.open_mfdataset(
                 input_files,
@@ -129,7 +133,20 @@ def process_month(
                 coords="minimal",
                 compat="override",
                 combine="by_coords",
+                engine="netcdf4",
             )
+
+        if "valid_time" in ds.dims and "time" not in ds.dims:
+            ds = ds.rename({"valid_time": "time"})
+
+        if "longitude" in ds.coords:
+            lon = ds["longitude"].values
+            if not (np.all(np.diff(lon) > 0) or np.all(np.diff(lon) < 0)):
+                ds = ds.sortby("longitude")
+        if "latitude" in ds.coords:
+            lat = ds["latitude"].values
+            if not (np.all(np.diff(lat) > 0) or np.all(np.diff(lat) < 0)):
+                ds = ds.sortby("latitude")
 
         # Rechunk for processing
         ds = ds.chunk(TARGET_CHUNKS)
@@ -201,7 +218,7 @@ def process_year(year: int, trial: bool = False, mode: str = "auto") -> None:
     3. Cleans up interim files after successful merge
     """
     # Validate year range
-    if year < 1979 or year > 2025:
+    if year < 1979 or year > 2025:  # todo - update upper limit as needed
         logger.error(f"❌ Invalid year: {year}. Valid range is 1979-2025")
         sys.exit(1)
 
@@ -261,14 +278,15 @@ def process_year(year: int, trial: bool = False, mode: str = "auto") -> None:
     logger.info(f"📋 Merging {len(interim_files)} monthly files into yearly output...")
 
     # Open and combine all interim files
-    ds_year = xr.open_mfdataset(
-        interim_files,
-        parallel=True,
-        chunks={},
-        coords="minimal",
-        compat="override",
-        combine="by_coords",
-    )
+    interim_datasets = []
+    for f in interim_files:
+        ds = xr.open_dataset(f, engine="netcdf4")
+        ds = check_and_fix_longitude(ds)
+        check_resolution_and_units(ds)
+        interim_datasets.append(ds)
+
+    # All datasets now have -180..180 longitude, same resolution, units
+    ds_year = xr.concat(interim_datasets, dim="time", join="outer")
 
     try:
         # Rechunk for final output
@@ -329,6 +347,35 @@ def process_year(year: int, trial: bool = False, mode: str = "auto") -> None:
     finally:
         # ds_year is already closed and deleted in the try block
         pass
+
+
+def check_and_fix_longitude(ds: xr.Dataset) -> xr.Dataset:
+    """Ensure longitude is -180..180. If 0..360, convert and sort."""
+    lon = ds["longitude"].values
+    if np.all(lon >= 0) and np.all(lon <= 360):
+        # Convert to -180..180
+        new_lon = ((lon + 180) % 360) - 180
+        ds = ds.assign_coords(longitude=new_lon)
+        ds = ds.sortby("longitude")
+    return ds
+
+
+def check_resolution_and_units(ds: xr.Dataset) -> None:
+    """Assert longitude/latitude resolution and units are consistent."""
+    lon = ds["longitude"].values
+    lat = ds["latitude"].values
+    # Check resolution
+    lon_res = np.round(np.abs(lon[1] - lon[0]), 4)
+    lat_res = np.round(np.abs(lat[1] - lat[0]), 4)
+    if not np.isclose(lon_res, 0.1):
+        raise ValueError(f"Longitude resolution is not 0.1: {lon_res}")
+    if not np.isclose(lat_res, 0.1):
+        raise ValueError(f"Latitude resolution is not 0.1: {lat_res}")
+    # Check units
+    for var in ds.data_vars:
+        units = ds[var].attrs.get("units", "")
+        if units != "K":
+            raise ValueError(f"Variable {var} units are not 'K': {units}")
 
 
 def main():
