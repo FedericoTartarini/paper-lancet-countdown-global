@@ -326,12 +326,11 @@ def main() -> None:
     logging.info("Generating plots...")
     plot_weighted_mean_change(combined, pop_inf, pop_old)
     plot_total_exposure_change(combined)
-    plot_mediterranean_change(combined, pop_inf, pop_old, year=2020)
+    # plot_mediterranean_change(combined, pop_inf, pop_old, year=2020)
     # plot_global_histograms(combined, year=2020)
 
     logging.info("✅ Done")
 
 
 if __name__ == "__main__":
-    pass
-    # main()
+    main()
