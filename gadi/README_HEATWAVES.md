@@ -24,7 +24,7 @@ thresholds.
    python python_code/copy_files_hpc.py  # Sync quantiles and daily data
    ```
 
-2. **Code Deployment**: Deploy code to Gadi:
+2. **Code Deployment**: Deploy code to Gadi by running this script from the local repository root:
    ```bash
    ./gadi/deploy_to_gadi.sh
    ```
@@ -55,7 +55,7 @@ cd paper-lancet-countdown-global/
 ./gadi/submit_heatwaves_gadi.sh
 
 # Single year
-./gadi/submit_heatwaves_gadi.sh 2000
+./gadi/submit_heatwaves_gadi.sh 2025
 
 # Year range
 ./gadi/submit_heatwaves_gadi.sh 2020 2024
@@ -77,6 +77,12 @@ Results are saved to `/scratch/mn51/ft8695/heatwaves/` as `heatwave_indicators_{
 ## Progress Tracking
 
 The script logs progress for each latitude chunk:
+
+```
+cat logs/calculate_heatwaves.log
+```
+
+will show output like:
 
 ```
 📊 Chunk 5/10: lat[800:1000] (200 rows)
