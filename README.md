@@ -26,11 +26,11 @@ To download the data you need to:
 1. Register on their portal and save the Personal Access Token in [secrets.py](python_code/secrets.py). Create the file
    if the file does not exist and save the token as `copernicus_api_key = "XX"`.
 2. Preprocess the data into daily summaries
-   using [a_daily_summaries_gadi.py](python_code/weather/a_daily_summaries_gadi.py)
+   using [b_daily_summaries.py](python_code/weather/b_daily_summaries.py)
 3. Calculate the quantiles if the reference period has changed
-   using [b_calculate_quantiles.py](python_code/weather/b_calculate_quantiles.py). Otherwise, you can skip it.
+   using [c_calculate_quantiles.py](python_code/weather/c_calculate_quantiles.py). Otherwise, you can skip it.
 4. Calculate the heatwave occurrences
-   using [c_calculate_heatwaves_gadi.py](python_code/weather/c_calculate_heatwaves_gadi.py)
+   using [d_calculate_heatwaves_gadi.py](python_code/weather/d_calculate_heatwaves_gadi.py)
 
 For the moment I am keeping the old heatwave data used in the previous report, but I should remove the
 `results/heatwave/results_2025` folder
