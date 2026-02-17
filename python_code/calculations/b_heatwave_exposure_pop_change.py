@@ -191,70 +191,6 @@ def plot_total_exposure_change(combined: xr.Dataset) -> None:
     plt.show()
 
 
-def plot_mediterranean_change(
-    combined: xr.Dataset,
-    pop_inf: xr.DataArray,
-    pop_old: xr.DataArray,
-    year: int = 2020,
-) -> None:
-    """Plot Mediterranean regional change maps and time series."""
-    lat_slice = slice(35, 45)
-    lon_slice = slice(10, 20)
-
-    pop_inf_reg = pop_inf.sel(latitude=lat_slice, longitude=lon_slice)
-    pop_old_reg = pop_old.sel(latitude=lat_slice, longitude=lon_slice)
-
-    combined_reg = combined.sel(latitude=lat_slice, longitude=lon_slice)
-
-    fig, axs = plt.subplots(2, 2, figsize=(10, 8), constrained_layout=True)
-
-    combined_reg[Vars.hw_days].sel(age_band=Vars.infants, year=year).plot(
-        ax=axs[0, 0], cmap="magma", robust=True, add_colorbar=True
-    )
-    axs[0, 0].set_title(f"Infants Days Change ({year})")
-
-    combined_reg[Vars.hw_days].sel(age_band=Vars.over_65, year=year).plot(
-        ax=axs[0, 1], cmap="magma", robust=True, add_colorbar=True
-    )
-    axs[0, 1].set_title(f"Over 65 Days Change ({year})")
-
-    combined_reg[Vars.hw_count].sel(age_band=Vars.infants, year=year).plot(
-        ax=axs[1, 0], cmap="viridis", robust=True, add_colorbar=True
-    )
-    axs[1, 0].set_title(f"Infants Events Change ({year})")
-
-    combined_reg[Vars.hw_count].sel(age_band=Vars.over_65, year=year).plot(
-        ax=axs[1, 1], cmap="viridis", robust=True, add_colorbar=True
-    )
-    axs[1, 1].set_title(f"Over 65 Events Change ({year})")
-
-    plt.savefig(DirsLocal.figures / f"hw_change_mediterranean_maps_{year}.pdf")
-    sns.despine()
-    plt.show()
-
-    fig, axs = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
-
-    for idx, metric in enumerate([Vars.hw_days, Vars.hw_count]):
-        inf_mean = weighted_mean(
-            combined_reg[metric].sel(age_band=Vars.infants), pop_inf_reg
-        )
-        old_mean = weighted_mean(
-            combined_reg[metric].sel(age_band=Vars.over_65), pop_old_reg
-        )
-
-        axs[idx].plot(inf_mean["year"].values, inf_mean, label="Infants")
-        axs[idx].plot(old_mean["year"].values, old_mean, label="Over 65")
-        axs[idx].axhline(0, color="black", linewidth=0.8, linestyle="--")
-        axs[idx].set_ylabel(f"Weighted mean change ({metric})")
-        axs[idx].legend()
-
-    axs[-1].set_xlabel("Year")
-    fig.suptitle("Mediterranean Weighted Mean Change")
-    plt.savefig(DirsLocal.figures / "hw_change_mediterranean_weighted_mean.pdf")
-    sns.despine()
-    plt.show()
-
-
 def assert_expected_output(ds: xr.Dataset) -> None:
     """Validate output structure for exposure change."""
     expected_vars = {Vars.hw_days, Vars.hw_count}
@@ -267,26 +203,6 @@ def assert_expected_output(ds: xr.Dataset) -> None:
         raise ValueError(
             f"Unexpected dims in output: {set(ds.dims)} (expected {expected_dims})"
         )
-
-
-def plot_global_histograms(combined: xr.Dataset, year: int = 2020) -> None:
-    """Plot distributions of exposure change for a given year."""
-    fig, axs = plt.subplots(2, 2, figsize=(10, 8), constrained_layout=True)
-
-    for row, metric in enumerate([Vars.hw_days, Vars.hw_count]):
-        for col, population in enumerate([Vars.infants, Vars.over_65]):
-            data = combined[metric].sel(age_band=population, year=year)
-            data = data.where(np.isfinite(data)).values.ravel()
-            data = data[~np.isnan(data)]
-
-            axs[row, col].hist(data, bins=50, color="tab:blue", alpha=0.7)
-            axs[row, col].set_title(f"{metric} - {population} ({year})")
-            axs[row, col].set_xlabel("Change")
-            axs[row, col].set_ylabel("Grid cells")
-
-    plt.savefig(DirsLocal.figures / f"hw_change_histograms_{year}.pdf")
-    sns.despine()
-    plt.show()
 
 
 def main() -> None:
@@ -316,21 +232,29 @@ def main() -> None:
     combined.to_netcdf(
         FilesLocal.hw_change_combined,
         encoding={
-            Vars.hw_days: {"zlib": True, "complevel": 5},
-            Vars.hw_count: {"zlib": True, "complevel": 5},
+            Vars.hw_days: {"zlib": True, "complevel": 0},
+            Vars.hw_count: {"zlib": True, "complevel": 0},
         },
     )
 
+
+def plot():
     combined = xr.open_dataset(FilesLocal.hw_change_combined)
+
+    years = slice(Vars.year_min_analysis, Vars.year_max_analysis)
+
+    logging.info("Loading population data...")
+    pop_inf = load_population(FilesLocal.pop_inf, "pop", years)
+    pop_old = load_population(FilesLocal.pop_over_65, "pop", years)
 
     logging.info("Generating plots...")
     plot_weighted_mean_change(combined, pop_inf, pop_old)
     plot_total_exposure_change(combined)
-    # plot_mediterranean_change(combined, pop_inf, pop_old, year=2020)
-    # plot_global_histograms(combined, year=2020)
 
     logging.info("✅ Done")
 
 
 if __name__ == "__main__":
+    pass
     main()
+    plot()
