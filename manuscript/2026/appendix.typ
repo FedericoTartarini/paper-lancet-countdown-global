@@ -166,17 +166,9 @@ When normalized by population size, individuals over 65 years experienced on ave
 ) <avg-hw-per-person>
 
 
-==== Heatwave Severity and Duration
+==== Heatwave Severity - Excess Heat Factor (EHF)
 
-Heatwaves are also becoming longer, with the number of average days per heatwave event increasing over time, as shown in @hw-severity-ratio.
-
-#figure(
-  image("/figures/heatwave_severity_ratio_combined.pdf"),
-  caption: [],
-) <hw-severity-ratio>
-
-It should be noted that the exposure of vulnerable populations to heatwaves calculated using the EHF metric is higher than that calculated using simpler temperature-threshold definitions.
-This is because the EHF captures not only extreme temperature events but also moderate heatwaves that can have significant health impacts, especially on vulnerable groups.
+To determine the contribution of heatwave severity to the overall exposure of vulnerable populations, we analyzed the distribution of heatwave days by severity category (low-intensity, severe, extreme) using the EHF metric.
 @hw-exposure-severe-extreme-stacked illustrates the increasing contribution of severe and extreme heatwaves to total heatwave exposure over time.
 It also shows that if low-intensity heatwaves are included, the total exposure of vulnerable populations (over 65) to heatwaves would be even higher than what reported in @hw-exposure-total.
 // todo check and finalise numbers in the following paragraph
@@ -188,16 +180,10 @@ This is the second highest on record after 2024 (39 billion person-days).
   caption: [Stacked area chart showing the contribution of low-intensity, severe, and extreme heatwaves to total heatwave exposure for individuals over 65 years from 1980 to #max_year_analysis.],
 ) <hw-exposure-severe-extreme-stacked>
 
-// todo check and finalise numbers in the following paragraph
-The trend in exposure to severe and extreme heatwaves is shown in @hw-exposure-severe-extreme-trend.
-Extreme heatwaves are becoming increasingly common, and the more than 5 billion person-days of exposure to severe heawtwaves in #max_year_analysis is the third highest on record after 2024 (9.5 billion) and 2023 (6 billion).
-
-#figure(
-    image("/figures/heatwave_exposure_severe_extreme_trend.pdf"),
-    caption: [],
-    ) <hw-exposure-severe-extreme-trend>
-
 ==== Heatwave Exposure by Regions and Countries
+
+In this section, we present the geographic distribution of heatwave exposure for vulnerable populations, aggregated by country, Human Development Index (HDI) group, and World Health Organization (WHO) region.
+These figures illustrate the disparities in heatwave exposure across different regions and the different distribution of vulnerable populations, which leads to significant variations in heatwave person-days experienced across countries and regions.
 
 #figure(
   image("/figures/heatwave_days_by_hdi_group.pdf"),
