@@ -85,8 +85,9 @@ class DirsLocal:
 
     # population data
     # pop_raw_ssd = Path("/Volumes/T7/lancet_countdown/population")
-    pop_raw_ssd = data / Dirs.pop / "raw"
-    pop_e5l_grid = data / Dirs.pop / (Dirs.e5l + "-grid")
+    pop = data / Dirs.pop
+    pop_raw_ssd = pop / "raw"
+    pop_e5l_grid = pop / (Dirs.e5l + "-grid")
     pop_e5l_grid_combined = data / Dirs.pop / (Dirs.e5l + "-grid-combined")
 
     # boundaries and rasters
@@ -132,6 +133,9 @@ class FilesLocal:
     aggregate_submission = (
         DirsLocal.manuscript
         / "1.1.1 - 2026 Global Report - Data Submission - Tartarini.xlsx"
+    )
+    unicef_still_births = (
+        DirsLocal.pop / "pregnancy" / "stillbirth-rate-and-deaths-2024.xlsx"
     )
 
 
