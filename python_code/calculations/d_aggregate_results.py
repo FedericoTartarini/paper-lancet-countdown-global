@@ -536,14 +536,50 @@ def plot_trends_by(data, region_dim: str, num_regions: int) -> None:
     plt.show()
 
 
-if __name__ == "__main__":
-    pass
-    main()
+def plot_comparison_aggregates(global_summary, countries, who, hdi, lancet) -> None:
+    """Plot a comparison of total heatwave days across all aggregates.
+    To make sure that the aggregation and grouping processes are consistent"""
 
+    # add a plot in which we compare the yearly sums for the all the ds
+    f, axs = plt.subplots(2, 1, sharex=True)
+    for ds, label in zip(
+        [global_summary, countries, who, hdi, lancet],
+        ["Global Summary", "Country", "WHO Region", "HDI Group", "LC Region"],
+    ):
+        for age_band in ds[Vars.age_band].values:
+            subset = ds.sel({Vars.age_band: age_band})
+            subset = subset.reset_coords(drop=True).to_dataframe().reset_index()
+            subset = subset.groupby("year").sum()
+            if age_band == Vars.infants:
+                axs[0].plot(
+                    subset.index,
+                    subset[f"{Vars.hw_days}_total"],
+                    label=f"{label} - {age_band}",
+                )
+            else:
+                axs[1].plot(
+                    subset.index,
+                    subset[f"{Vars.hw_days}_total"],
+                    label=f"{label} - {age_band}",
+                )
+    axs[0].set_title("Total heatwave person-days exposure - Infants")
+    axs[1].set_title("Total heatwave person-days exposure - Age 65+")
+    axs[1].set_xlabel("Year")
+    axs[0].legend()
+    plt.tight_layout()
+    sns.despine()
+    axs[0].set(ylim=(0, None))
+    axs[1].set(ylim=(0, None))
+    axs[0].grid(True, linestyle="--", alpha=0.7)
+    axs[1].grid(True, linestyle="--", alpha=0.7)
+    # plt.savefig(DirsLocal.figures / "comparison_total_heatwave_days.pdf")
+    plt.show()
+
+
+def plot_and_summary() -> None:
+    """Create summary plots and tables for the aggregate results."""
     # import datasets for plotting
     population = load_population_dataset()
-    heatwave_ds = load_heatwave_metrics(years=None)
-    heatwave_days = heatwave_ds[Vars.hw_days]
     countries = xr.open_dataset(FilesLocal.aggregate_country)
     lancet = xr.open_dataset(FilesLocal.aggregate_lancet)
     who = xr.open_dataset(FilesLocal.aggregate_who)
@@ -555,10 +591,30 @@ if __name__ == "__main__":
     plot_trends_by(who, region_dim="who_region", num_regions=3)
     plot_trends_by(hdi, region_dim="hdi_group", num_regions=3)
 
+    # create a global summary
+    global_summary = xr.open_dataset(FilesLocal.hw_combined_q)
+    global_summary = global_summary.groupby("year").sum(
+        dim=["latitude", "longitude"], skipna=True
+    )
+    # merge population and heatwave days to create a global summary table
+    global_summary = global_summary.merge(
+        population.sum(dim=["latitude", "longitude"], skipna=True)
+    )
+    # add weighted mean heatwave days per person to the global summary
+    global_summary[f"{Vars.hw_days}_per_person"] = (
+        global_summary[Vars.hw_days] / global_summary["population"]
+    )
+    global_summary[f"{Vars.hw_count}_per_person"] = (
+        global_summary[Vars.hw_count] / global_summary["population"]
+    )
+    # rename Vars.hw_count to match the naming convention in the aggregates
+    global_summary = global_summary.rename({Vars.hw_count: f"{Vars.hw_count}_total"})
+    global_summary = global_summary.rename({Vars.hw_days: f"{Vars.hw_days}_total"})
+
     # group country-level results by year for global summary
-    global_summary = countries.to_dataframe().reset_index()
-    global_summary = (
-        global_summary.groupby(["year", Vars.age_band])
+    global_summary_from_country = countries.to_dataframe().reset_index()
+    global_summary_from_country = (
+        global_summary_from_country.groupby(["year", Vars.age_band])
         .sum()
         .reset_index()
         .drop(columns="country")
@@ -577,3 +633,11 @@ if __name__ == "__main__":
     )
 
     logging.info("All aggregations completed.")
+
+    plot_comparison_aggregates(global_summary, countries, who, hdi, lancet)
+
+
+if __name__ == "__main__":
+    pass
+    main()
+    plot_and_summary()
