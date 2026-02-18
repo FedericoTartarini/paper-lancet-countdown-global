@@ -169,16 +169,10 @@ When normalized by population size, individuals over 65 years experienced on ave
 ==== Heatwave Severity - Excess Heat Factor (EHF)
 
 To determine the contribution of heatwave severity to the overall exposure of vulnerable populations, we analyzed the distribution of heatwave days by severity category (low-intensity, severe, extreme) using the EHF metric.
-@hw-exposure-severe-extreme-stacked illustrates the increasing contribution of severe and extreme heatwaves to total heatwave exposure over time.
-It also shows that if low-intensity heatwaves are included, the total exposure of vulnerable populations (over 65) to heatwaves would be even higher than what reported in @hw-exposure-total.
-// todo check and finalise numbers in the following paragraph
-A total of 30 billion person-days of heatwaves (all severities) were experienced by individuals over 65 in #max_year_analysis alone.
-This is the second highest on record after 2024 (39 billion person-days).
 
-#figure(
-  image("/figures/heatwave_exposure_severity_stacked.pdf"),
-  caption: [Stacked area chart showing the contribution of low-intensity, severe, and extreme heatwaves to total heatwave exposure for individuals over 65 years from 1980 to #max_year_analysis.],
-) <hw-exposure-severe-extreme-stacked>
+#highlight[Here we need to finalize the numbers and the text for this section, which will be based on the analysis of the EHF data. 
+
+This analysis will help to contextualize the increasing exposure to heatwaves in terms of not just frequency but also severity, which is crucial for understanding the potential health impacts on vulnerable groups.]
 
 ==== Heatwave Exposure by Regions and Countries
 
