@@ -185,10 +185,24 @@ This is the second highest on record after 2024 (39 billion person-days).
 In this section, we present the geographic distribution of heatwave exposure for vulnerable populations, aggregated by country, Human Development Index (HDI) group, and World Health Organization (WHO) region.
 These figures illustrate the disparities in heatwave exposure across different regions and the different distribution of vulnerable populations, which leads to significant variations in heatwave person-days experienced across countries and regions.
 
+When analyzed by country, as shown in @hw-days-by-country China is the country with the highest number of heatwave person-days experienced by both vulnerable groups. 
+India, the United States of America, Russian Federation also rank among the top countries with the highest heatwave exposure for both age groups.
+
+#figure(
+  image("/figures/heatwave_days_by_country.pdf"),
+  caption: [Total heatwave person-days experienced per year by vulnerable populations, aggregated by country.],
+) <hw-days-by-country>
+
+When data are grouped by HDI, countries classified as ‘Low’ HDI experienced the lowest number of heatwave person-days for both age groups, while those in the ‘High’ and ‘Very High’ HDI categories experienced significantly higher exposure, as shown in @hw-days-by-hdi.
+This pattern is likely driven by the higher concentration of vulnerable populations in more developed countries.
+
 #figure(
   image("/figures/heatwave_days_by_hdi_group.pdf"),
   caption: [Total number of person-days experienced per year by vulnerable populations, aggregated by Human Development Index (HDI) group.],
 ) <hw-days-by-hdi>
+
+Countries in the Western Pacific experienced the highest number of heatwave person-days for both age groups, as shown in @hw-days-by-who.
+However, the African region experienced the fastest growth in heatwave person-days after 2000 for infants, while Europe and the Americas have a significant share of heatwave person-days for the elderly population, due to a rapid growth in the elderly population coupled with a high number of heatwave days in these regions.
 
 #figure(
   image("/figures/heatwave_days_by_who_region.pdf"),
@@ -196,14 +210,9 @@ These figures illustrate the disparities in heatwave exposure across different r
 ) <hw-days-by-who>
 
 #figure(
-  image("/figures/heatwave_days_by_country.pdf"),
-  caption: [Total heatwave person-days experienced per year by vulnerable populations, aggregated by country.],
-) <hw-days-by-country>
-
-#figure(
-  image("/figures/heatwave_days_by_hdi_group.pdf"),
-  caption: [Total heatwave person-days experienced per year by vulnerable populations, by HDI group.],
-) <hw-days-by-hdi>
+  image("/figures/heatwave_days_by_lc_group.pdf"),
+  caption: [Total heatwave person-days experienced per year by vulnerable populations, by Lancet group.],
+) <hw-days-by-lc>
 
 ==== Drivers of Change in Heatwave Exposure
 
@@ -235,13 +244,7 @@ For the elderly population, both climate change and population growth contribute
   image("/figures/exposure_change_heatwave_days_population_weighted_mean.pdf"),
   caption: [],
 ) <exposure-change-heatwave-days>
-
-
-When analyzed by country, as shown in Figure 3 and Figure 4, China and India are the countries with the highest number of affected individuals in both age categories, primarily due to their large populations. In 2024, a significant number of people over 65 were also impacted in Japan, the United States of America, and Italy, while heatwave exposure among infants was particularly high in Indonesia, Nigeria, and the Democratic Republic of the Congo.
  
-Figure 4. Total heatwave person-days experienced by infants under one year old, presented by year and by the most affected countries.
- 
-Figure 5. Total heatwave person-days experienced by individuals over 65, presented by year and by the most affected countries.
 Before 2024, countries classified as ‘Low’ HDI, on average, exhibited lower heatwave exposure for both age groups, as shown in Figure 6. However, these countries experienced the fastest growth in 2024 rising from 7.5 to 21.0 days—a 181% increase. 
  
 Figure 6. Average number of heatwave days experienced aggregated by HDI level.
