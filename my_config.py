@@ -134,9 +134,6 @@ class FilesLocal:
         DirsLocal.manuscript
         / "1.1.1 - 2026 Global Report - Data Submission - Tartarini.xlsx"
     )
-    unicef_still_births = (
-        DirsLocal.pop / "pregnancy" / "stillbirth-rate-and-deaths-2024.xlsx"
-    )
 
 
 class DirsGadi:

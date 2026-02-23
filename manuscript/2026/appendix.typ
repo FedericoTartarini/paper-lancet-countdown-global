@@ -13,11 +13,11 @@ Dr Federico Tartarini, Prof Ollie Jay, Dr Mitchell Black
 
 ==== Heatwave Definition, Occurrence, and Duration
 
-Heatwaves effects on human health is a growing concern worldwide, particularly for vulnerable populations such as the elderly, infants, and pregnant women.
+Heatwaves effects on human health is a growing concern worldwide, particularly for vulnerable populations such as the elderly and infants.
 However, there is no universally accepted definition of a heatwave, with various studies employing different temperature thresholds, durations, and metrics to characterize these events @xu2016impact.
 For this analysis, we defined a heatwave as a period of three or more consecutive days in which both the daily minimum and maximum temperatures exceeded the 95th percentile of the local climatology.
 This definition is based on the approach used by the World Meteorological Organization (WMO) in the "Heatwaves and Health: Guidance on Warning-System Development" @wmo2015heatwaves.
-This dual-threshold definition captures both the direct heat stress caused by high daytime temperatures and the physiological strain associated with insufficient nighttime cooling @liu2024rising, @di2019verification
+This dual-threshold definition captures both the direct heat stress caused by high daytime temperatures and the physiological strain associated with insufficient nighttime cooling @liu2024rising, @di2019verification.
 Two climatological baselines were used:
 - 1986-2005 reference period.
 - 2007-2016 to align with the Paris Agreement.
@@ -27,6 +27,19 @@ For each grid cell and each year from 1980 to 2025, we calculated two primary me
 
 - Heatwave Duration: The total number of days per year spent during a heatwave.
 - Heatwave Frequency: The total number of discrete heatwave events per year.
+
+==== Heatwave Exposure Calculation
+
+Exposure to heatwaves for each vulnerable group was calculated by combining heatwave occurrence data with gridded demographic datasets.
+
+For each grid cell, the annual heatwave exposure (in person-days) was computed as:
+$ "Exposure" = "Heatwave Days" times "Population" $
+
+Where:
+- *Heatwave Days:* The total number of heatwave days in that grid cell for the year.
+- *Population:* The number of individuals in the vulnerable group residing in that grid cell.
+
+The total annual exposure for each vulnerable group was obtained by summing the exposure across all grid cells globally.
 
 ==== Heatwave Severity (Excess Heat Factor)
 
@@ -57,10 +70,9 @@ Days were classified as:
 
 ==== Vulnerable Groups
 
-We focused on three demographic groups particularly susceptible to heat-related health impacts:
+We focused on two demographic groups particularly susceptible to heat-related health impacts:
 - *Elderly ($>= 65$ years):* Age-related decrements in thermoregulation (e.g., reduced sweating) occur significantly by age 65 @kenney2003invited. Additionally, the risk of underlying chronic conditions such as cardiovascular, renal, and respiratory diseases—secondary aggravators of heat stress—increases with advanced age @ebi2021hot.
 - *Infants ($<1$ year):* Infants are highly vulnerable due to a high surface area-to-mass ratio (up to 4-fold greater than adults) and a limited behavioral ability to avoid heat @bin2023optimal.
-- *Pregnant Women:* Pregnancy places significant physiological strain on the cardiovascular and thermoregulatory systems. Extreme heat exposure during pregnancy has been linked to adverse outcomes including preterm birth, low birth weight, and stillbirth @ravanelli2019heat.
 
 ==== Population Data Integration
 
@@ -71,20 +83,6 @@ To construct a continuous annual time series of global population distribution f
 
 For infant counts we aggregated the age band 0–1 from the respective datasets.
 For the elderly ($>= 65$ years), we summed the age bands 65–70, 70–75, 75–80, and 80+.  
-// todo describe methods for Pregnant women estimation
-
-==== Heatwave Exposure Calculation
-
-Exposure to heatwaves for each vulnerable group was calculated by combining heatwave occurrence data with gridded demographic datasets.
-
-For each grid cell, the annual heatwave exposure (in person-days) was computed as:
-$ "Exposure" = "Heatwave Days" times "Population" $
-
-Where:
-- *Heatwave Days:* The total number of heatwave days in that grid cell for the year.
-- *Population:* The number of individuals in the vulnerable group residing in that grid cell.
-
-The total annual exposure for each vulnerable group was obtained by summing the exposure across all grid cells globally.
 
 ==== Code and resources to reproduce the results
 
@@ -96,7 +94,6 @@ Then they can use the code to reproduce the results, please refer to the README 
 
 In this 2026 update, we have introduced: 
 - the assessment of heatwave severity using the Excess Heat Factor (EHF) metric, allowing us to differentiate between low-intensity, severe, and extreme heatwaves.
-- the inclusion of pregnant women as a vulnerable group, recognizing their heightened susceptibility to heat-related health impacts.
 - improved demographic data integration by utilizing the latest WorldPop datasets.
 - removed the people aged 75+ since this group is already included in the 65+ age group.
 - given that the population data now extends to 2025, we did not need to project population estimates beyond 2020 as done in previous years.

@@ -253,12 +253,10 @@ Create validation plots to ensure the regridding is correct. I want to make sure
 ### Population data
 
 I do not need to calculate the risk for over 75.
-I only need to calculate the risk for over 65, under 1 and pregenant women.
-Data about pregnant women is not available in the WorldPop dataset, hence, I will possibly need to calculate them as a
-function of the under 1 population and then apply a correction factor to account for stillbirths, miscarriages and
-abortions.
-I can remove the code related to the over 75 population and focus on the other three groups.
-This will simplify the code and reduce the computational load, as I will be working with fewer population groups.
+I only need to calculate the risk for over 65 and under 1.
+Data about pregnant women will NOT be included in the analysis.
+Remove any code that generated or used pregnant-women estimates and update documentation accordingly.
+This will simplify the code and reduce the computational load, as we are working with fewer population groups.
 I should also update the documentation and comments in the code to reflect this change, so that it is clear which
 population groups are being analyzed.
 
