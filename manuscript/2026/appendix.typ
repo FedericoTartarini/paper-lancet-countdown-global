@@ -40,6 +40,11 @@ Where:
 - *Population:* The number of individuals in the vulnerable group residing in that grid cell.
 
 The total annual exposure for each vulnerable group was obtained by summing the exposure across all grid cells globally.
+We also present the average number of heatwave days experienced per person by dividing the total heatwave person-days by the total population of the vulnerable group for that year.
+
+#highlight[
+Please remember to add in the methods for the counterfactual estimation from Andys analysis, which will be used to estimate how many heatwave days vulnerable populations would have experienced if climate change had not occurred, considering only demographic shifts.
+]
 
 ==== Heatwave Severity (Excess Heat Factor)
 
@@ -87,6 +92,7 @@ For the elderly ($>= 65$ years), we summed the age bands 65–70, 70–75, 75–
 ==== Code and resources to reproduce the results
 
 The results were generated using Python, a copy of the code is available in this public repository https://github.com/FedericoTartarini/paper-lancet-countdown-global. 
+// todo check if the Lancet Countdown has a public repository where we can upload the code, and if not, we can create one for this paper.
 Users who want to reproduce the results will first need to download the datasets listed below. 
 Then they can use the code to reproduce the results, please refer to the README file in the public repository which contains detailed instructions on how to run the Python code.
 
@@ -98,6 +104,7 @@ In this 2026 update, we have introduced:
 - removed the people aged 75+ since this group is already included in the 65+ age group.
 - given that the population data now extends to 2025, we did not need to project population estimates beyond 2020 as done in previous years.
 - we have included the analysis of heatwave exposure trends under the 2007–2016 baseline, to align with the Paris Agreement.
+- #highlight[Add also the attribution/conterfactual analysis]
 
 We are also proposing to include Dr Mitchell Black as a co-author for this indicator.
 
@@ -106,7 +113,8 @@ We are also proposing to include Dr Mitchell Black as a co-author for this indic
 - Climate Data: ECMWF ERA5-Land reanalysis dataset.
 - Demographic Data (1980–2000): Hybrid gridded demographic dataset from the Lancet Countdown 2023 (0.25° resolution) @romanello20232023.
 - Demographic Data (2000–2015): WorldPop Age and Sex Structure Unconstrained Global Mosaic @worldpop2018global.
-- Demographic Data (2015–#max_year_analysis): WorldPop Age and Sex Structure Unconstrained Global Mosaic @bondarenko2025spatial. // todo check and better describe this dataset
+- Demographic Data (2015–#max_year_analysis): WorldPop Age and Sex Structure Unconstrained Global Mosaic @bondarenko2025spatial. 
+- #highlight[Add also the data used for the counterfactual/attribution analysis]
 
 === Caveats & Limitations
 
