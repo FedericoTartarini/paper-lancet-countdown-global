@@ -1,18 +1,19 @@
+import json
 import os
 from datetime import datetime
 from pathlib import Path
 from typing import List
-import seaborn as sns
+from collections.abc import Mapping
 
 from cartopy import crs as ccrs
 
 from matplotlib import pyplot as plt
 
-plt.rcParams["figure.figsize"] = [8, 4]
-plt.rcParams["savefig.dpi"] = 300
-plt.rcParams["figure.autolayout"] = True  # Enable tight_layout by default
-plt.rcParams["legend.frameon"] = False  # Disable legend frame by default
-sns.set_theme(style="whitegrid", context="paper", font_scale=1.2)
+# plt.rcParams["figure.figsize"] = [8, 4]
+# plt.rcParams["savefig.dpi"] = 300
+# plt.rcParams["figure.autolayout"] = True  # Enable tight_layout by default
+# plt.rcParams["legend.frameon"] = False  # Disable legend frame by default
+# sns.set_theme(style="whitegrid", context="paper", font_scale=1.2)
 
 
 class Vars:
@@ -134,6 +135,7 @@ class FilesLocal:
         DirsLocal.manuscript
         / "1.1.1 - 2026 Global Report - Data Submission - Tartarini.xlsx"
     )
+    typst_variables = DirsLocal.manuscript / "typst_variables.json"
 
 
 class DirsGadi:
@@ -184,5 +186,115 @@ def ensure_directories(path_dirs: list[Path]):
         path_dir.mkdir(parents=True, exist_ok=True)
 
 
+class Labels:
+    """Unified, human-friendly labels for age bands and variables."""
+
+    # Main age bands
+    infants = "Infants"
+    older_adults = "Older adults"
+    # Exposure metrics
+    person_days = "Person-days"
+    person_events = "Person-events"
+    avg_days_per_person = "Average heatwave days per person"
+    exposure = "Heatwave exposure"
+    # Add more as needed
+    age_band_labels = {
+        Vars.infants: infants,
+        Vars.over_65: older_adults,
+        "under_1": infants,
+        "over_65": older_adults,
+        "65_over": older_adults,
+        "infants": infants,
+        "older_adults": older_adults,
+    }
+    metric_labels = {
+        "person_days": person_days,
+        "person-events": person_events,
+        "person-events": person_events,
+        "person-days": person_days,
+        "avg_days_per_person": avg_days_per_person,
+        "exposure": exposure,
+        Vars.hw_days: person_days,
+        Vars.hw_count: person_events,
+    }
+
+    @classmethod
+    def get_label(cls, key: str) -> str:
+        """Return a human-friendly label for an age band or variable name."""
+        if key in cls.age_band_labels:
+            return cls.age_band_labels[key]
+        if key in cls.metric_labels:
+            return cls.metric_labels[key]
+        return str(key)
+
+
+def deep_update(base_dict, update_with):
+    """
+    Recursively updates a dictionary.
+    If a key exists in both and both values are dictionaries, it merges them.
+    Otherwise, it updates/adds the value from update_with.
+    """
+    for key, value in update_with.items():
+        # Round floats to 1 decimal place as requested
+        if isinstance(value, float):
+            value = round(value, 1)
+
+        if (
+            isinstance(value, Mapping)
+            and key in base_dict
+            and isinstance(base_dict[key], Mapping)
+        ):
+            # Recursively merge nested dictionaries
+            deep_update(base_dict[key], value)
+        else:
+            # Otherwise, just set/overwrite the value
+            # If value is a dict but key wasn't in base_dict,
+            # we should still round floats inside that new dict.
+            if isinstance(value, dict):
+                _round_nested_floats(value)
+            base_dict[key] = value
+    return base_dict
+
+
+def _round_nested_floats(d):
+    """Helper to round floats in newly added nested dictionaries."""
+    for k, v in d.items():
+        if isinstance(v, dict):
+            _round_nested_floats(v)
+        elif isinstance(v, float):
+            d[k] = round(v, 1)
+
+
+def update_typst_json(new_data, file_path=FilesLocal.typst_variables):
+    """Update the typst_variables.json file with new data, performing a deep merge and rounding
+    floats to 1 decimal place."""
+    data = {}
+
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r") as f:
+                data = json.load(f)
+        except json.JSONDecodeError:
+            print(f"Warning: {file_path} was corrupted. Starting fresh.")
+
+    # 1. Perform the deep merge (this also handles the rounding)
+    updated_data = deep_update(data, new_data)
+
+    # 2. Save back to JSON
+    with open(file_path, "w") as f:
+        json.dump(updated_data, f, indent=2)
+
+
 if __name__ == "__main__":
-    print(DirsGadi.e5l_h)
+    # print(DirsGadi.e5l_h)
+
+    update_typst_json(
+        {
+            "methods": {
+                "year_report": Vars.year_report,
+                "year_max_analysis": Vars.year_max_analysis,
+                "year_reference_period": f"{Vars.year_reference_start}-{Vars.year_reference_end}",
+                "quantiles": Vars.quantiles,
+            }
+        }
+    )

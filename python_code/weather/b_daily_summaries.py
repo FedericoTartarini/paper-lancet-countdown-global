@@ -38,7 +38,7 @@ import xarray as xr
 from dask.distributed import Client
 import numpy as np
 
-from my_config import DirsGadi, DirsLocal, ensure_directories
+from my_config import DirsGadi, DirsLocal, ensure_directories, Vars
 from python_code.log_config import setup_logging
 
 # Set up logging
@@ -208,8 +208,10 @@ def process_year(year: int, trial: bool = False, mode: str = "auto") -> None:
     3. Cleans up interim files after successful merge
     """
     # Validate year range
-    if year < 1979 or year > 2025:  # todo - update upper limit as needed
-        logger.error(f"❌ Invalid year: {year}. Valid range is 1979-2025")
+    if year < 1979 or year > Vars.year_max_analysis:
+        logger.error(
+            f"❌ Invalid year: {year}. Valid range is 1979-{Vars.year_max_analysis}."
+        )
         sys.exit(1)
 
     mode, input_root, output_dir, source_label, _ = resolve_environment(mode)

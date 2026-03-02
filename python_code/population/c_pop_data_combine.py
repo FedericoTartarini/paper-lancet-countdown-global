@@ -25,7 +25,7 @@ try:
 except NameError:
     project_root = Path.cwd()
 
-from my_config import Vars, VarsWorldPop, DirsLocal, FilesLocal
+from my_config import Vars, DirsLocal, FilesLocal
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -307,7 +307,7 @@ def clean_and_align(ds_to_fix, ds_reference):
 def main():
     print("--- Starting Population Combination ---")
 
-    modern_years = range(2000, 2026)  # todo this should not be hardcoded
+    modern_years = range(2000, Vars.year_max_analysis)
     historical_years = range(1980, 2000)
 
     # 1. Load ERA5 Template & Standardize

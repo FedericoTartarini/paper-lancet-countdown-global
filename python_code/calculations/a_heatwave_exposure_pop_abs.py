@@ -20,7 +20,14 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from my_config import DirsLocal, FilesLocal, Vars, ensure_directories
+from my_config import (
+    DirsLocal,
+    FilesLocal,
+    Vars,
+    ensure_directories,
+    Labels,
+    update_typst_json,
+)
 
 
 def setup_logging() -> None:
@@ -47,14 +54,58 @@ def standardize_grid(
     da: xr.Dataset | xr.DataArray,
     decimals: int = 3,
 ) -> xr.Dataset | xr.DataArray:
-    """Round coordinates and sort lat/lon to a consistent order."""
+    """Round coordinates and sort lat/lon to a consistent order.
+
+    - Normalize coordinate names (lat/lon -> latitude/longitude).
+    - Convert a `time` coordinate/dimension to integer `year` (when present).
+    - Fix longitude convention to be in -180..180 if needed.
+    - Round latitude/longitude to `decimals` and sort them so different files
+      end up with the same coordinate ordering.
+
+    This function is intentionally conservative and only changes coords; it
+    works for both xarray.Dataset and xarray.DataArray inputs.
+    """
+    # Ensure standard names first
     da = normalize_coords(da)
 
+    # If there's a 'time' coordinate but no 'year', try to convert it to year
+    if "time" in da.coords and "year" not in da.coords:
+        try:
+            time_vals = da["time"].values
+            # datetime-like -> extract year
+            if np.issubdtype(time_vals.dtype, np.datetime64):
+                years = pd.DatetimeIndex(time_vals).year.astype("int64")
+            else:
+                # numeric-like time (could already be years)
+                years = time_vals.astype("int64")
+
+            # If 'time' is a dimension, rename it to 'year'
+            if "time" in da.dims:
+                da = da.rename({"time": "year"})
+                da = da.assign_coords({"year": ("year", years)})
+            else:
+                # time present only as coordinate -> add year coordinate
+                da = da.assign_coords({"year": ("time", years)})
+        except Exception as exc:  # pragma: no cover - defensive
+            logging.warning("Failed to convert 'time' -> 'year': %s", exc)
+
+    # Fix longitude wrap: ensure values are in -180..180 and sorted the same way
+    if "longitude" in da.coords:
+        lon = da["longitude"].values
+        # If longitudes look like 0..360, convert to -180..180
+        if np.nanmax(lon) > 180:
+            converted = (((lon + 180) % 360) - 180).round(decimals)
+            # assign converted longitudes and sort by longitude afterwards
+            da = da.assign_coords({"longitude": ("longitude", converted)})
+
+    # Round coordinates to avoid floating point mismatches
     if "latitude" in da.coords:
         da = da.assign_coords(latitude=da["latitude"].round(decimals))
     if "longitude" in da.coords:
         da = da.assign_coords(longitude=da["longitude"].round(decimals))
 
+    # Sort coordinates consistently: latitude ascending, longitude ascending
+    # (xarray.sortby uses increasing order)
     if "latitude" in da.coords:
         da = da.sortby("latitude")
     if "longitude" in da.coords:
@@ -247,9 +298,15 @@ def build_combined_dataset(
 
 
 def coerce_numeric_for_plotting(da: xr.DataArray) -> xr.DataArray:
-    """Convert timedelta data to days for plotting, keep numeric data as-is."""
+    """Convert timedelta data to days for plotting, keep numeric data as-is.
+
+    Always returns an xarray.DataArray; timedelta results are converted to
+    float32 number-of-days which is convenient for plotting and avoids
+    dtype surprises in downstream plotting code.
+    """
     if np.issubdtype(da.dtype, np.timedelta64):
-        return da / np.timedelta64(1, "D")
+        result = (da / np.timedelta64(1, "D")).astype("float32")
+        return xr.DataArray(result, coords=da.coords, dims=da.dims, name=da.name)
     return da
 
 
@@ -282,17 +339,17 @@ def plot_mediterranean_panels(
 
     fig, axs = plt.subplots(2, 2, figsize=(10, 8), constrained_layout=True)
 
+    axs[0, 0].set_title(f"{Labels.get_label(Vars.over_65)} Population ({year})")
     pop_old_sel.plot(ax=axs[0, 0], cmap="viridis", robust=True, add_colorbar=True)
-    axs[0, 0].set_title(f"Over 65 Population ({year})")
 
+    axs[0, 1].set_title(f"{Labels.get_label(Vars.infants)} Population ({year})")
     pop_inf_sel.plot(ax=axs[0, 1], cmap="viridis", robust=True, add_colorbar=True)
-    axs[0, 1].set_title(f"Infants Population ({year})")
 
-    hw_days_sel.plot(ax=axs[1, 0], cmap="magma", robust=True, add_colorbar=True)
     axs[1, 0].set_title(f"Heatwave Days ({year})")
+    hw_days_sel.plot(ax=axs[1, 0], cmap="magma", robust=True, add_colorbar=True)
 
-    hw_counts_sel.plot(ax=axs[1, 1], cmap="magma", robust=True, add_colorbar=True)
     axs[1, 1].set_title(f"Heatwave Counts ({year})")
+    hw_counts_sel.plot(ax=axs[1, 1], cmap="magma", robust=True, add_colorbar=True)
 
     plt.show()
 
@@ -314,12 +371,15 @@ def plot_global_trends(ds: xr.Dataset, population: str) -> None:
     )
 
     years = days["year"].values
+    pop_label = Labels.get_label(population)
+    days_label = Labels.get_label(Vars.hw_days)
+    counts_label = Labels.get_label(Vars.hw_count)
 
     fig, ax1 = plt.subplots(figsize=(7, 4))
 
-    ax1.plot(years, days / 1e9, color="tab:red", marker="o", label="Person-Days")
+    ax1.plot(years, days / 1e9, color="tab:red", marker="o", label=days_label)
     ax1.set_xlabel("Year")
-    ax1.set_ylabel("Total Person-Days (Billions)", color="tab:red")
+    ax1.set_ylabel(f"Total {days_label} (Billions)", color="tab:red")
     ax1.tick_params(axis="y", labelcolor="tab:red")
 
     ax2 = ax1.twinx()
@@ -329,13 +389,13 @@ def plot_global_trends(ds: xr.Dataset, population: str) -> None:
         color="tab:blue",
         marker="s",
         linestyle="--",
-        label="Person-Events",
+        label=counts_label,
     )
-    ax2.set_ylabel("Total Person-Events (Billions)", color="tab:blue")
+    ax2.set_ylabel(f"Total {counts_label} (Billions)", color="tab:blue")
     ax2.tick_params(axis="y", labelcolor="tab:blue")
     ax2.grid(False)
 
-    ax1.set_title(f"Global Heatwave Exposure: {population}")
+    ax1.set_title(f"Global Heatwave Exposure: {pop_label}")
     fig.tight_layout()
     plt.savefig(DirsLocal.figures / f"hw_exposure_global_trends_{population}.pdf")
     plt.show()
@@ -344,82 +404,93 @@ def plot_global_trends(ds: xr.Dataset, population: str) -> None:
 def plot_global_trends_combined(ds: xr.Dataset) -> None:
     """Plot global person-days and person-events for both populations."""
     fig, ax1 = plt.subplots()
-    ax2 = ax1.twinx()
 
-    colors_days = {Vars.over_65: "tab:red", Vars.infants: "tab:green"}
-    colors_counts = {Vars.over_65: "tab:blue", Vars.infants: "tab:orange"}
+    days_label = Labels.get_label(Vars.hw_days)
 
     for population in [Vars.over_65, Vars.infants]:
         days = (
             ds[Vars.hw_days].sel(age_band=population).sum(dim=["latitude", "longitude"])
         )
-        counts = (
-            ds[Vars.hw_count]
-            .sel(age_band=population)
-            .sum(dim=["latitude", "longitude"])
-        )
         years = days["year"].values
+        pop_label = Labels.get_label(population)
 
         ax1.plot(
             years,
             days / 1e9,
-            color=colors_days[population],
             marker="o",
-            label=f"Days ({population})",
+            label=pop_label,
         )
-        ax2.plot(
-            years,
-            counts / 1e9,
-            color=colors_counts[population],
-            marker="s",
-            linestyle="--",
-            label=f"Counts ({population})",
+
+        update_typst_json(
+            {
+                f"{Vars.hw_days}_tot": {
+                    f"{population}": {
+                        str(year): day.item() / 1e9
+                        for year, day in zip(years, days.values)
+                    }
+                }
+            }
         )
 
     ax1.set_xlabel("Year")
-    ax1.set_ylabel("Total Person-Days (Billions)")
-    ax2.set_ylabel("Total Person-Events (Billions)")
+    ax1.set_ylabel(f"Total {days_label} (Billions)")
 
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left")
+    ax1.legend(loc="upper left")
 
-    ax1.grid(True, alpha=0.3)
-    ax2.grid(False)
-    ax1.set_ylim(0, None)
-    ax2.set_ylim(0, None)
-    ax2.set(yticks=np.arange(0, 3.1, 0.5))
-
-    ax1.set_title("Global Heatwave Exposure: Burden vs Frequency")
+    # ax1.set_title("Global Heatwave Exposure")
     fig.tight_layout()
     sns.despine()
     plt.savefig(DirsLocal.figures / "hw_exposure_global_trends_combined.pdf")
     plt.show()
 
 
-def plot_severity_ratio(ds: xr.Dataset, population: str) -> None:
-    """Plot ratio of person-days to person-events for a population."""
-    days = ds[Vars.hw_days].sel(age_band=population).sum(dim=["latitude", "longitude"])
-    counts = (
-        ds[Vars.hw_count].sel(age_band=population).sum(dim=["latitude", "longitude"])
-    )
+def plot_avg_hw_days_per_person(ds, pop_dict):
+    """
+    Plot the average number of heatwave days experienced per person for each vulnerable group per year.
+    Args:
+        combined (xr.Dataset): Combined dataset with heatwave exposure results.
+        pop_dict (dict): Dictionary with keys as group labels (e.g., 'infants', 'older_adults') and values as population DataArrays.
+    """
+    fig, ax = plt.subplots()
 
-    ratio = days / counts.where(counts != 0)
+    for group, pop in pop_dict.items():
+        # Calculate total heatwave days per year for the group
+        hw_days = (
+            ds["heatwave_days"].sel(age_band=group).sum(dim=["latitude", "longitude"])
+        )
+        # Calculate total population per year for the group
+        pop_total = pop.sum(dim=["latitude", "longitude"])
+        # Average heatwave days per person
+        avg_hw_days = hw_days / pop_total
+        ax.plot(hw_days["year"], avg_hw_days, marker="o", label=Labels.get_label(group))
+        update_typst_json(
+            {
+                f"{Vars.hw_days}_avg": {
+                    f"{group}": {
+                        str(year): day.item()
+                        for year, day in zip(hw_days["year"].values, avg_hw_days.values)
+                    }
+                }
+            }
+        )
 
-    plt.figure(figsize=(7, 4))
-    plt.plot(ratio["year"].values, ratio, marker="o", color="tab:purple")
+        # Optionally: Save to typst or other format here
+        # save_typst_table(hw_days["year"].values, avg_hw_days.values, group)
+
     plt.xlabel("Year")
-    plt.ylabel("Avg Days per Person-Event")
-    plt.title(f"Heatwave Severity Ratio: {population}")
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(DirsLocal.figures / f"hw_exposure_severity_ratio_{population}.pdf")
+    plt.ylabel("Average Heatwave Days per Person")
+    # plt.title("Average Heatwave Days per Person by Group")
+    plt.legend(frameon=False)
+    fig.tight_layout()
+    sns.despine()
+    plt.savefig(DirsLocal.figures / "hw_exposure_avg_days_per_person.pdf")
     plt.show()
 
 
 def plot_severity_ratio_combined(ds: xr.Dataset) -> None:
     """Plot severity ratio for both populations in one chart."""
-    plt.figure(figsize=(7, 4))
+    days_label = Labels.get_label(Vars.hw_days)
+    counts_label = Labels.get_label(Vars.hw_count)
 
     for population in [Vars.over_65, Vars.infants]:
         days = (
@@ -431,12 +502,12 @@ def plot_severity_ratio_combined(ds: xr.Dataset) -> None:
             .sum(dim=["latitude", "longitude"])
         )
         ratio = days / counts.where(counts != 0)
-
-        plt.plot(ratio["year"].values, ratio, marker="o", label=population)
+        pop_label = Labels.get_label(population)
+        plt.plot(ratio["year"].values, ratio, marker="o", label=pop_label)
 
     plt.xlabel("Year")
-    plt.ylabel("Avg Days per Person-Event")
-    plt.title("Heatwave Severity Ratio: Infants vs Over 65")
+    plt.ylabel(f"Avg {days_label} per {counts_label}")
+    plt.title(f"Average {days_label} per {counts_label} for Vulnerable Groups")
     plt.legend(frameon=False)
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
@@ -452,8 +523,10 @@ def plot_exposure_map(
 ) -> None:
     """Plot a global exposure map for a given population and metric."""
     data = ds[metric].sel(age_band=population, year=year)
+    pop_label = Labels.get_label(population)
+    metric_label = Labels.get_label(metric)
     data.plot(cmap="inferno", robust=True, add_colorbar=True)
-    plt.title(f"{metric} Exposure ({population}) - {year}")
+    plt.title(f"{metric_label} ({pop_label}) - {year}")
     plt.tight_layout()
     plt.savefig(DirsLocal.figures / f"hw_exposure_map_{metric}_{population}_{year}.pdf")
     plt.show()
@@ -477,19 +550,22 @@ def plot_mediterranean_exposure(ds: xr.Dataset, year: int = 2020) -> None:
         age_band=Vars.over_65, year=year, latitude=lat_slice, longitude=lon_slice
     )
 
+    days_label = Labels.get_label(Vars.hw_days)
+    counts_label = Labels.get_label(Vars.hw_count)
+
     fig, axs = plt.subplots(2, 2, figsize=(10, 8), constrained_layout=True)
 
+    axs[0, 0].set_title(f"{Labels.get_label(Vars.infants)} {days_label} ({year})")
     days_inf.plot(ax=axs[0, 0], cmap="magma", robust=True, add_colorbar=True)
-    axs[0, 0].set_title(f"Infants Person-Days ({year})")
 
+    axs[0, 1].set_title(f"{Labels.get_label(Vars.over_65)} {days_label} ({year})")
     days_old.plot(ax=axs[0, 1], cmap="magma", robust=True, add_colorbar=True)
-    axs[0, 1].set_title(f"Over 65 Person-Days ({year})")
 
+    axs[1, 0].set_title(f"{Labels.get_label(Vars.infants)} {counts_label} ({year})")
     counts_inf.plot(ax=axs[1, 0], cmap="viridis", robust=True, add_colorbar=True)
-    axs[1, 0].set_title(f"Infants Person-Events ({year})")
 
+    axs[1, 1].set_title(f"{Labels.get_label(Vars.over_65)} {counts_label} ({year})")
     counts_old.plot(ax=axs[1, 1], cmap="viridis", robust=True, add_colorbar=True)
-    axs[1, 1].set_title(f"Over 65 Person-Events ({year})")
     sns.despine()
 
     plt.savefig(DirsLocal.figures / f"hw_exposure_mediterranean_{year}.pdf")
@@ -546,49 +622,6 @@ def main() -> None:
     )
 
 
-def plot_avg_hw_days_per_person(
-    ds: xr.Dataset,
-    pop_inf: xr.DataArray,
-    pop_old: xr.DataArray,
-) -> None:
-    """Plot global average heatwave days per person for each population by year."""
-    days_inf = (
-        ds[Vars.hw_days].sel(age_band=Vars.infants).sum(dim=["latitude", "longitude"])
-    )
-    days_old = (
-        ds[Vars.hw_days].sel(age_band=Vars.over_65).sum(dim=["latitude", "longitude"])
-    )
-
-    pop_inf_total = pop_inf.sum(dim=["latitude", "longitude"])
-    pop_old_total = pop_old.sum(dim=["latitude", "longitude"])
-
-    common_years = np.intersect1d(days_inf["year"].values, pop_inf_total["year"].values)
-    common_years = np.intersect1d(common_years, pop_old_total["year"].values)
-    if common_years.size == 0:
-        raise ValueError("No overlapping years between exposure and population totals.")
-
-    days_inf = days_inf.sel(year=common_years)
-    days_old = days_old.sel(year=common_years)
-    pop_inf_total = pop_inf_total.sel(year=common_years)
-    pop_old_total = pop_old_total.sel(year=common_years)
-
-    avg_inf = days_inf / pop_inf_total
-    avg_old = days_old / pop_old_total
-
-    plt.figure(figsize=(7, 4))
-    plt.plot(avg_inf["year"].values, avg_inf, marker="o", label=Vars.infants)
-    plt.plot(avg_old["year"].values, avg_old, marker="o", label=Vars.over_65)
-    plt.xlabel("Year")
-    plt.ylabel("Average Heatwave Days per Person")
-    plt.title("Average Heatwave Days per Person (Global)")
-    plt.legend(frameon=False)
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    sns.despine()
-    plt.savefig(DirsLocal.figures / "hw_exposure_avg_days_per_person.pdf")
-    plt.show()
-
-
 def plot() -> None:
     combined = xr.open_dataset(FilesLocal.hw_combined_q)
 
@@ -597,20 +630,13 @@ def plot() -> None:
 
     logging.info("Generating plots from combined results...")
     plot_global_trends_combined(ds=combined)
-    plot_global_trends(combined, Vars.over_65)
-    plot_global_trends(combined, Vars.infants)
-    plot_severity_ratio(combined, Vars.over_65)
-    plot_severity_ratio(combined, Vars.infants)
+    plot_avg_hw_days_per_person(
+        ds=combined, pop_dict={Vars.over_65: pop_old, Vars.infants: pop_inf}
+    )
     plot_severity_ratio_combined(combined)
-    plot_avg_hw_days_per_person(ds=combined, pop_inf=pop_inf, pop_old=pop_old)
+
     # plot_exposure_map(combined, year=2020, population=Vars.over_65, metric=Vars.hw_days)
     # plot_exposure_map(combined, year=2020, population=Vars.infants, metric=Vars.hw_days)
-    # plot_exposure_map(
-    #     combined, year=2020, population=Vars.over_65, metric=Vars.hw_count
-    # )
-    # plot_exposure_map(
-    #     combined, year=2020, population=Vars.infants, metric=Vars.hw_count
-    # )
     plot_mediterranean_exposure(combined, year=2020)
 
     logging.info("✅ Done")
@@ -618,5 +644,5 @@ def plot() -> None:
 
 if __name__ == "__main__":
     pass
-    main()
+    # main()
     plot()

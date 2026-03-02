@@ -1,5 +1,8 @@
-#let max_year_analysis = 2025
 #set par(justify: true)
+// Load the data
+#let db = json("typst_variables.json")
+
+#let max_year_analysis = db.methods.year_max_analysis
 
 = Section 1: Health Hazards, Exposure, and Impact
 
@@ -13,7 +16,7 @@ Dr Federico Tartarini, Prof Ollie Jay, Dr Mitchell Black
 
 ==== Heatwave Definition, Occurrence, and Duration
 
-Heatwaves effects on human health is a growing concern worldwide, particularly for vulnerable populations such as the elderly and infants.
+Heatwaves effects on human health is a growing concern worldwide, particularly for vulnerable populations such as Older adults and Infants.
 However, there is no universally accepted definition of a heatwave, with various studies employing different temperature thresholds, durations, and metrics to characterize these events @xu2016impact.
 For this analysis, we defined a heatwave as a period of three or more consecutive days in which both the daily minimum and maximum temperatures exceeded the 95th percentile of the local climatology.
 This definition is based on the approach used by the World Meteorological Organization (WMO) in the "Heatwaves and Health: Guidance on Warning-System Development" @wmo2015heatwaves.
@@ -32,15 +35,15 @@ For each grid cell and each year from 1980 to 2025, we calculated two primary me
 
 Exposure to heatwaves for each vulnerable group was calculated by combining heatwave occurrence data with gridded demographic datasets.
 
-For each grid cell, the annual heatwave exposure (in person-days) was computed as:
+For each grid cell, the annual heatwave exposure (in Person-days) was computed as:
 $ "Exposure" = "Heatwave Days" times "Population" $
 
 Where:
 - *Heatwave Days:* The total number of heatwave days in that grid cell for the year.
 - *Population:* The number of individuals in the vulnerable group residing in that grid cell.
 
-The total annual exposure for each vulnerable group was obtained by summing the exposure across all grid cells globally.
-We also present the average number of heatwave days experienced per person by dividing the total heatwave person-days by the total population of the vulnerable group for that year.
+The total annual heatwave exposure for each vulnerable group was obtained by summing the Person-days across all grid cells globally.
+We also present the Average heatwave days per person by dividing the total Person-days by the total population of the vulnerable group for that year.
 
 #highlight[
 Please remember to add in the methods for the counterfactual estimation from Andys analysis, which will be used to estimate how many heatwave days vulnerable populations would have experienced if climate change had not occurred, considering only demographic shifts.
@@ -76,8 +79,8 @@ Days were classified as:
 ==== Vulnerable Groups
 
 We focused on two demographic groups particularly susceptible to heat-related health impacts:
-- *Elderly ($>= 65$ years):* Age-related decrements in thermoregulation (e.g., reduced sweating) occur significantly by age 65 @kenney2003invited. Additionally, the risk of underlying chronic conditions such as cardiovascular, renal, and respiratory diseases—secondary aggravators of heat stress—increases with advanced age @ebi2021hot.
-- *Infants ($<1$ year):* Infants are highly vulnerable due to a high surface area-to-mass ratio (up to 4-fold greater than adults) and a limited behavioral ability to avoid heat @bin2023optimal.
+- *Older adults (\≥65 years):* Age-related decrements in thermoregulation (e.g., reduced sweating) occur significantly by age 65 @kenney2003invited. Additionally, the risk of underlying chronic conditions such as cardiovascular, renal, and respiratory diseases—secondary aggravators of heat stress—increases with advanced age @ebi2021hot.
+- *Infants (\<1 year):* Infants are highly vulnerable due to a high surface area-to-mass ratio (up to 4-fold greater than adults) and a limited behavioral ability to avoid heat @bin2023optimal.
 
 ==== Population Data Integration
 
@@ -87,7 +90,7 @@ To construct a continuous annual time series of global population distribution f
 - *2015–#max_year_analysis:* We utilized the *updated WorldPop dataset* @bondarenko2025spatial and aggregated age groups to the ERA5-Land grid by summing values within each cell.
 
 For infant counts we aggregated the age band 0–1 from the respective datasets.
-For the elderly ($>= 65$ years), we summed the age bands 65–70, 70–75, 75–80, and 80+.  
+For Older adults (≥65 years), we summed the age bands 65–70, 70–75, 75–80, and 80+.  
 
 ==== Code and resources to reproduce the results
 
@@ -101,7 +104,7 @@ Then they can use the code to reproduce the results, please refer to the README 
 In this 2026 update, we have introduced: 
 - the assessment of heatwave severity using the Excess Heat Factor (EHF) metric, allowing us to differentiate between low-intensity, severe, and extreme heatwaves.
 - improved demographic data integration by utilizing the latest WorldPop datasets.
-- removed the people aged 75+ since this group is already included in the 65+ age group.
+- removed the people aged 75+ since this group is already included in the Older adults (≥65 years) group.
 - given that the population data now extends to 2025, we did not need to project population estimates beyond 2020 as done in previous years.
 - we have included the analysis of heatwave exposure trends under the 2007–2016 baseline, to align with the Paris Agreement.
 - #highlight[Add also the attribution/conterfactual analysis]
@@ -154,20 +157,19 @@ The estimation of heat stress risk may also be expanded beyond heatwave days to 
   caption: [Map showing the change in heatwave days in 2025 compared to the 1986–2005 baseline.],
 ) <change-heatwave-days>
 
-// todo check and finalise numbers in the following paragraph
-While the total number of heatwave days decreased from last year, older adults (65+ y) were exposed to record 10 billion person-days of heatwaves (the second highest year on record), while infants under one year experienced 2.9 billion person-days, as illustrated in @hw-exposure-total.
+While the total number of heatwave days decreased from the 2024 historical high (#db.heatwave_days_tot.over_65.at("2024") and #db.heatwave_days_tot.under_1.at("2024") billion Person-days for Older adults and Infants) the year #max_year_analysis was the second highest on record for heatwave exposure for both vulnerable groups combined.
+Older adults were exposed to a #db.heatwave_days_tot.over_65.at("2025") billion Person-days of heatwaves, while Infants experienced #db.heatwave_days_tot.under_1.at("2025") billion Person-days, as illustrated in @hw-exposure-total.
 
 #figure(
   image("/figures/hw_exposure_global_trends_combined.pdf"),
-  caption: [Total number of heatwaves days experienced per year by older adults (over 65)  and infants.],
+  caption: [Total number of Person-days experienced per year by Older adults and Infants.],
 ) <hw-exposure-total>
 
-// todo check and finalise numbers in the following paragraph
-When normalized by population size, individuals over 65 years experienced on average 12.4 heatwave days per person in #max_year_analysis, while infants experienced 9.5 heatwave days per person, as shown in @avg-hw-per-person.
+When normalized by population size, Older adults experienced on average #db.heatwave_days_avg.over_65.at("2025") Average heatwave days per person in #max_year_analysis, while Infants experienced #db.heatwave_days_avg.under_1.at("2025") Average heatwave days per person, as shown in @avg-hw-per-person.
 
 #figure(
   image("/figures/hw_exposure_avg_days_per_person.pdf"),
-  caption: [Average number of heatwave days experienced per person per year by older adults (over 65) and infants.],
+  caption: [Average number of heatwave days experienced per person per year by Older adults and Infants.],
 ) <avg-hw-per-person>
 
 
@@ -182,53 +184,52 @@ This analysis will help to contextualize the increasing exposure to heatwaves in
 ==== Heatwave Exposure by Regions and Countries
 
 In this section, we present the geographic distribution of heatwave exposure for vulnerable populations, aggregated by country, Human Development Index (HDI) group, and World Health Organization (WHO) region.
-These figures illustrate the disparities in heatwave exposure across different regions and the different distribution of vulnerable populations, which leads to significant variations in heatwave person-days experienced across countries and regions.
+These figures illustrate the disparities in heatwave exposure across different regions and the different distribution of vulnerable populations, which leads to significant variations in Person-days experienced across countries and regions.
 
-When analyzed by country, as shown in @hw-days-by-country China is the country with the highest number of heatwave person-days experienced by both vulnerable groups. 
+When analyzed by country, as shown in @hw-days-by-country China is the country with the highest number of Person-days experienced by both vulnerable groups. 
 India, the United States of America, Russian Federation also rank among the top countries with the highest heatwave exposure for both age groups.
 
 #figure(
   image("/figures/heatwave_days_by_country.pdf"),
-  caption: [Total heatwave person-days experienced per year by vulnerable populations, aggregated by country.],
+  caption: [Total Person-days experienced per year by vulnerable populations, aggregated by country.],
 ) <hw-days-by-country>
 
-When data are grouped by HDI, countries classified as ‘Low’ HDI experienced the lowest number of heatwave person-days for both age groups, while those in the ‘High’ and ‘Very High’ HDI categories experienced significantly higher exposure, as shown in @hw-days-by-hdi.
+When data are grouped by HDI, countries classified as ‘Low’ HDI experienced the lowest number of Person-days for both age groups, while those in the ‘High’ and ‘Very High’ HDI categories experienced significantly higher exposure, as shown in @hw-days-by-hdi.
 This pattern is likely driven by the higher concentration of vulnerable populations in more developed countries.
 
 #figure(
   image("/figures/heatwave_days_by_hdi_group.pdf"),
-  caption: [Total number of person-days experienced per year by vulnerable populations, aggregated by Human Development Index (HDI) group.],
+  caption: [Total number of Person-days experienced per year by vulnerable populations, aggregated by Human Development Index (HDI) group.],
 ) <hw-days-by-hdi>
 
-Countries in the Western Pacific experienced the highest number of heatwave person-days for both age groups, as shown in @hw-days-by-who.
-However, the African region experienced the fastest growth in heatwave person-days after 2000 for infants, while Europe and the Americas have a significant share of heatwave person-days for the elderly population, due to a rapid growth in the elderly population coupled with a high number of heatwave days in these regions.
+Countries in the Western Pacific experienced the highest number of Person-days for both age groups, as shown in @hw-days-by-who.
+However, the African region experienced the fastest growth in Person-days after 2000 for Infants, while Europe and the Americas have a significant share of Person-days for the Older adult population, due to a rapid growth in the Older adult population coupled with a high number of heatwave days in these regions.
 
 #figure(
   image("/figures/heatwave_days_by_who_region.pdf"),
-  caption: [Total number of person-days experienced per year by vulnerable populations, aggregated by World Health Organization (WHO) region.],
+  caption: [Total number of Person-days experienced per year by vulnerable populations, aggregated by World Health Organization (WHO) region.],
 ) <hw-days-by-who>
 
 #figure(
   image("/figures/heatwave_days_by_lc_group.pdf"),
-  caption: [Total heatwave person-days experienced per year by vulnerable populations, by Lancet group.],
+  caption: [Total Person-days experienced per year by vulnerable populations, by Lancet group.],
 ) <hw-days-by-lc>
 
 ==== Drivers of Change in Heatwave Exposure
 
 Two factors are driving the increase in heatwave exposure for vulnerable populations: climate change and population growth.
-@population-trend-absolute shows the global trend in total population of vulnerable groups from 1980 to #max_year_analysis, highlighting the significant growth in the elderly population over this period.
+@population-trend-absolute shows the global trend in total population of vulnerable groups from 1980 to #max_year_analysis, highlighting the significant growth in the Older adult population over this period.
 // todo check and finalise numbers in the following paragraph
-The number of individuals over 65 has more than doubled from approximately 290 million in 1980 to over 800 million in #max_year_analysis, while the infant population has only seen a slight increase from around 100 million to 130 million.
+The number of individuals in the Older adults group has more than doubled from approximately 290 million in 1980 to over 800 million in #max_year_analysis, while the infant population has only seen a slight increase from around 100 million to 130 million.
 
-// todo remove the red line from the plot
 #figure(
   image("/figures/global_population_trend_millions.pdf"),
   caption: [],
 ) <population-trend-absolute>
 
 @dominant-effect-change compares the periods 1986–2005 and 2006–2024 to estimate how many heatwave days vulnerable populations would have experienced if climate change had not occurred, considering only demographic shifts.  
-Climate change is the primary driver of increased heatwave exposure for infants, accounting for all of the observed increase.
-For the elderly population, both climate change and population growth contribute significantly, with populaton growth being the dominant factor in recent years.
+Climate change is the primary driver of increased heatwave exposure for Infants, accounting for all of the observed increase.
+For the Older adult population, both climate change and population growth contribute significantly, with population growth being the dominant factor in recent years.
 
 #figure(
   image("/figures/barplots_dominant_effect_change.pdf"),
@@ -237,22 +238,14 @@ For the elderly population, both climate change and population growth contribute
 
 ==== Baseline Comparisons
 
-
-
 #figure(
   image("/figures/exposure_change_heatwave_days_population_weighted_mean.pdf"),
   caption: [],
 ) <exposure-change-heatwave-days>
- 
-Before 2024, countries classified as ‘Low’ HDI, on average, exhibited lower heatwave exposure for both age groups, as shown in Figure 6. However, these countries experienced the fastest growth in 2024 rising from 7.5 to 21.0 days—a 181% increase. 
- 
-Figure 6. Average number of heatwave days experienced aggregated by HDI level.
-Figure 7 presents data aggregated by WHO regions. The Wester Pacific region was the most affected for the infants (under 1) and the over-65 population.
- 
-Figure 7. Average number of heatwave days experienced aggregated by WHO region.
-Additional analysis
-While climate change drives the increase in heatwave days, population growth also contributes to the rising number of heatwave person-days. This section compares the periods 1986–2005 and 2006–2024 to estimate how many heatwave days vulnerable populations would have experienced if climate change had not occurred, considering only demographic shifts.  
-For each geographic coordinate, the average annual heatwave days affecting both elderly and infant populations were calculated for 2006–2024. The same calculation was repeated while holding heatwave incidence constant to the 1986–2005 levels, isolating the impact of climate change. Comparing these scenarios reveals how many heatwave days vulnerable populations would have been exposed to purely due to demographic changes.
-Under a constant heatwave incidence at baseline levels, vulnerable populations would have experienced an average of 5.4 heatwave days per person per year in 2006–2024—50% fewer than observed. Infants faced an average increase of 4.6 heatwave days per year, while individuals over 65, a rapidly growing group, experienced an additional 5.3 heatwave days annually. For infants a slight decrease in per-person heatwave exposure (from 4.8 to 4.6) would have been observed if heatwave incidence remained at 1986–2005 levels, reflecting shifts in the geographic distribution of vulnerable populations. No change would have been observed for adults ages 65 years or over.
+
+/* 
+For each geographic coordinate, the average annual heatwave days affecting both Older adults and Infants were calculated for 2006–2024. The same calculation was repeated while holding heatwave incidence constant to the 1986–2005 levels, isolating the impact of climate change. Comparing these scenarios reveals how many heatwave days vulnerable populations would have been exposed to purely due to demographic changes.
+Under a constant heatwave incidence at baseline levels, vulnerable populations would have experienced an average of 5.4 Average heatwave days per person per year in 2006–2024—50% fewer than observed. Infants faced an average increase of 4.6 heatwave days per year, while Older adults, a rapidly growing group, experienced an additional 5.3 heatwave days annually. For Infants a slight decrease in per-person heatwave exposure (from 4.8 to 4.6) would have been observed if heatwave incidence remained at 1986–2005 levels, reflecting shifts in the geographic distribution of vulnerable populations. No change would have been observed for Older adults.
+*/
 
 #bibliography("references.bib")
