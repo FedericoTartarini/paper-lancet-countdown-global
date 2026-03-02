@@ -239,8 +239,13 @@ For the Older adult population, both climate change and population growth contri
 ==== Baseline Comparisons
 
 #figure(
-  image("/figures/exposure_change_heatwave_days_population_weighted_mean.pdf"),
-  caption: [],
+  image("/figures/hw_change_weighted_mean.pdf"),
+  caption: [Change in the average number of heatwave days per person per year for vulnerable populations between 1986–2005 and 2006–2024, under observed conditions with constant heatwave incidence at 1986–2005 levels.],
+) <exposure-change-heatwave-days>
+
+#figure(
+  image("/figures/hw_change_total_exposure.pdf"),
+  caption: [Change in the total number of Person-days experienced by vulnerable populations between 1986–2005 and 2006–2024, under observed conditions with constant heatwave incidence at 1986–2005 levels.],
 ) <exposure-change-heatwave-days>
 
 /* 

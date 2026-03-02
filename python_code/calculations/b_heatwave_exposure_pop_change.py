@@ -16,7 +16,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from my_config import DirsLocal, FilesLocal, Vars, ensure_directories
+from my_config import DirsLocal, FilesLocal, Vars, ensure_directories, Labels
 from python_code.calculations.a_heatwave_exposure_pop_abs import (
     assert_matching_grid,
     calculate_exposure,
@@ -121,73 +121,55 @@ def plot_weighted_mean_change(
     pop_old: xr.DataArray,
 ) -> None:
     """Plot weighted mean change for days and counts."""
-    fig, axs = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
+    fig, axs = plt.subplots(constrained_layout=True)
 
-    for idx, metric in enumerate([Vars.hw_days, Vars.hw_count]):
-        days_inf = weighted_mean(combined[metric].sel(age_band=Vars.infants), pop_inf)
-        days_old = weighted_mean(combined[metric].sel(age_band=Vars.over_65), pop_old)
+    ds_hw_days = combined[Vars.hw_days]
 
-        axs[idx].plot(
-            days_inf["year"].values,
-            days_inf,
-            label="Infants",
-            linewidth=2,
-        )
-        axs[idx].plot(
-            days_old["year"].values,
-            days_old,
-            label="Over 65",
-            linewidth=2,
-        )
-        axs[idx].axhline(0, color="black", linewidth=0.8, linestyle="--")
-        axs[idx].set_ylabel(f"Weighted mean change ({metric})")
-        axs[idx].legend()
+    for data, pop in zip([pop_inf, pop_old], [Vars.infants, Vars.over_65]):
+        days = weighted_mean(ds_hw_days.sel(age_band=pop), data)
+        axs.plot(days["year"].values, days, label=Labels.get_label(pop), marker="o")
 
-    axs[-1].set_xlabel("Year")
-    fig.suptitle(
-        f"Population-Weighted Change vs {Vars.year_reference_start}-{Vars.year_reference_end}"
-    )
-    plt.savefig(DirsLocal.figures / "hw_change_weighted_mean.pdf")
+    axs.axhline(0, color="black", linewidth=0.8, linestyle="--")
+    axs.legend()
+
+    axs.set_xlabel("Year")
+    axs.set_ylabel("Pop.-weighted Mean Change in Heatwave Days")
     sns.despine()
+    plt.savefig(DirsLocal.figures / "hw_change_weighted_mean.pdf")
     plt.show()
 
 
 def plot_total_exposure_change(combined: xr.Dataset) -> None:
     """Plot total exposure change over time for days and counts."""
-    fig, axs = plt.subplots(2, 1, figsize=(8, 6), constrained_layout=True)
+    fig, axs = plt.subplots(1, 1, constrained_layout=True)
 
-    for idx, metric in enumerate([Vars.hw_days, Vars.hw_count]):
-        data_inf = (
-            combined[metric]
-            .sel(age_band=Vars.infants)
-            .sum(dim=["latitude", "longitude"], skipna=True)
-        )
-        data_old = (
-            combined[metric]
-            .sel(age_band=Vars.over_65)
-            .sum(dim=["latitude", "longitude"], skipna=True)
-        )
+    ds_hw_days = combined[Vars.hw_days]
+    data_inf = ds_hw_days.sel(age_band=Vars.infants).sum(
+        dim=["latitude", "longitude"], skipna=True
+    )
+    data_old = ds_hw_days.sel(age_band=Vars.over_65).sum(
+        dim=["latitude", "longitude"], skipna=True
+    )
 
-        axs[idx].plot(
-            data_inf["year"].values,
-            data_inf / 1e9,
-            label="Infants",
-            linewidth=2,
-        )
-        axs[idx].plot(
-            data_old["year"].values,
-            data_old / 1e9,
-            label="Over 65",
-            linewidth=2,
-        )
-        axs[idx].axhline(0, color="black", linewidth=0.8, linestyle="--")
-        axs[idx].set_ylabel(f"Total change ({metric}) in billions")
-        axs[idx].legend()
+    axs.plot(
+        data_old["year"].values,
+        data_old / 1e9,
+        label=Labels.get_label(Vars.over_65),
+        marker="o",
+    )
+    axs.plot(
+        data_inf["year"].values,
+        data_inf / 1e9,
+        label=Labels.get_label(Vars.infants),
+        marker="o",
+    )
+    axs.axhline(0, color="black", linewidth=0.8, linestyle="--")
+    axs.legend()
 
-    axs[-1].set_xlabel("Year")
-    fig.suptitle("Total Exposure Change (Global)")
-    plt.savefig(DirsLocal.figures / "hw_change_total_exposure.pdf")
+    axs.set_xlabel("Year")
+    axs.set_ylabel("Total Change in Heatwave Days (Billions)")
     sns.despine()
+    plt.savefig(DirsLocal.figures / "hw_change_total_exposure.pdf")
     plt.show()
 
 
@@ -248,7 +230,7 @@ def plot():
     pop_old = load_population(FilesLocal.pop_over_65, "pop", years)
 
     logging.info("Generating plots...")
-    plot_weighted_mean_change(combined, pop_inf, pop_old)
+    plot_weighted_mean_change(combined=combined, pop_inf=pop_inf, pop_old=pop_old)
     plot_total_exposure_change(combined)
 
     logging.info("✅ Done")
