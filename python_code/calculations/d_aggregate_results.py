@@ -1,9 +1,12 @@
 """
 Aggregate ERA5-Land heatwave exposure results by country and region groupings.
 
-This script reads the combined absolute exposure dataset and aggregates totals and
-per-person values for each region defined by raster masks. Outputs are saved as
-single NetCDF files per grouping in the aggregates folder.
+This script reads:
+- combined absolute exposure dataset (person-days and person-events)
+- combined exposure-change dataset (person-days change)
+
+It aggregates totals and per-person values for each region defined by raster masks.
+Outputs are saved as NetCDF files per grouping in the aggregates folder.
 
 Run locally:
     python python_code/calculations/d_aggregate_results.py
@@ -35,6 +38,8 @@ from python_code.calculations.a_heatwave_exposure_pop_abs import (
 )
 
 SHEET_NAME = "ISO3 - Name - LC - WHO - HDI"
+CHANGE_TOTAL_VAR = f"{Vars.hw_days}_change_total"
+CHANGE_PER_PERSON_VAR = f"{Vars.hw_days}_change_per_person"
 
 
 def setup_logging() -> None:
@@ -61,6 +66,45 @@ def load_exposure_dataset() -> xr.Dataset:
 
     if Vars.age_band not in ds.dims:
         raise ValueError(f"Exposure dataset is missing '{Vars.age_band}' dimension.")
+
+    return ds
+
+
+def _ensure_baseline_dimension(ds: xr.Dataset) -> xr.Dataset:
+    """Add default baseline period for backwards compatibility."""
+    if Vars.baseline_period in ds.dims:
+        return ds
+
+    default_baseline = Vars.format_baseline_period(
+        (Vars.year_reference_start, Vars.year_reference_end)
+    )
+    return ds.expand_dims({Vars.baseline_period: [default_baseline]})
+
+
+def load_exposure_change_dataset() -> xr.Dataset:
+    """Load combined exposure-change dataset (all ages, all baselines)."""
+    if not FilesLocal.hw_change_combined.exists():
+        raise FileNotFoundError(
+            f"Exposure change file not found: {FilesLocal.hw_change_combined}"
+        )
+
+    ds = xr.open_dataset(FilesLocal.hw_change_combined)
+    ds = standardize_grid(ds)
+    ds = _ensure_baseline_dimension(ds)
+
+    if Vars.hw_days not in ds.data_vars:
+        raise ValueError(
+            f"Missing expected change variable '{Vars.hw_days}'. "
+            f"Found: {list(ds.data_vars)}"
+        )
+    if Vars.age_band not in ds.dims:
+        raise ValueError(
+            f"Exposure change dataset is missing '{Vars.age_band}' dimension."
+        )
+    if Vars.baseline_period not in ds.dims:
+        raise ValueError(
+            f"Exposure change dataset is missing '{Vars.baseline_period}' dimension."
+        )
 
     return ds
 
@@ -264,6 +308,71 @@ def aggregate_by_region(
     return aggregated
 
 
+def aggregate_change_by_region(
+    exposure_days_change: xr.DataArray,
+    population: xr.DataArray,
+    mask_ds: xr.Dataset,
+    mask_var: str,
+    region_table: pd.DataFrame,
+    region_id_col: str,
+    region_name_col: str,
+    region_dim: str,
+    output_path: Path,
+) -> xr.Dataset:
+    """Aggregate heatwave-days change totals and per-person values for each region."""
+    if mask_var not in mask_ds.data_vars:
+        raise ValueError(
+            f"Mask variable '{mask_var}' not found. Available: {list(mask_ds.data_vars)}"
+        )
+
+    mask_da = standardize_grid(mask_ds[mask_var])
+    exposure_days_change = standardize_grid(exposure_days_change)
+    population = standardize_grid(population)
+
+    assert_matching_grid(population, exposure_days_change)
+    assert_matching_grid(population, mask_da)
+
+    region_ids = region_table[region_id_col].to_numpy()
+    region_names = region_table[region_name_col].tolist()
+    if len(region_ids) != len(region_names):
+        raise ValueError("Region table has mismatched id/name lengths.")
+
+    mask_da = mask_da.where(mask_da.isin(region_ids)).rename("region_id")
+
+    exposure_masked = exposure_days_change.where(mask_da.notnull())
+    population_masked = population.where(mask_da.notnull())
+
+    sum_population = population_masked.groupby(mask_da).sum(
+        dim=["latitude", "longitude"], skipna=True
+    )
+    sum_exposure_change = exposure_masked.groupby(mask_da).sum(
+        dim=["latitude", "longitude"], skipna=True
+    )
+
+    sum_population = sum_population.reindex({"region_id": region_ids})
+    sum_exposure_change = sum_exposure_change.reindex({"region_id": region_ids})
+
+    sum_population = sum_population.rename({"region_id": region_dim})
+    sum_exposure_change = sum_exposure_change.rename({"region_id": region_dim})
+
+    sum_population = sum_population.assign_coords({region_dim: region_names})
+    sum_exposure_change = sum_exposure_change.assign_coords({region_dim: region_names})
+
+    change_per_person = sum_exposure_change / sum_population
+
+    aggregated_change = xr.Dataset(
+        {
+            "population": sum_population,
+            CHANGE_TOTAL_VAR: sum_exposure_change,
+            CHANGE_PER_PERSON_VAR: change_per_person,
+        }
+    )
+
+    output_path.unlink(missing_ok=True)
+    aggregated_change.to_netcdf(output_path)
+    return aggregated_change
+
+
 def aggregate_by_country(
     exposure: xr.Dataset,
     population: xr.DataArray,
@@ -389,6 +498,131 @@ def aggregate_by_lancet_grouping(
     )
 
 
+def aggregate_change_by_country(
+    exposure_change: xr.Dataset,
+    population: xr.DataArray,
+    groupings: pd.DataFrame,
+) -> None:
+    """Aggregate exposure change (heatwave person-days only) by country."""
+    mask_ds = xr.open_dataset(FilesLocal.raster_country)
+    mask_var = "country_id"
+
+    groupings = groupings[groupings["ISO3"].notna()].copy()
+    country_ids = build_id_map(groupings["ISO3"])
+
+    region_table = pd.DataFrame(
+        {
+            "region_id": [country_ids[iso] for iso in sorted(country_ids)],
+            "region_name": [
+                groupings.loc[groupings["ISO3"] == iso, "Country Name to use"].iloc[0]
+                for iso in sorted(country_ids)
+            ],
+        }
+    )
+
+    aggregate_change_by_region(
+        exposure_days_change=exposure_change[Vars.hw_days],
+        population=population,
+        mask_ds=mask_ds,
+        mask_var=mask_var,
+        region_table=region_table,
+        region_id_col="region_id",
+        region_name_col="region_name",
+        region_dim="country",
+        output_path=FilesLocal.aggregate_country_change,
+    )
+
+
+def aggregate_change_by_who_region(
+    exposure_change: xr.Dataset,
+    population: xr.DataArray,
+    groupings: pd.DataFrame,
+) -> None:
+    """Aggregate exposure change (heatwave person-days only) by WHO region."""
+    mask_ds = xr.open_dataset(FilesLocal.raster_who)
+    mask_var = "who_id"
+
+    who_ids = build_id_map(groupings["WHO Region"])
+    region_table = pd.DataFrame(
+        {
+            "region_id": [who_ids[name] for name in sorted(who_ids)],
+            "region_name": sorted(who_ids),
+        }
+    )
+
+    aggregate_change_by_region(
+        exposure_days_change=exposure_change[Vars.hw_days],
+        population=population,
+        mask_ds=mask_ds,
+        mask_var=mask_var,
+        region_table=region_table,
+        region_id_col="region_id",
+        region_name_col="region_name",
+        region_dim="who_region",
+        output_path=FilesLocal.aggregate_who_change,
+    )
+
+
+def aggregate_change_by_hdi(
+    exposure_change: xr.Dataset,
+    population: xr.DataArray,
+    groupings: pd.DataFrame,
+) -> None:
+    """Aggregate exposure change (heatwave person-days only) by HDI grouping."""
+    mask_ds = xr.open_dataset(FilesLocal.raster_hdi)
+    mask_var = "hdi_id"
+
+    hdi_ids = build_id_map(groupings["HDI Group 2025"])
+    region_table = pd.DataFrame(
+        {
+            "region_id": [hdi_ids[name] for name in sorted(hdi_ids)],
+            "region_name": sorted(hdi_ids),
+        }
+    )
+
+    aggregate_change_by_region(
+        exposure_days_change=exposure_change[Vars.hw_days],
+        population=population,
+        mask_ds=mask_ds,
+        mask_var=mask_var,
+        region_table=region_table,
+        region_id_col="region_id",
+        region_name_col="region_name",
+        region_dim="hdi_group",
+        output_path=FilesLocal.aggregate_hdi_change,
+    )
+
+
+def aggregate_change_by_lancet_grouping(
+    exposure_change: xr.Dataset,
+    population: xr.DataArray,
+    groupings: pd.DataFrame,
+) -> None:
+    """Aggregate exposure change (heatwave person-days only) by Lancet grouping."""
+    mask_ds = xr.open_dataset(FilesLocal.raster_lancet)
+    mask_var = "lc_id"
+
+    lc_ids = build_id_map(groupings["LC Grouping"])
+    region_table = pd.DataFrame(
+        {
+            "region_id": [lc_ids[name] for name in sorted(lc_ids)],
+            "region_name": sorted(lc_ids),
+        }
+    )
+
+    aggregate_change_by_region(
+        exposure_days_change=exposure_change[Vars.hw_days],
+        population=population,
+        mask_ds=mask_ds,
+        mask_var=mask_var,
+        region_table=region_table,
+        region_id_col="region_id",
+        region_name_col="region_name",
+        region_dim="lc_group",
+        output_path=FilesLocal.aggregate_lancet_change,
+    )
+
+
 def build_excel_table(agg_ds: xr.Dataset, region_dim: str) -> pd.DataFrame:
     """Return a long-form table with population and exposure metrics."""
     return (
@@ -399,6 +633,22 @@ def build_excel_table(agg_ds: xr.Dataset, region_dim: str) -> pd.DataFrame:
                 f"{Vars.hw_count}_total",
                 f"{Vars.hw_days}_per_person",
                 f"{Vars.hw_count}_per_person",
+            ]
+        ]
+        .to_dataframe()
+        .reset_index()
+        .rename(columns={region_dim: "region"})
+    )
+
+
+def build_excel_table_change(agg_ds: xr.Dataset, region_dim: str) -> pd.DataFrame:
+    """Return a long-form table for heatwave person-days change metrics."""
+    return (
+        agg_ds[
+            [
+                "population",
+                CHANGE_TOTAL_VAR,
+                CHANGE_PER_PERSON_VAR,
             ]
         ]
         .to_dataframe()
@@ -429,9 +679,7 @@ def build_global_summary(
     )
 
 
-def export_excel(
-    datasets,
-) -> None:
+def export_excel(datasets, change_datasets: dict | None = None) -> None:
     """Export aggregate tables and global summary to Excel."""
     output_path = FilesLocal.aggregate_submission
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -448,9 +696,14 @@ def export_excel(
             table = build_excel_table(ds, region_dim)
             table.to_excel(writer, sheet_name=sheet_name, index=False)
 
+        if change_datasets:
+            for sheet_name, (region_dim, ds) in change_datasets.items():
+                table = build_excel_table_change(ds, region_dim)
+                table.to_excel(writer, sheet_name=sheet_name, index=False)
+
 
 def main() -> None:
-    """Run all aggregations for the absolute exposure results."""
+    """Run all aggregations for absolute exposure and exposure change results."""
     setup_logging()
     ensure_directories([DirsLocal.aggregates, DirsLocal.aggregates_figures])
 
@@ -475,6 +728,21 @@ def main() -> None:
 
     logging.info("Aggregating by Lancet grouping...")
     aggregate_by_lancet_grouping(exposure, population, groupings)
+
+    logging.info("Loading exposure change dataset...")
+    exposure_change = load_exposure_change_dataset()
+
+    logging.info("Aggregating exposure change by country...")
+    aggregate_change_by_country(exposure_change, population, groupings)
+
+    logging.info("Aggregating exposure change by WHO region...")
+    aggregate_change_by_who_region(exposure_change, population, groupings)
+
+    logging.info("Aggregating exposure change by HDI...")
+    aggregate_change_by_hdi(exposure_change, population, groupings)
+
+    logging.info("Aggregating exposure change by Lancet grouping...")
+    aggregate_change_by_lancet_grouping(exposure_change, population, groupings)
 
 
 def plot_trends_by(data, region_dim: str, num_regions: int) -> None:
@@ -536,6 +804,101 @@ def plot_trends_by(data, region_dim: str, num_regions: int) -> None:
     plt.show()
 
 
+def plot_change_trends_by(
+    data: xr.Dataset,
+    region_dim: str,
+    num_regions: int,
+    baseline_period: str | bytes,
+) -> None:
+    """Plot change trends by region for a selected baseline period."""
+    if Vars.baseline_period in data.dims:
+        data = data.sel({Vars.baseline_period: baseline_period})
+
+    df = data.copy().to_dataframe().reset_index()
+    f, axs = plt.subplots(2, 1, sharex=True, figsize=(7, 4.5))
+
+    country_color_map = {}
+    country_colors = sns.color_palette("tab20" if num_regions >= 5 else "tab10")
+
+    for ix, age_band in enumerate(df[Vars.age_band].unique()):
+        subset = df[df[Vars.age_band] == age_band]
+        total_by_year = subset.groupby("year")[[CHANGE_TOTAL_VAR]].sum().sort_index()
+
+        x_labels = total_by_year.index.astype(str)
+        axs[ix].bar(
+            x=x_labels,
+            height=total_by_year[CHANGE_TOTAL_VAR].values / 1e9,
+            color="gray",
+            alpha=0.35,
+            label="Global Total",
+        )
+
+        top_regions = (
+            subset.groupby(region_dim)[[CHANGE_TOTAL_VAR]]
+            .sum()
+            .abs()
+            .sort_values(CHANGE_TOTAL_VAR, ascending=False)
+            .head(num_regions)
+            .index
+        )
+
+        baseline_pos = np.zeros(len(total_by_year), dtype=float)
+        baseline_neg = np.zeros(len(total_by_year), dtype=float)
+
+        for ix_country, country in enumerate(top_regions):
+            if country not in country_color_map:
+                country_color_map[country] = country_colors[
+                    ix_country + num_regions * ix
+                ]
+
+            country_data = (
+                subset[subset[region_dim] == country]
+                .groupby("year")[[CHANGE_TOTAL_VAR]]
+                .sum()
+                .reindex(total_by_year.index, fill_value=0)
+            )
+            heights = country_data[CHANGE_TOTAL_VAR].values / 1e9
+            bottoms = np.where(heights >= 0, baseline_pos, baseline_neg)
+
+            axs[ix].bar(
+                x=x_labels,
+                height=heights,
+                label=country,
+                bottom=bottoms,
+                color=country_color_map[country],
+            )
+
+            baseline_pos = np.where(heights >= 0, baseline_pos + heights, baseline_pos)
+            baseline_neg = np.where(heights < 0, baseline_neg + heights, baseline_neg)
+
+        axs[ix].legend()
+        axs[ix].axhline(0, color="black", linewidth=0.8, linestyle="--")
+
+    axs[0].set_ylabel(
+        f"Change in {Labels.get_label(Vars.hw_days)} (billions)\nUnder 1 year"
+    )
+    axs[1].set_ylabel(f"Change in {Labels.get_label(Vars.hw_days)} (billions)\nAge 65+")
+    plt.xticks(rotation=90, fontsize=10)
+    for ax in axs:
+        ax.set_xlabel("", visible=False)
+        ax.grid(True, axis="y", linestyle="--", alpha=0.7)
+    baseline_label = (
+        baseline_period.decode()
+        if isinstance(baseline_period, bytes)
+        else str(baseline_period)
+    )
+    axs[0].set_title(f"Baseline: {baseline_label}")
+    plt.tight_layout()
+    sns.despine()
+
+    baseline_tag = baseline_label.replace("-", "_")
+    plt.savefig(
+        DirsLocal.figures
+        / f"{Vars.hw_days}_change_by_{region_dim}_baseline_{baseline_tag}.pdf"
+    )
+    plt.show()
+
+
 def plot_comparison_aggregates(global_summary, countries, who, hdi, lancet) -> None:
     """Plot a comparison of total heatwave days across all aggregates.
     To make sure that the aggregation and grouping processes are consistent"""
@@ -584,12 +947,51 @@ def plot_and_summary() -> None:
     lancet = xr.open_dataset(FilesLocal.aggregate_lancet)
     who = xr.open_dataset(FilesLocal.aggregate_who)
     hdi = xr.open_dataset(FilesLocal.aggregate_hdi)
+    countries_change = xr.open_dataset(FilesLocal.aggregate_country_change)
+    lancet_change = xr.open_dataset(FilesLocal.aggregate_lancet_change)
+    who_change = xr.open_dataset(FilesLocal.aggregate_who_change)
+    hdi_change = xr.open_dataset(FilesLocal.aggregate_hdi_change)
 
     # Plot trends by region
     plot_trends_by(countries, region_dim="country", num_regions=5)
     plot_trends_by(lancet, region_dim="lc_group", num_regions=3)
     plot_trends_by(who, region_dim="who_region", num_regions=3)
     plot_trends_by(hdi, region_dim="hdi_group", num_regions=3)
+
+    baseline_periods = (
+        countries_change[Vars.baseline_period].values
+        if Vars.baseline_period in countries_change.dims
+        else [
+            Vars.format_baseline_period(
+                (Vars.year_reference_start, Vars.year_reference_end)
+            )
+        ]
+    )
+    for baseline_period in baseline_periods:
+        plot_change_trends_by(
+            countries_change,
+            region_dim="country",
+            num_regions=5,
+            baseline_period=baseline_period,
+        )
+        plot_change_trends_by(
+            lancet_change,
+            region_dim="lc_group",
+            num_regions=3,
+            baseline_period=baseline_period,
+        )
+        plot_change_trends_by(
+            who_change,
+            region_dim="who_region",
+            num_regions=3,
+            baseline_period=baseline_period,
+        )
+        plot_change_trends_by(
+            hdi_change,
+            region_dim="hdi_group",
+            num_regions=3,
+            baseline_period=baseline_period,
+        )
 
     # create a global summary
     global_summary = xr.open_dataset(FilesLocal.hw_combined_q)
@@ -630,6 +1032,12 @@ def plot_and_summary() -> None:
             "HDI Group": ("hdi_group", hdi),
             "LC Region": ("lc_group", lancet),
         },
+        change_datasets={
+            "Country Change": ("country", countries_change),
+            "WHO Region Change": ("who_region", who_change),
+            "HDI Group Change": ("hdi_group", hdi_change),
+            "LC Region Change": ("lc_group", lancet_change),
+        },
     )
 
     logging.info("All aggregations completed.")
@@ -639,5 +1047,5 @@ def plot_and_summary() -> None:
 
 if __name__ == "__main__":
     pass
-    main()
+    # main()
     plot_and_summary()

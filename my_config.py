@@ -148,6 +148,10 @@ class FilesLocal:
     aggregate_who = DirsLocal.aggregates / "who.nc"
     aggregate_hdi = DirsLocal.aggregates / "hdi.nc"
     aggregate_lancet = DirsLocal.aggregates / "lancet.nc"
+    aggregate_country_change = DirsLocal.aggregates / "country_change.nc"
+    aggregate_who_change = DirsLocal.aggregates / "who_change.nc"
+    aggregate_hdi_change = DirsLocal.aggregates / "hdi_change.nc"
+    aggregate_lancet_change = DirsLocal.aggregates / "lancet_change.nc"
     aggregate_submission = (
         DirsLocal.manuscript
         / "1.1.1 - 2026 Global Report - Data Submission - Tartarini.xlsx"
