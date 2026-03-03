@@ -26,10 +26,10 @@ from my_config import (
     FilesLocal,
     Vars,
     ensure_directories,
+    Labels,
 )
 from python_code.calculations.a_heatwave_exposure_pop_abs import (
     assert_matching_grid,
-    load_heatwave_metrics,
     load_population,
     standardize_grid,
 )
@@ -523,8 +523,8 @@ def plot_trends_by(data, region_dim: str, num_regions: int) -> None:
             )
             baseline += country_data[f"{Vars.hw_days}_total"].values / 1e9
             axs[ix].legend()
-    axs[0].set_ylabel("Heatwave days (billions)\nUnder 1 year")
-    axs[1].set_ylabel("Heatwave days (billions)\nAge 65+")
+    axs[0].set_ylabel(f"{Labels.get_label(Vars.hw_days)} (billions)\nUnder 1 year")
+    axs[1].set_ylabel(f"{Labels.get_label(Vars.hw_days)} (billions)\nAge 65+")
     plt.xticks(rotation=90, fontsize=10)
     for ax in axs:
         ax.set_xlabel("", visible=False)
