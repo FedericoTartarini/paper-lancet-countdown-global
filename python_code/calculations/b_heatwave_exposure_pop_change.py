@@ -2,7 +2,7 @@
 Calculate exposure to change in heatwave occurrence relative to the reference period.
 
 Outputs a single NetCDF with dimensions:
-- age_band, latitude, longitude, year
+- age_band, baseline_period, latitude, longitude, year
 and variables:
 - heatwave_days, heatwave_counts
 """
@@ -16,7 +16,14 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from my_config import DirsLocal, FilesLocal, Vars, ensure_directories, Labels
+from my_config import (
+    DirsLocal,
+    FilesLocal,
+    Vars,
+    ensure_directories,
+    Labels,
+    update_typst_json,
+)
 from python_code.calculations.a_heatwave_exposure_pop_abs import (
     assert_matching_grid,
     calculate_exposure,
@@ -35,35 +42,61 @@ def setup_logging() -> None:
     )
 
 
-def assert_reference_years_available(hw_da: xr.DataArray) -> None:
-    """Ensure the reference period is fully present in the heatwave data."""
-    ref_years = np.arange(Vars.year_reference_start, Vars.year_reference_end + 1)
+def assert_reference_years_available(
+    hw_da: xr.DataArray, reference_period: tuple[int, int]
+) -> None:
+    """Ensure a reference period is fully present in the heatwave data."""
+    ref_years = np.arange(reference_period[0], reference_period[1] + 1)
     available_years = hw_da["year"].values
     missing = sorted(set(ref_years) - set(available_years))
     if missing:
-        raise ValueError(f"Missing reference years in heatwave data: {missing}")
+        raise ValueError(
+            f"Missing reference years in heatwave data for baseline "
+            f"{Vars.format_baseline_period(reference_period)}: {missing}"
+        )
 
 
-def compute_reference_mean(hw_da: xr.DataArray) -> xr.DataArray:
-    """Compute reference-period mean for a heatwave metric."""
-    assert_reference_years_available(hw_da)
-    return hw_da.sel(
-        year=slice(Vars.year_reference_start, Vars.year_reference_end)
-    ).mean(dim="year")
+def compute_reference_mean(
+    hw_da: xr.DataArray, reference_period: tuple[int, int]
+) -> xr.DataArray:
+    """Compute mean for a specific baseline period."""
+    assert_reference_years_available(hw_da, reference_period)
+    return hw_da.sel(year=slice(reference_period[0], reference_period[1])).mean(
+        dim="year"
+    )
 
 
-def compute_delta(hw_da: xr.DataArray) -> xr.DataArray:
-    """Compute anomaly relative to reference-period mean."""
-    ref_mean = compute_reference_mean(hw_da)
+def compute_delta(
+    hw_da: xr.DataArray, reference_period: tuple[int, int]
+) -> xr.DataArray:
+    """Compute anomaly relative to a specific baseline-period mean."""
+    ref_mean = compute_reference_mean(hw_da, reference_period)
     return hw_da - ref_mean
+
+
+def _ensure_baseline_dimension(ds: xr.Dataset) -> xr.Dataset:
+    """Add a default baseline dimension if loading an older single-baseline file."""
+    if Vars.baseline_period in ds.dims:
+        return ds
+
+    default_baseline = Vars.format_baseline_period(
+        (Vars.year_reference_start, Vars.year_reference_end)
+    )
+    return ds.expand_dims({Vars.baseline_period: [default_baseline]})
 
 
 def build_exposure_change_dataset(
     pop_inf: xr.DataArray,
     pop_old: xr.DataArray,
     hw_ds: xr.Dataset,
+    baseline_periods: list[tuple[int, int]] | None = None,
 ) -> xr.Dataset:
-    """Build exposure-to-change dataset for infants and over_65."""
+    """Build exposure-to-change dataset for infants and over_65 across baselines."""
+    if baseline_periods is None:
+        baseline_periods = Vars.get_baseline_periods()
+    if not baseline_periods:
+        raise ValueError("At least one baseline period is required.")
+
     hw_days = resolve_hw_var(hw_ds, Vars.hw_days)
     hw_counts = resolve_hw_var(hw_ds, Vars.hw_count)
 
@@ -77,34 +110,52 @@ def build_exposure_change_dataset(
     assert_matching_grid(pop_inf, hw_counts)
     assert_matching_grid(pop_old, hw_counts)
 
-    days_delta = compute_delta(hw_days)
-    counts_delta = compute_delta(hw_counts)
+    combined_baselines = []
+    for baseline_period in baseline_periods:
+        baseline_label = Vars.format_baseline_period(baseline_period)
+        logging.info("Computing deltas for baseline %s...", baseline_label)
 
-    logging.info("Calculating exposure change for %s...", Vars.infants)
-    days_inf = calculate_exposure(pop_inf, days_delta)
-    counts_inf = calculate_exposure(pop_inf, counts_delta)
+        days_delta = compute_delta(hw_days, baseline_period)
+        counts_delta = compute_delta(hw_counts, baseline_period)
 
-    logging.info("Calculating exposure change for %s...", Vars.over_65)
-    days_old = calculate_exposure(pop_old, days_delta)
-    counts_old = calculate_exposure(pop_old, counts_delta)
+        logging.info(
+            "Calculating exposure change for baseline %s and age group %s...",
+            baseline_label,
+            Vars.infants,
+        )
+        days_inf = calculate_exposure(pop_inf, days_delta)
+        counts_inf = calculate_exposure(pop_inf, counts_delta)
 
-    days_combined = xr.concat(
-        [days_inf, days_old],
-        dim=xr.DataArray([Vars.infants, Vars.over_65], dims=[Vars.age_band]),
+        logging.info(
+            "Calculating exposure change for baseline %s and age group %s...",
+            baseline_label,
+            Vars.over_65,
+        )
+        days_old = calculate_exposure(pop_old, days_delta)
+        counts_old = calculate_exposure(pop_old, counts_delta)
+
+        days_combined = xr.concat(
+            [days_inf, days_old],
+            dim=xr.DataArray([Vars.infants, Vars.over_65], dims=[Vars.age_band]),
+        )
+        counts_combined = xr.concat(
+            [counts_inf, counts_old],
+            dim=xr.DataArray([Vars.infants, Vars.over_65], dims=[Vars.age_band]),
+        )
+
+        combined = xr.Dataset(
+            {
+                Vars.hw_days: days_combined,
+                Vars.hw_count: counts_combined,
+            }
+        )
+        combined = combined.expand_dims({Vars.baseline_period: [baseline_label]})
+        combined_baselines.append(combined)
+
+    combined = xr.concat(combined_baselines, dim=Vars.baseline_period)
+    combined = combined.transpose(
+        Vars.age_band, Vars.baseline_period, "latitude", "longitude", "year"
     )
-    counts_combined = xr.concat(
-        [counts_inf, counts_old],
-        dim=xr.DataArray([Vars.infants, Vars.over_65], dims=[Vars.age_band]),
-    )
-
-    combined = xr.Dataset(
-        {
-            Vars.hw_days: days_combined,
-            Vars.hw_count: counts_combined,
-        }
-    )
-
-    combined = combined.transpose(Vars.age_band, "latitude", "longitude", "year")
     return combined
 
 
@@ -120,56 +171,123 @@ def plot_weighted_mean_change(
     pop_inf: xr.DataArray,
     pop_old: xr.DataArray,
 ) -> None:
-    """Plot weighted mean change for days and counts."""
-    fig, axs = plt.subplots(constrained_layout=True)
+    """Plot population-weighted mean exposure change for each baseline with a shared Y label."""
+    baseline_labels = combined[Vars.baseline_period].values
+    fig, axs = plt.subplots(
+        len(baseline_labels),
+        1,
+        constrained_layout=True,
+        sharex=True,
+        figsize=(8, 3 * len(baseline_labels)),
+    )
+    if len(baseline_labels) == 1:
+        axs = [axs]
 
-    ds_hw_days = combined[Vars.hw_days]
+    for ax, baseline in zip(axs, baseline_labels):
+        ds_hw_days = combined[Vars.hw_days].sel({Vars.baseline_period: baseline})
+        for data, pop in zip([pop_inf, pop_old], [Vars.infants, Vars.over_65]):
+            days = weighted_mean(ds_hw_days.sel(age_band=pop), data)
+            ax.plot(
+                days["year"].values,
+                days,
+                label=Labels.get_label(pop),
+                marker="o",
+            )
+            update_typst_json(
+                {
+                    "hw_change": {
+                        "avg": {
+                            str(baseline): {
+                                pop: {
+                                    str(year): day.item()
+                                    for year, day in zip(
+                                        days["year"].values, days.values
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            )
 
-    for data, pop in zip([pop_inf, pop_old], [Vars.infants, Vars.over_65]):
-        days = weighted_mean(ds_hw_days.sel(age_band=pop), data)
-        axs.plot(days["year"].values, days, label=Labels.get_label(pop), marker="o")
+        ax.axhline(0, color="black", linewidth=0.8, linestyle="--")
+        ax.legend()
+        ax.set_title(f"Baseline: {baseline}")
 
-    axs.axhline(0, color="black", linewidth=0.8, linestyle="--")
-    axs.legend()
-
-    axs.set_xlabel("Year")
-    axs.set_ylabel("Pop.-weighted Mean Change in Heatwave Days")
+    # Add a shared Y label for all subplots
+    fig.text(
+        0,
+        0.5,
+        "Pop.-weighted mean change in heatwave days",
+        va="center",
+        ha="right",
+        size=12,
+        rotation="vertical",
+    )
+    axs[-1].set_xlabel("Year")
     sns.despine()
-    plt.savefig(DirsLocal.figures / "hw_change_weighted_mean.pdf")
+    plt.savefig(DirsLocal.figures / "hw_change_weighted_mean_by_baseline.pdf")
     plt.show()
 
 
 def plot_total_exposure_change(combined: xr.Dataset) -> None:
-    """Plot total exposure change over time for days and counts."""
-    fig, axs = plt.subplots(1, 1, constrained_layout=True)
+    """Plot total exposure change over time for each baseline."""
+    baseline_labels = combined[Vars.baseline_period].values
+    fig, axs = plt.subplots(
+        len(baseline_labels),
+        1,
+        constrained_layout=True,
+        sharex=True,
+        figsize=(8, 3 * len(baseline_labels)),
+    )
+    if len(baseline_labels) == 1:
+        axs = [axs]
 
-    ds_hw_days = combined[Vars.hw_days]
-    data_inf = ds_hw_days.sel(age_band=Vars.infants).sum(
-        dim=["latitude", "longitude"], skipna=True
-    )
-    data_old = ds_hw_days.sel(age_band=Vars.over_65).sum(
-        dim=["latitude", "longitude"], skipna=True
-    )
+    for ax, baseline in zip(axs, baseline_labels):
+        ds_hw_days = combined[Vars.hw_days].sel({Vars.baseline_period: baseline})
+        for age_band in [Vars.infants, Vars.over_65]:
+            data = ds_hw_days.sel(age_band=age_band).sum(
+                dim=["latitude", "longitude"], skipna=True
+            )
+            ax.plot(
+                data["year"].values,
+                data / 1e9,
+                label=Labels.get_label(age_band),
+                marker="o",
+            )
+            update_typst_json(
+                {
+                    "hw_change": {
+                        "total": {
+                            str(baseline): {
+                                age_band: {
+                                    str(year): day.item() / 1e9
+                                    for year, day in zip(
+                                        data["year"].values, data.values
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            )
 
-    axs.plot(
-        data_old["year"].values,
-        data_old / 1e9,
-        label=Labels.get_label(Vars.over_65),
-        marker="o",
-    )
-    axs.plot(
-        data_inf["year"].values,
-        data_inf / 1e9,
-        label=Labels.get_label(Vars.infants),
-        marker="o",
-    )
-    axs.axhline(0, color="black", linewidth=0.8, linestyle="--")
-    axs.legend()
+        ax.axhline(0, color="black", linewidth=0.8, linestyle="--")
+        ax.legend()
+        ax.set_title(f"Baseline: {baseline}")
 
-    axs.set_xlabel("Year")
-    axs.set_ylabel("Total Change in Heatwave Days (Billions)")
+    fig.text(
+        0,
+        0.5,
+        "Total change in heatwave days (billions)",
+        va="center",
+        ha="right",
+        size=12,
+        rotation="vertical",
+    )
+    axs[-1].set_xlabel("Year")
     sns.despine()
-    plt.savefig(DirsLocal.figures / "hw_change_total_exposure.pdf")
+    plt.savefig(DirsLocal.figures / "hw_change_total_exposure_by_baseline.pdf")
     plt.show()
 
 
@@ -180,7 +298,13 @@ def assert_expected_output(ds: xr.Dataset) -> None:
     if missing:
         raise ValueError(f"Missing expected variables in output: {missing}")
 
-    expected_dims = {Vars.age_band, "latitude", "longitude", "year"}
+    expected_dims = {
+        Vars.age_band,
+        Vars.baseline_period,
+        "latitude",
+        "longitude",
+        "year",
+    }
     if set(ds.dims) != expected_dims:
         raise ValueError(
             f"Unexpected dims in output: {set(ds.dims)} (expected {expected_dims})"
@@ -206,7 +330,18 @@ def main() -> None:
     hw_ds = load_heatwave_metrics(years)
 
     logging.info("Building exposure change dataset...")
-    combined = build_exposure_change_dataset(pop_inf, pop_old, hw_ds)
+    baseline_periods = Vars.get_baseline_periods()
+    logging.info(
+        "Using baseline periods: %s",
+        ", ".join(Vars.format_baseline_period(period) for period in baseline_periods),
+    )
+    combined = build_exposure_change_dataset(
+        pop_inf,
+        pop_old,
+        hw_ds,
+        baseline_periods=baseline_periods,
+    )
+    assert_expected_output(combined)
 
     ensure_directories([FilesLocal.hw_change_combined.parent, DirsLocal.figures])
 
@@ -221,7 +356,9 @@ def main() -> None:
 
 
 def plot():
+    setup_logging()
     combined = xr.open_dataset(FilesLocal.hw_change_combined)
+    combined = _ensure_baseline_dimension(combined)
 
     years = slice(Vars.year_min_analysis, Vars.year_max_analysis)
 
@@ -238,5 +375,5 @@ def plot():
 
 if __name__ == "__main__":
     pass
-    main()
+    # main()
     plot()

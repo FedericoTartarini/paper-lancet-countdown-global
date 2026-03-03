@@ -24,6 +24,8 @@ class Vars:
     year_min_analysis: int = 1980
     year_reference_start: int = 1986
     year_reference_end: int = 2005
+    baseline_periods: List[tuple[int, int]] = [(1986, 2005), (2007, 2016)]
+    baseline_period = "baseline_period"
     quantiles: List[float] = 0.95
     t_vars: List[str] = ["t_max", "t_min", "t_mean"]
     infants = "under_1"
@@ -38,6 +40,21 @@ class Vars:
     def get_reference_years(cls) -> List[int]:
         """Return all years in the reference period as a list."""
         return list(range(cls.year_reference_start, cls.year_reference_end + 1))
+
+    @classmethod
+    def get_baseline_periods(cls) -> List[tuple[int, int]]:
+        """Return all baseline periods used for change calculations."""
+        return cls.baseline_periods
+
+    @classmethod
+    def format_baseline_period(cls, period: tuple[int, int]) -> str:
+        """Format a baseline period tuple as a string label."""
+        return f"{period[0]}-{period[1]}"
+
+    @classmethod
+    def get_baseline_labels(cls) -> List[str]:
+        """Return string labels for configured baseline periods."""
+        return [cls.format_baseline_period(period) for period in cls.baseline_periods]
 
     @classmethod
     def get_analysis_years(cls) -> List[int]:
@@ -294,6 +311,7 @@ if __name__ == "__main__":
                 "year_report": Vars.year_report,
                 "year_max_analysis": Vars.year_max_analysis,
                 "year_reference_period": f"{Vars.year_reference_start}-{Vars.year_reference_end}",
+                "year_reference_periods": Vars.get_baseline_labels(),
                 "quantiles": Vars.quantiles,
             }
         }

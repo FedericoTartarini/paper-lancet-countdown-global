@@ -238,13 +238,22 @@ For the Older adult population, both climate change and population growth contri
 
 ==== Baseline Comparisons
 
+We estimated annual changes in heatwave exposure for Older adults and Infants relative to two climatological baselines (1986–2005 and 2007–2016, the latter aligned with the Paris Agreement).
+We did this by the subtracting the observed heatwave days for a given year from the average heatwave days during the baseline period. 
+This value was then multiplied by the population of vulnerable groups for that year to estimate the change in Person-days experienced relative to the baselines.
+
+In #max_year_analysis, compared with 1986–2005, the population-weighted mean heatwave days per person increased by #db.hw_change.avg.at("1986-2005").under_1.at("2025") for Infants and #db.hw_change.avg.at("1986-2005").over_65.at("2025") for Older adults.
+Compared with 2007–2016, the corresponding changes were #db.hw_change.avg.at("2007-2016").under_1.at("2025") for Infants and #db.hw_change.avg.at("2007-2016").over_65.at("2025") for Older adults.
+
+This resulted in a total increase of #db.hw_change.total.at("1986-2005").under_1.at("2025") billion Person-days for Infants and #db.hw_change.total.at("1986-2005").over_65.at("2025") billion Person-days for Older adults compared to the 1986–2005 baseline, and a total increase of #db.hw_change.total.at("2007-2016").under_1.at("2025") billion Person-days for Infants and #db.hw_change.total.at("2007-2016").over_65.at("2025") billion Person-days for Older adults compared to the 2007–2016 baseline.
+
 #figure(
-  image("/figures/hw_change_weighted_mean.pdf"),
+  image("/figures/hw_change_weighted_mean_by_baseline.pdf"),
   caption: [Change in the average number of heatwave days per person per year for vulnerable populations between 1986–2005 and 2006–2024, under observed conditions with constant heatwave incidence at 1986–2005 levels.],
 ) <exposure-change-heatwave-days>
 
 #figure(
-  image("/figures/hw_change_total_exposure.pdf"),
+  image("/figures/hw_change_total_exposure_by_baseline.pdf"),
   caption: [Change in the total number of Person-days experienced by vulnerable populations between 1986–2005 and 2006–2024, under observed conditions with constant heatwave incidence at 1986–2005 levels.],
 ) <exposure-change-heatwave-days>
 
