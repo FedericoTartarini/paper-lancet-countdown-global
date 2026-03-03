@@ -34,7 +34,7 @@ class Vars:
     hw_days = "heatwave_days"
     hw_q_min_max = "q_min_max"
     age_band = "age_band"
-    map_projection = ccrs.EckertIII()
+    map_projection = ccrs.EckertIV()
 
     @classmethod
     def get_reference_years(cls) -> List[int]:

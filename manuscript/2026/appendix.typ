@@ -154,7 +154,7 @@ The estimation of heat stress risk may also be expanded beyond heatwave days to 
 
 #figure(
   image("/figures/map_hw_change_2025.png"),
-  caption: [Map showing the change in heatwave days in 2025 compared to the 1986–2005 baseline.],
+  caption: [Map showing the change in heatwave days in 2025 compared to the 1986–2005 baseline. Eckert IV projection is used to preserve area, with a color scale indicating the increase (red) or decrease (blue) in heatwave days.],
 ) <change-heatwave-days>
 
 While the total number of heatwave days decreased from the 2024 historical high (#db.heatwave_days_tot.over_65.at("2024") and #db.heatwave_days_tot.under_1.at("2024") billion Person-days for Older adults and Infants) the year #max_year_analysis was the second highest on record for heatwave exposure for both vulnerable groups combined.
