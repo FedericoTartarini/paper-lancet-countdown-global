@@ -90,7 +90,38 @@ To construct a continuous annual time series of global population distribution f
 - *2015–#max_year_analysis:* We utilized the *updated WorldPop dataset* @bondarenko2025spatial and aggregated age groups to the ERA5-Land grid by summing values within each cell.
 
 For infant counts we aggregated the age band 0–1 from the respective datasets.
-For Older adults (≥65 years), we summed the age bands 65–70, 70–75, 75–80, and 80+.  
+For Older adults (≥65 years), we summed the age bands 65–70, 70–75, 75–80, and 80+. 
+
+==== Attribution of Changes in Heatwave Exposure: Decomposition Methods
+
+To isolate the driving factors behind historical changes in human exposure to heatwaves, we decomposed the total change in exposure into three distinct components: the climate effect, the population effect, and their synergistic interaction. 
+
+Exposure is defined as the number of person-days, calculated at the grid-cell level as the product of the vulnerable population count and the number of heatwave days. 
+By isolating these variables, we can attribute exactly how much of the increased societal burden is driven by meteorological hazards versus demographic shifts.
+
+Let $P_t$ represent the population of a specific vulnerable group (e.g., infants or older adults) in a target year $t$, and $C_t$ represent the number of heatwave days in that same year. 
+Let $overline(P)_"base"$ and $overline(C)_"base"$ represent the mean population and mean heatwave days during the reference baseline period (e.g., 1986–2005 or 2007–2016).
+The total change in exposure ($Delta E$) relative to the baseline is the difference between the target exposure and the baseline exposure:
+
+$ Delta E = (P_t times C_t) - (overline(P)_"base" times overline(C)_"base") $
+
+To attribute this total change to its specific drivers, we expand the equation into three discrete terms:
+
+$ Delta E = Delta E_"climate" + Delta E_"population" + Delta E_"interaction" $
+
+Each term in the decomposition isolates a specific real-world dynamic:
+
+- *The Climate Effect* ($Delta E_"climate"$): This represents the increase in exposure driven purely by rising temperatures. It is calculated by multiplying the historically static baseline population by the change in heatwave days. It asks: _How much extra heat would the historical population have experienced?_
+  $ Delta E_"climate" = overline(P)_"base" times (C_t - overline(C)_"base") $
+
+- *The Population Effect* ($Delta E_"population"$): This represents the increase in exposure driven purely by demographic growth and aging. It is calculated by multiplying the newly added population by the historical baseline heatwave days. It asks: _How much extra exposure would have occurred simply because more vulnerable people now live in historically warm climates?_
+  $ Delta E_"population" = (P_t - overline(P)_"base") times overline(C)_"base" $
+
+- *The Interaction Effect* ($Delta E_"interaction"$): This represents the compounding, synergistic penalty of an expanding demographic facing a rapidly warming world. It accounts for the overlap where the *newly added* vulnerable populations are exposed to the *newly added* heatwave days. 
+  $ Delta E_"interaction" = (P_t - overline(P)_"base") times (C_t - overline(C)_"base") $
+
+Because these formulas are executed pixel-by-pixel, the methodology naturally accounts for the spatial heterogeneity of both climate change and human population dynamics.
+The final global and regional totals for each effect were obtained by calculating the sum of the respective terms across all valid land grid cells. 
 
 ==== Code and resources to reproduce the results
 
@@ -215,51 +246,53 @@ However, the African region experienced the fastest growth in Person-days after 
   caption: [Total Person-days experienced per year by vulnerable populations, by Lancet group.],
 ) <hw-days-by-lc>
 
-==== Drivers of Change in Heatwave Exposure
+==== Changes in Global Heatwave Exposure
 
-Two factors are driving the increase in heatwave exposure for vulnerable populations: climate change and population growth.
-@population-trend-absolute shows the global trend in total population of vulnerable groups from 1980 to #max_year_analysis, highlighting the significant growth in the Older adult population over this period.
-// todo check and finalise numbers in the following paragraph
-The number of individuals in the Older adults group has more than doubled from approximately 290 million in 1980 to over 800 million in #max_year_analysis, while the infant population has only seen a slight increase from around 100 million to 130 million.
+===== Current Population Vulnerability
 
-#figure(
-  image("/figures/global_population_trend_millions.pdf"),
-  caption: [],
-) <population-trend-absolute>
+To quantify the additional heatwave burden faced by today's demographic, we estimated the change in exposure by multiplying the 2025 population of vulnerable groups by the change in heatwave days relative to historical climatological baselines.
 
-@dominant-effect-change compares the periods 1986–2005 and 2006–2024 to estimate how many heatwave days vulnerable populations would have experienced if climate change had not occurred, considering only demographic shifts.  
-Climate change is the primary driver of increased heatwave exposure for Infants, accounting for all of the observed increase.
-For the Older adult population, both climate change and population growth contribute significantly, with population growth being the dominant factor in recent years.
-
-#figure(
-  image("/figures/barplots_dominant_effect_change.pdf"),
-  caption: [],
-) <dominant-effect-change>
-
-==== Baseline Comparisons
-
-We estimated annual changes in heatwave exposure for Older adults and Infants relative to two climatological baselines (1986–2005 and 2007–2016, the latter aligned with the Paris Agreement).
-We did this by the subtracting the observed heatwave days for a given year from the average heatwave days during the baseline period. 
-This value was then multiplied by the population of vulnerable groups for that year to estimate the change in Person-days experienced relative to the baselines.
-
-In #max_year_analysis, compared with 1986–2005, the population-weighted mean heatwave days per person increased by #db.hw_change.avg.at("1986-2005").under_1.at("2025") for Infants and #db.hw_change.avg.at("1986-2005").over_65.at("2025") for Older adults.
-Compared with 2007–2016, the corresponding changes were #db.hw_change.avg.at("2007-2016").under_1.at("2025") for Infants and #db.hw_change.avg.at("2007-2016").over_65.at("2025") for Older adults.
-
-This resulted in a total increase of #db.hw_change.total.at("1986-2005").under_1.at("2025") billion Person-days for Infants and #db.hw_change.total.at("1986-2005").over_65.at("2025") billion Person-days for Older adults compared to the 1986–2005 baseline, and a total increase of #db.hw_change.total.at("2007-2016").under_1.at("2025") billion Person-days for Infants and #db.hw_change.total.at("2007-2016").over_65.at("2025") billion Person-days for Older adults compared to the 2007–2016 baseline.
+In #max_year_analysis, compared with the 1986–2005 baseline, the population-weighted mean heatwave days per person increased by #db.hw_change.avg.at("1986-2005").under_1.at("2025") for Infants and #db.hw_change.avg.at("1986-2005").over_65.at("2025") for Older adults.
+Relative to the more recent 2007–2016 baseline, the corresponding changes were #db.hw_change.avg.at("2007-2016").under_1.at("2025") for Infants and #db.hw_change.avg.at("2007-2016").over_65.at("2025") for Older adults, as shown in @hw-change-weighted-mean-by-baseline.
 
 #figure(
   image("/figures/hw_change_weighted_mean_by_baseline.pdf"),
   caption: [Change in the average number of heatwave days per person per year for vulnerable populations between 1986–2005 and 2006–2024, under observed conditions with constant heatwave incidence at 1986–2005 levels.],
-) <exposure-change-heatwave-days>
+) <hw-change-weighted-mean-by-baseline>
+
+Because of this increased frequency of extreme heat, the vulnerable populations alive in 2025 experienced a massive surge in total person-days of exposure to heatwaves, as illustrated in @hw-change-total-exposure-by-baseline.
+Compared to the 1986–2005 average, this translated to an additional of #db.hw_change.total.at("1986-2005").under_1.at("2025") billion Person-days for Infants and #db.hw_change.total.at("1986-2005").over_65.at("2025") billion Person-days for Older adults.
+Relative to the 2007–2016 baseline, the 2025 population experienced an additional #db.hw_change.total.at("2007-2016").under_1.at("2025") billion Person-days for Infants and #db.hw_change.total.at("2007-2016").over_65.at("2025") billion Person-days for Older adults.
 
 #figure(
   image("/figures/hw_change_total_exposure_by_baseline.pdf"),
   caption: [Change in the total number of Person-days experienced by vulnerable populations between 1986–2005 and 2006–2024, under observed conditions with constant heatwave incidence at 1986–2005 levels.],
-) <exposure-change-heatwave-days>
+) <hw-change-total-exposure-by-baseline>
 
-/* 
-For each geographic coordinate, the average annual heatwave days affecting both Older adults and Infants were calculated for 2006–2024. The same calculation was repeated while holding heatwave incidence constant to the 1986–2005 levels, isolating the impact of climate change. Comparing these scenarios reveals how many heatwave days vulnerable populations would have been exposed to purely due to demographic changes.
-Under a constant heatwave incidence at baseline levels, vulnerable populations would have experienced an average of 5.4 Average heatwave days per person per year in 2006–2024—50% fewer than observed. Infants faced an average increase of 4.6 heatwave days per year, while Older adults, a rapidly growing group, experienced an additional 5.3 heatwave days annually. For Infants a slight decrease in per-person heatwave exposure (from 4.8 to 4.6) would have been observed if heatwave incidence remained at 1986–2005 levels, reflecting shifts in the geographic distribution of vulnerable populations. No change would have been observed for Older adults.
-*/
+===== Attribution of Total Historical Change in Heatwave Exposure
+
+While the previous metric isolates the climate-driven hazard applied to the modern population, a full historical decomposition reveals that demographic shifts have profoundly compounded the total societal burden. 
+When accounting for the baseline heatwave exposure of the rapidly growing and aging global population, the true total increase in exposure is significantly higher. 
+@f-climate-vs-pop-contributions illustrates the decomposition of the total change in heatwave exposure for vulnerable populations into the climate effect, population effect, and their interaction.
+
+#figure(
+  image("/figures/f_climate_vs_pop_contributions.pdf"),
+  caption: [Decomposition of the total change in heatwave exposure (in billion Person-days) for vulnerable populations between 1986–2005 and 2006–2024, into the climate effect, population effect, and their interaction.],
+) <f-climate-vs-pop-contributions>
+
+#let r_b_1986_2005 = db.climate_vs_pop_summary.at("1986-2005")
+#let r_b_2007_2016 = db.climate_vs_pop_summary.at("2007-2016")
+
+Compared to the 1986–2005 baseline, the total societal exposure in #db.climate_vs_pop_summary.target for older adults increased by #r_b_1986_2005.over_65.combined billion person-days. 
+By decomposing this total historical change, we attribute the drivers as follows:
+- *The Climate Effect:* #r_b_1986_2005.over_65.climate_pct% (#r_b_1986_2005.over_65.climate billion person-days) of the increase was driven strictly by rising temperatures.
+- *The Population Effect:* #r_b_1986_2005.over_65.population_pct% (#r_b_1986_2005.over_65.population billion person-days) was driven by the growing aging demographic.
+- *The Interaction Effect:* The remaining #r_b_1986_2005.over_65.interaction_pct% (#r_b_1986_2005.over_65.interaction billion person-days) resulted from the synergistic interaction population growth and climate change.
+
+For infants, the total societal exposure increased by #r_b_1986_2005.under_1.combined billion person-days relative to the 1986-2005 baseline. 
+This was overwhelmingly driven by the climate effect (#r_b_1986_2005.under_1.climate billion person-days), which was slightly offset by negative population and interaction effects (-0.1 billion person-days), reflecting slowing birth rates or shifting infant demographics in certain highly exposed regions.
+
+A similar compounding trend is observed when evaluating the 2007–2016 baseline. 
+For older adults, the total societal exposure increased by #r_b_2007_2016.over_65.combined billion person-days, driven by a combination of the climate effect (#r_b_2007_2016.over_65.climate billion), the demographic population effect (#r_b_2007_2016.over_65.population billion), and their compounding interaction (#r_b_2007_2016.over_65.interaction billion).
 
 #bibliography("references.bib")

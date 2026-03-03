@@ -602,5 +602,48 @@
         }
       }
     }
+  },
+  "climate_vs_pop_summary": {
+    "1986-2005": {
+      "over_65": {
+        "climate": 3.6,
+        "population": 2.0,
+        "interaction": 3.2,
+        "combined": 8.8,
+        "climate_pct": 40.8,
+        "population_pct": 22.4,
+        "interaction_pct": 37.0
+      },
+      "under_1": {
+        "climate": 0.7,
+        "population": -0.0,
+        "interaction": -0.1,
+        "combined": 0.6,
+        "climate_pct": 117.5,
+        "population_pct": -6.7,
+        "interaction_pct": -9.5
+      }
+    },
+    "2007-2016": {
+      "over_65": {
+        "climate": 3.1,
+        "population": 2.0,
+        "interaction": 1.6,
+        "combined": 6.8,
+        "climate_pct": 46.0,
+        "population_pct": 30.1,
+        "interaction_pct": 24.0
+      },
+      "under_1": {
+        "climate": 0.5,
+        "population": -0.1,
+        "interaction": -0.0,
+        "combined": 0.4,
+        "climate_pct": 126.4,
+        "population_pct": -16.6,
+        "interaction_pct": -9.3
+      }
+    },
+    "target": "2025"
   }
 }
